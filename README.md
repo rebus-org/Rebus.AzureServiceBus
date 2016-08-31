@@ -6,4 +6,4 @@ Provides an Azure Service Bus transport for [Rebus](https://github.com/rebus-org
 
 ---
 
-
+The transport works on both Basic and Standard tiers.
