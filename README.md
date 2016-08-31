@@ -1,4 +1,4 @@
-# Rebus.TODO
+# Rebus.AzureServiceBus
 
 Provides an Azure Service Bus transport for [Rebus](https://github.com/rebus-org/Rebus).
 
