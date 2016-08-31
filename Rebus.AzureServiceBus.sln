@@ -1,0 +1,35 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "stuff", "stuff", "{1ABDD7C1-1F8D-402D-8692-3E4B66962DE0}"
+	ProjectSection(SolutionItems) = preProject
+		CHANGELOG.md = CHANGELOG.md
+		CONTRIBUTING.md = CONTRIBUTING.md
+		LICENSE.md = LICENSE.md
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rebus.AzureServiceBus", "Rebus.AzureServiceBus\Rebus.AzureServiceBus.csproj", "{DD32B8FB-6D0D-4FF1-9659-EDAA6DB5A93F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rebus.AzureServiceBus.Tests", "Rebus.AzureServiceBus.Tests\Rebus.AzureServiceBus.Tests.csproj", "{A8707703-0514-4D8C-9164-B9D20CA41EB5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DD32B8FB-6D0D-4FF1-9659-EDAA6DB5A93F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DD32B8FB-6D0D-4FF1-9659-EDAA6DB5A93F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DD32B8FB-6D0D-4FF1-9659-EDAA6DB5A93F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DD32B8FB-6D0D-4FF1-9659-EDAA6DB5A93F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A8707703-0514-4D8C-9164-B9D20CA41EB5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A8707703-0514-4D8C-9164-B9D20CA41EB5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A8707703-0514-4D8C-9164-B9D20CA41EB5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A8707703-0514-4D8C-9164-B9D20CA41EB5}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
