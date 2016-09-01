@@ -294,13 +294,13 @@ namespace Rebus.AzureServiceBus
 
                         if (lockedUntilUtc - nowUtc > TimeSpan.FromMinutes(1)) return;
 
-                        _log.Info("Renewing peek lock for message with ID {0} (time is now {1}, the message is locked until {2})", messageId);
+                        _log.Info("Renewing peek lock for message with ID {0} (time is now {1}, the message is locked until {2})", messageId, nowUtc, lockedUntilUtc);
 
                         await brokeredMessage.RenewLockAsync();
 
                         _log.Info("Peek look renewed - message is now locked until {0}", brokeredMessage.LockedUntilUtc);
                     },
-                    intervalSeconds: (int) 15,
+                    intervalSeconds: (int) 30,
                     prettyInsignificant: true);
 
                 renewalTask.Start();
