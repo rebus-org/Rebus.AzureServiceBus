@@ -198,7 +198,7 @@ namespace Rebus.AzureServiceBus
 
                 var messageId = headers.GetValueOrNull(Headers.MessageId);
                 var leaseDuration = (brokeredMessage.LockedUntilUtc - DateTime.UtcNow);
-                var lockRenewalInterval = TimeSpan.FromMinutes(0.8 * leaseDuration.TotalMinutes);
+                var lockRenewalInterval = TimeSpan.FromMinutes(0.5 * leaseDuration.TotalMinutes);
 
                 var renewalTask = GetRenewalTaskOrFakeDisposable(messageId, brokeredMessage, lockRenewalInterval);
 
