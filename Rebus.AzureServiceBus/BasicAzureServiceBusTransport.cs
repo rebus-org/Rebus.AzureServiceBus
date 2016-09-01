@@ -12,6 +12,7 @@ using Rebus.Extensions;
 using Rebus.Logging;
 using Rebus.Messages;
 using Rebus.Threading;
+using Rebus.Time;
 using Rebus.Transport;
 #pragma warning disable 1998
 
@@ -288,11 +289,18 @@ namespace Rebus.AzureServiceBus
                 var renewalTask = _asyncTaskFactory.Create($"RenewPeekLock-{messageId}",
                     async () =>
                     {
-                        _log.Info("Renewing peek lock for message with ID {0}", messageId);
+                        var nowUtc = RebusTime.Now.UtcDateTime;
+                        var lockedUntilUtc = brokeredMessage.LockedUntilUtc;
+
+                        if (lockedUntilUtc - nowUtc > TimeSpan.FromMinutes(1)) return;
+
+                        _log.Info("Renewing peek lock for message with ID {0} (time is now {1}, the message is locked until {2})", messageId);
 
                         await brokeredMessage.RenewLockAsync();
+
+                        _log.Info("Peek look renewed - message is now locked until {0}", brokeredMessage.LockedUntilUtc);
                     },
-                    intervalSeconds: (int) lockRenewalInterval.TotalSeconds,
+                    intervalSeconds: (int) 15,
                     prettyInsignificant: true);
 
                 renewalTask.Start();
