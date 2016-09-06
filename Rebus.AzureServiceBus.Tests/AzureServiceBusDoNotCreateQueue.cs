@@ -9,7 +9,6 @@ using Rebus.AzureServiceBus.Config;
 using Rebus.AzureServiceBus.Tests.Factories;
 using Rebus.Config;
 using Rebus.Logging;
-using Rebus.Tests;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
 using Rebus.Threading.TaskParallelLibrary;
@@ -22,7 +21,7 @@ namespace Rebus.AzureServiceBus.Tests
     [TestFixture, Category(TestCategory.Azure)]
     public class BasicAzureServiceBusBasicReceiveOnly : FixtureBase
     {
-        static readonly string QueueName = TestConfig.QueueName("input");
+        static readonly string QueueName = TestConfig.GetName("input");
         CancellationToken _cancellationToken;
 
         protected override void SetUp()

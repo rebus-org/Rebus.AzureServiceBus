@@ -9,15 +9,14 @@ using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.AzureServiceBus.Config;
 using Rebus.AzureServiceBus.Tests.Factories;
-using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Logging;
 using Rebus.Messages;
-using Rebus.Tests;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Utilities;
 using Rebus.Threading.TaskParallelLibrary;
 using Rebus.Transport;
+#pragma warning disable 1998
 
 namespace Rebus.AzureServiceBus.Tests
 {
@@ -26,7 +25,7 @@ namespace Rebus.AzureServiceBus.Tests
     public class AzureServiceBusPrefetchTest : FixtureBase
     {
         readonly AzureServiceBusMode _mode;
-        readonly string _queueName = TestConfig.QueueName("prefetch");
+        readonly string _queueName = TestConfig.GetName("prefetch");
 
         public AzureServiceBusPrefetchTest(AzureServiceBusMode mode)
         {
@@ -61,11 +60,11 @@ namespace Rebus.AzureServiceBus.Tests
         [TestCase(10, 1000)]
         [TestCase(50, 1000)]
         [TestCase(100, 1000)]
-        [TestCase(10, 10000, Ignore = true)]
-        [TestCase(20, 10000, Ignore = true)]
-        [TestCase(30, 10000, Ignore = true)]
-        [TestCase(50, 10000, Ignore = true)]
-        [TestCase(100, 10000, Ignore = true)]
+        [TestCase(10, 10000, Ignore = "takes too long to run always")]
+        [TestCase(20, 10000, Ignore = "takes too long to run always")]
+        [TestCase(30, 10000, Ignore = "takes too long to run always")]
+        [TestCase(50, 10000, Ignore = "takes too long to run always")]
+        [TestCase(100, 10000, Ignore = "takes too long to run always")]
         public void WorksWithPrefetch(int prefetch, int numberOfMessages)
         {
             var activator = Using(new BuiltinHandlerActivator());
@@ -144,7 +143,6 @@ namespace Rebus.AzureServiceBus.Tests
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
             var connectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
-            var busLifetimeEvents = new BusLifetimeEvents();
 
             if (_mode == AzureServiceBusMode.Basic)
             {
@@ -154,10 +152,12 @@ namespace Rebus.AzureServiceBus.Tests
                 basicTransport.PurgeInputQueue();
                 return basicTransport;
             }
+
             var transport = new AzureServiceBusTransport(connectionString, _queueName, consoleLoggerFactory, asyncTaskFactory);
             Using(transport);
             transport.Initialize();
             transport.PurgeInputQueue();
+
             return transport;
         }
     }

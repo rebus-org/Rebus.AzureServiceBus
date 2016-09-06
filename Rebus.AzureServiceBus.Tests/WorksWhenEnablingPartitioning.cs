@@ -3,7 +3,6 @@ using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.AzureServiceBus.Tests.Factories;
 using Rebus.Config;
-using Rebus.Tests;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Utilities;
 
@@ -14,7 +13,7 @@ namespace Rebus.AzureServiceBus.Tests
     [TestFixture, Category(TestCategory.Azure)]
     public class WorksWhenEnablingPartitioning : FixtureBase
     {
-        readonly string _queueName = TestConfig.QueueName("input");
+        readonly string _queueName = TestConfig.GetName("input");
         readonly string _connectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
 
         [Test]

@@ -6,18 +6,18 @@ using Rebus.Activation;
 using Rebus.AzureServiceBus.Tests.Factories;
 using Rebus.Config;
 using Rebus.Extensions;
-using Rebus.Tests;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
+#pragma warning disable 1998
 
 namespace Rebus.AzureServiceBus.Tests
 {
     [TestFixture, Category(TestCategory.Azure)]
     public class TestAsbTopicsPubSub : FixtureBase
     {
-        readonly string _inputQueueName1 = TestConfig.QueueName("pubsub1");
-        readonly string _inputQueueName2 = TestConfig.QueueName("pubsub2");
-        readonly string _inputQueueName3 = TestConfig.QueueName("pubsub3");
+        readonly string _inputQueueName1 = TestConfig.GetName("pubsub1");
+        readonly string _inputQueueName2 = TestConfig.GetName("pubsub2");
+        readonly string _inputQueueName3 = TestConfig.GetName("pubsub3");
         readonly string _connectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
         
         BuiltinHandlerActivator _bus1;

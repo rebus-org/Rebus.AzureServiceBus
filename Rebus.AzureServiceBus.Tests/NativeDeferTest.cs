@@ -8,7 +8,6 @@ using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Logging;
 using Rebus.Messages;
-using Rebus.Tests;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
 using Rebus.Threading.TaskParallelLibrary;
@@ -20,7 +19,7 @@ namespace Rebus.AzureServiceBus.Tests
     [TestFixture, Category(TestCategory.Azure)]
     public class NativeDeferTest : FixtureBase
     {
-        static readonly string QueueName = TestConfig.QueueName("input");
+        static readonly string QueueName = TestConfig.GetName("input");
         BuiltinHandlerActivator _activator;
         IBus _bus;
 

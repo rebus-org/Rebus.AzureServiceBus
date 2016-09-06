@@ -10,7 +10,6 @@ using Rebus.Config;
 using Rebus.Extensions;
 using Rebus.Logging;
 using Rebus.Messages;
-using Rebus.Tests;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
 using Rebus.Threading.TaskParallelLibrary;
@@ -23,7 +22,7 @@ namespace Rebus.AzureServiceBus.Tests
     public class AzureServiceBusPeekLockRenewalTest : FixtureBase
     {
         static readonly string ConnectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
-        static readonly string QueueName = TestConfig.QueueName("input");
+        static readonly string QueueName = TestConfig.GetName("input");
 
         readonly ConsoleLoggerFactory _consoleLoggerFactory = new ConsoleLoggerFactory(false);
         readonly AzureServiceBusMode _azureServiceBusMode;

@@ -6,7 +6,6 @@ using Rebus.Activation;
 using Rebus.AzureServiceBus.Config;
 using Rebus.AzureServiceBus.Tests.Factories;
 using Rebus.Config;
-using Rebus.Tests;
 using Rebus.Tests.Contracts;
 
 namespace Rebus.AzureServiceBus.Tests
@@ -15,7 +14,7 @@ namespace Rebus.AzureServiceBus.Tests
     public class TestShutdownTime : FixtureBase
     {
         static readonly string ConnectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
-        static readonly string QueueName = TestConfig.QueueName("timeouttest");
+        static readonly string QueueName = TestConfig.GetName("timeouttest");
 
         [TestCase(AzureServiceBusMode.Basic)]
         [TestCase(AzureServiceBusMode.Standard)]

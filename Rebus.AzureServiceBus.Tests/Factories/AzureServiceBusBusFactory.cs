@@ -6,7 +6,6 @@ using Rebus.AzureServiceBus.Config;
 using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Logging;
-using Rebus.Tests;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Transports;
 using Rebus.Threading.TaskParallelLibrary;
@@ -30,7 +29,7 @@ namespace Rebus.AzureServiceBus.Tests.Factories
 
             builtinHandlerActivator.Handle(handler);
 
-            var queueName = TestConfig.QueueName(inputQueueAddress);
+            var queueName = TestConfig.GetName(inputQueueAddress);
 
             PurgeQueue(queueName);
 
