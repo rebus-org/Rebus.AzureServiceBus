@@ -34,7 +34,7 @@ namespace Rebus.AzureServiceBus.Tests
         [TestCase(AzureServiceBusMode.Basic, 10)]
         [TestCase(AzureServiceBusMode.Standard, 5)]
         [TestCase(AzureServiceBusMode.Standard, 10)]
-        public async void DoesntIgnoreDefinedTimeoutWhenReceiving(AzureServiceBusMode mode, int operationTimeoutInSeconds)
+        public async Task DoesntIgnoreDefinedTimeoutWhenReceiving(AzureServiceBusMode mode, int operationTimeoutInSeconds)
         {
             var operationTimeout = TimeSpan.FromSeconds(operationTimeoutInSeconds);
 
@@ -150,7 +150,7 @@ namespace Rebus.AzureServiceBus.Tests
         [Test]
         [TestCase(AzureServiceBusMode.Basic)]
         [TestCase(AzureServiceBusMode.Standard)]
-        public async void ShouldBeAbleToRecieveEvenWhenNotCreatingQueue(AzureServiceBusMode mode)
+        public async Task ShouldBeAbleToRecieveEvenWhenNotCreatingQueue(AzureServiceBusMode mode)
         {
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var transport = new AzureServiceBusTransport(StandardAzureServiceBusTransportFactory.ConnectionString, QueueName, consoleLoggerFactory, new TplAsyncTaskFactory(consoleLoggerFactory));
@@ -185,8 +185,6 @@ namespace Rebus.AzureServiceBus.Tests
             await senderBus.Advanced.Routing.Send(QueueName, "message to receiver");
 
             gotMessage.WaitOrDie(TimeSpan.FromSeconds(10));
-
-
         }
     }
 }
