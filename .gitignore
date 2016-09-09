@@ -27,3 +27,5 @@ _NCrunch_*
 !**/packages/build/
 
 asb_connection_string.txt
+
+AssemblyInfo_Patch.cs
