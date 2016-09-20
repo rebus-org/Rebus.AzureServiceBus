@@ -379,7 +379,15 @@ namespace Rebus.AzureServiceBus
         async Task RenewPeekLock(string messageId, BrokeredMessage brokeredMessage)
         {
             _log.Info("Renewing peek lock for message with ID {0}", messageId);
-            await brokeredMessage.RenewLockAsync();
+
+            try
+            {
+                await brokeredMessage.RenewLockAsync();
+            }
+            catch (MessageLockLostException)
+            {
+                // if we get this, it is because the message has been handled
+            }
         }
 
         class FakeDisposable : IDisposable
