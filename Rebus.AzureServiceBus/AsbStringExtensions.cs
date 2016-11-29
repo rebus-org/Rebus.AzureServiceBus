@@ -13,7 +13,7 @@ namespace Rebus.AzureServiceBus
         public static string ToValidAzureServiceBusEntityName(this string topic)
         {
             return string.Concat(topic
-                .Select(c => char.IsLetterOrDigit(c) ? char.ToLower(c) : '_'));
+                .Select(c => char.IsLetterOrDigit(c) || c == '/' ? char.ToLower(c) : '_'));
         }
     }
 }
