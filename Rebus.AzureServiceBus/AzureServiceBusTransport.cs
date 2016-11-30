@@ -591,7 +591,8 @@ namespace Rebus.AzureServiceBus
 
         string GetSubscriptionName()
         {
-            return _inputQueueAddress.ToValidAzureServiceBusEntityName();
+            var idx = _inputQueueAddress.LastIndexOf("/", StringComparison.Ordinal) + 1;
+            return _inputQueueAddress.Substring(idx).ToValidAzureServiceBusEntityName();
         }
 
         void VerifyIsOwnInputQueueAddress(string subscriberAddress)
