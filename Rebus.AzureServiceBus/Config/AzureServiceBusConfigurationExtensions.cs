@@ -70,27 +70,40 @@ namespace Rebus.Config
 
             if (mode == AzureServiceBusMode.Basic)
             {
-                configurer.Register(c =>
-                {
-                    var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
-                    var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
-                    var transport = new BasicAzureServiceBusTransport(connectionString, inputQueueAddress, rebusLoggerFactory, asyncTaskFactory);
-
-                    if (settingsBuilder.PrefetchingEnabled)
-                    {
-                        transport.PrefetchMessages(settingsBuilder.NumberOfMessagesToPrefetch);
-                    }
-
-                    transport.AutomaticallyRenewPeekLock = settingsBuilder.AutomaticPeekLockRenewalEnabled;
-
-                    transport.PartitioningEnabled = settingsBuilder.PartitioningEnabled;
-                    transport.DoNotCreateQueuesEnabled = settingsBuilder.DoNotCreateQueuesEnabled;
-                    return transport;
-                });
-
-                return settingsBuilder;
+                RegisterBasicTransport(configurer, inputQueueAddress, connectionString, settingsBuilder);
+            }
+            else
+            {
+                RegisterStandardTransport(configurer, inputQueueAddress, connectionString, settingsBuilder);
             }
 
+            return settingsBuilder;
+        }
+
+        static void RegisterBasicTransport(StandardConfigurer<ITransport> configurer, string inputQueueAddress, string connectionString, AzureServiceBusTransportSettings settings)
+        {
+            configurer.Register(c =>
+            {
+                var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
+                var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
+                var transport = new BasicAzureServiceBusTransport(connectionString, inputQueueAddress, rebusLoggerFactory, asyncTaskFactory);
+
+                if (settings.PrefetchingEnabled)
+                {
+                    transport.PrefetchMessages(settings.NumberOfMessagesToPrefetch);
+                }
+
+                transport.AutomaticallyRenewPeekLock = settings.AutomaticPeekLockRenewalEnabled;
+
+                transport.PartitioningEnabled = settings.PartitioningEnabled;
+                transport.DoNotCreateQueuesEnabled = settings.DoNotCreateQueuesEnabled;
+                return transport;
+            });
+        }
+
+        static void RegisterStandardTransport(StandardConfigurer<ITransport> configurer, string inputQueueAddress, string connectionString, AzureServiceBusTransportSettings settings)
+        {
+            // register the actual transport as itself
             configurer
                 .OtherService<AzureServiceBusTransport>()
                 .Register(c =>
@@ -99,24 +112,27 @@ namespace Rebus.Config
                     var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
                     var transport = new AzureServiceBusTransport(connectionString, inputQueueAddress, rebusLoggerFactory, asyncTaskFactory);
 
-                    if (settingsBuilder.PrefetchingEnabled)
+                    if (settings.PrefetchingEnabled)
                     {
-                        transport.PrefetchMessages(settingsBuilder.NumberOfMessagesToPrefetch);
+                        transport.PrefetchMessages(settings.NumberOfMessagesToPrefetch);
                     }
 
-                    transport.AutomaticallyRenewPeekLock = settingsBuilder.AutomaticPeekLockRenewalEnabled;
+                    transport.AutomaticallyRenewPeekLock = settings.AutomaticPeekLockRenewalEnabled;
 
-                    transport.PartitioningEnabled = settingsBuilder.PartitioningEnabled;
-                    transport.DoNotCreateQueuesEnabled = settingsBuilder.DoNotCreateQueuesEnabled;
+                    transport.PartitioningEnabled = settings.PartitioningEnabled;
+                    transport.DoNotCreateQueuesEnabled = settings.DoNotCreateQueuesEnabled;
                     return transport;
                 });
 
+            // map subscription storage to transport
             configurer
                 .OtherService<ISubscriptionStorage>()
                 .Register(c => c.Get<AzureServiceBusTransport>(), description: AsbSubStorageText);
 
+            // map ITransport to transport
             configurer.Register(c => c.Get<AzureServiceBusTransport>());
 
+            // remove deferred messages step
             configurer.OtherService<IPipeline>().Decorate(c =>
             {
                 var pipeline = c.Get<IPipeline>();
@@ -125,9 +141,9 @@ namespace Rebus.Config
                     .RemoveIncomingStep(s => s.GetType() == typeof(HandleDeferredMessagesStep));
             });
 
-            configurer.OtherService<ITimeoutManager>().Register(c => new DisabledTimeoutManager(), description: AsbTimeoutManagerText);
-
-            return settingsBuilder;
+            // disable timeout manager
+            configurer.OtherService<ITimeoutManager>()
+                .Register(c => new DisabledTimeoutManager(), description: AsbTimeoutManagerText);
         }
 
         static string GetConnectionString(string connectionStringNameOrConnectionString)
