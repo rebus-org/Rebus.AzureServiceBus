@@ -15,3 +15,10 @@
 ## 2.1.0
 
 * Update Azure Service Bus dependency to 3.4.0
+
+## 2.2.0
+
+* Allow `/` in queue and topic names
+
+
+[Meyce]: https://github.com/Meyce
