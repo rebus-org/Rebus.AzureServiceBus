@@ -1,4 +1,4 @@
-using Rebus.AzureServiceBus.Config;
+using Rebus.Config;
 
 namespace Rebus.AzureServiceBus.Tests.Factories
 {

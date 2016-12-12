@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.Threading;
 using NUnit.Framework;
 using Rebus.Activation;
-using Rebus.AzureServiceBus.Config;
 using Rebus.AzureServiceBus.Tests.Factories;
 using Rebus.Config;
 using Rebus.Tests.Contracts;

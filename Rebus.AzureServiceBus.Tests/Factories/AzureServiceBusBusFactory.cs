@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Rebus.Activation;
-using Rebus.AzureServiceBus.Config;
 using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Logging;

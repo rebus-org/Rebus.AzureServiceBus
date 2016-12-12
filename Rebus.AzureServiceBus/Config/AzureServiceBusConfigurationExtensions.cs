@@ -1,6 +1,5 @@
 ﻿using System.Configuration;
 using Rebus.AzureServiceBus;
-using Rebus.AzureServiceBus.Config;
 using Rebus.Logging;
 using Rebus.Pipeline;
 using Rebus.Pipeline.Receive;

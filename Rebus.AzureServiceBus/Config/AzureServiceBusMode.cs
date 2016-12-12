@@ -1,4 +1,4 @@
-﻿namespace Rebus.AzureServiceBus.Config
+﻿namespace Rebus.Config
 {
     /// <summary>
     /// Represents the two supported modes of using Azure Service Bus

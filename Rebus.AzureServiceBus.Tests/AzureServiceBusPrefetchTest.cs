@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using NUnit.Framework;
 using Rebus.Activation;
-using Rebus.AzureServiceBus.Config;
 using Rebus.AzureServiceBus.Tests.Factories;
 using Rebus.Config;
 using Rebus.Logging;

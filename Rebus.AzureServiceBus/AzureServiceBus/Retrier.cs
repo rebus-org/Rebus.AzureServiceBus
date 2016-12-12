@@ -9,7 +9,7 @@ namespace Rebus.AzureServiceBus
     /// Retry helper that can be configured to accept certain exceptions (by specifying a function that returns whether the given
     /// exception is OK)
     /// </summary>
-    public class Retrier
+    class Retrier
     {
         readonly List<Func<Exception, bool>> _exceptionAcceptors = new List<Func<Exception, bool>>();
         readonly List<TimeSpan> _waitTimeBetweenAttempts;
@@ -19,6 +19,7 @@ namespace Rebus.AzureServiceBus
         /// </summary>
         public Retrier(IEnumerable<TimeSpan> waitTimeBetweenAttempts)
         {
+            if (waitTimeBetweenAttempts == null) throw new ArgumentNullException(nameof(waitTimeBetweenAttempts));
             _waitTimeBetweenAttempts = waitTimeBetweenAttempts.ToList();
         }
 
