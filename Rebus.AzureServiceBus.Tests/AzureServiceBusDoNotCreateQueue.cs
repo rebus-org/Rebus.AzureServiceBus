@@ -69,10 +69,10 @@ namespace Rebus.AzureServiceBus.Tests
             await Task.Delay(TimeSpan.FromSeconds(2)); // wait a bit to make sure the messages are queued.
 
             // receive 1
-            using (var transactionContext = new DefaultTransactionContext())
+            using (var transactionContext = new DefaultTransactionContextScope())
             {
                 var sw = System.Diagnostics.Stopwatch.StartNew();
-                var msg = await transport.Receive(transactionContext, _cancellationToken);
+                var msg = await transport.Receive(AmbientTransactionContext.Current, _cancellationToken);
                 sw.Stop();
                 await transactionContext.Complete();
 
@@ -81,10 +81,10 @@ namespace Rebus.AzureServiceBus.Tests
             }
 
             // receive 2
-            using (var transactionContext = new DefaultTransactionContext())
+            using (var transactionContext = new DefaultTransactionContextScope())
             {
                 var sw = System.Diagnostics.Stopwatch.StartNew();
-                var msg = await transport.Receive(transactionContext, _cancellationToken);
+                var msg = await transport.Receive(AmbientTransactionContext.Current, _cancellationToken);
                 sw.Stop();
                 await transactionContext.Complete();
 
@@ -93,10 +93,10 @@ namespace Rebus.AzureServiceBus.Tests
             }
 
             // receive 3
-            using (var transactionContext = new DefaultTransactionContext())
+            using (var transactionContext = new DefaultTransactionContextScope())
             {
                 var sw = System.Diagnostics.Stopwatch.StartNew();
-                var msg = await transport.Receive(transactionContext, _cancellationToken);
+                var msg = await transport.Receive(AmbientTransactionContext.Current, _cancellationToken);
                 sw.Stop();
                 await transactionContext.Complete();
 
@@ -105,10 +105,10 @@ namespace Rebus.AzureServiceBus.Tests
             }
 
             // receive 4 - NOTHING
-            using (var transactionContext = new DefaultTransactionContext())
+            using (var transactionContext = new DefaultTransactionContextScope())
             {
                 var sw = System.Diagnostics.Stopwatch.StartNew();
-                var msg = await transport.Receive(transactionContext, _cancellationToken);
+                var msg = await transport.Receive(AmbientTransactionContext.Current, _cancellationToken);
                 sw.Stop();
                 await transactionContext.Complete();
 
@@ -122,10 +122,10 @@ namespace Rebus.AzureServiceBus.Tests
             await Task.Delay(TimeSpan.FromSeconds(2)); // wait a bit to make sure the messages are queued.
 
             // receive 5
-            using (var transactionContext = new DefaultTransactionContext())
+            using (var transactionContext = new DefaultTransactionContextScope())
             {
                 var sw = System.Diagnostics.Stopwatch.StartNew();
-                var msg = await transport.Receive(transactionContext, _cancellationToken);
+                var msg = await transport.Receive(AmbientTransactionContext.Current, _cancellationToken);
                 sw.Stop();
                 await transactionContext.Complete();
 
@@ -134,10 +134,10 @@ namespace Rebus.AzureServiceBus.Tests
             }
 
             // receive 6 - NOTHING
-            using (var transactionContext = new DefaultTransactionContext())
+            using (var transactionContext = new DefaultTransactionContextScope())
             {
                 var sw = System.Diagnostics.Stopwatch.StartNew();
-                var msg = await transport.Receive(transactionContext, _cancellationToken);
+                var msg = await transport.Receive(AmbientTransactionContext.Current, _cancellationToken);
                 sw.Stop();
                 await transactionContext.Complete();
 

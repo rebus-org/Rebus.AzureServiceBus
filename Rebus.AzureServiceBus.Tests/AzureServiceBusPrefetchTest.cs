@@ -83,13 +83,13 @@ namespace Rebus.AzureServiceBus.Tests
                 .Select(i => $"THIS IS MESSAGE # {i}")
                 .Select(async msg =>
                 {
-                    using (var context = new DefaultTransactionContext())
+                    using (var context = new DefaultTransactionContextScope())
                     {
                         var headers = DefaultHeaders();
                         var body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(msg));
                         var transportMessage = new TransportMessage(headers, body);
 
-                        await transport.Send(_queueName, transportMessage, context);
+                        await transport.Send(_queueName, transportMessage, AmbientTransactionContext.Current);
 
                         await context.Complete();
                     }

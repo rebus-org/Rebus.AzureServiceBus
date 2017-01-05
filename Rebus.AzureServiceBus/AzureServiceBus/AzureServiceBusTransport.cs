@@ -77,10 +77,11 @@ namespace Rebus.AzureServiceBus
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
             if (asyncTaskFactory == null) throw new ArgumentNullException(nameof(asyncTaskFactory));
 
+            _log = rebusLoggerFactory.GetLogger<AzureServiceBusTransport>();
+
             _namespaceManager = NamespaceManager.CreateFromConnectionString(connectionString);
             _connectionString = connectionString;
             _asyncTaskFactory = asyncTaskFactory;
-            _log = rebusLoggerFactory.GetCurrentClassLogger();
 
             if (inputQueueAddress != null)
             {

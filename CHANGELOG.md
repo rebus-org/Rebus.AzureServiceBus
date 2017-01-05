@@ -20,5 +20,9 @@
 
 * Allow `/` in queue and topic names
 
+## 3.0.0
+
+* Update to Rebus 3
+
 
 [Meyce]: https://github.com/Meyce

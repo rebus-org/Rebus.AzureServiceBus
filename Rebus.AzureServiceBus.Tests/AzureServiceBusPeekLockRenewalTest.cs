@@ -90,9 +90,9 @@ namespace Rebus.AzureServiceBus.Tests
             CleanUpDisposables();
 
             // see if queue is empty
-            using (var transactionContext = new DefaultTransactionContext())
+            using (var transactionContext = new DefaultTransactionContextScope())
             {
-                var message = await _transport.Receive(transactionContext, new CancellationTokenSource().Token);
+                var message = await _transport.Receive(AmbientTransactionContext.Current, new CancellationTokenSource().Token);
 
                 if (message != null)
                 {
