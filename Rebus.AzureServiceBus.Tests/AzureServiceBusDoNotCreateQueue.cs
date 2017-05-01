@@ -69,48 +69,48 @@ namespace Rebus.AzureServiceBus.Tests
             await Task.Delay(TimeSpan.FromSeconds(2)); // wait a bit to make sure the messages are queued.
 
             // receive 1
-            using (var transactionContext = new DefaultTransactionContextScope())
+            using (var scope = new RebusTransactionScope())
             {
                 var sw = System.Diagnostics.Stopwatch.StartNew();
-                var msg = await transport.Receive(AmbientTransactionContext.Current, _cancellationToken);
+                var msg = await transport.Receive(scope.TransactionContext, _cancellationToken);
                 sw.Stop();
-                await transactionContext.Complete();
+                await scope.CompleteAsync();
 
                 msg.Should().NotBeNull();
                 sw.Elapsed.Should().BeLessThan(TimeSpan.FromMilliseconds(1500));
             }
 
             // receive 2
-            using (var transactionContext = new DefaultTransactionContextScope())
+            using (var scope = new RebusTransactionScope())
             {
                 var sw = System.Diagnostics.Stopwatch.StartNew();
-                var msg = await transport.Receive(AmbientTransactionContext.Current, _cancellationToken);
+                var msg = await transport.Receive(scope.TransactionContext, _cancellationToken);
                 sw.Stop();
-                await transactionContext.Complete();
+                await scope.CompleteAsync();
 
                 msg.Should().NotBeNull();
                 sw.Elapsed.Should().BeLessThan(TimeSpan.FromMilliseconds(1500));
             }
 
             // receive 3
-            using (var transactionContext = new DefaultTransactionContextScope())
+            using (var scope = new RebusTransactionScope())
             {
                 var sw = System.Diagnostics.Stopwatch.StartNew();
-                var msg = await transport.Receive(AmbientTransactionContext.Current, _cancellationToken);
+                var msg = await transport.Receive(scope.TransactionContext, _cancellationToken);
                 sw.Stop();
-                await transactionContext.Complete();
+                await scope.CompleteAsync();
 
                 msg.Should().NotBeNull();
                 sw.Elapsed.Should().BeLessThan(TimeSpan.FromMilliseconds(1500));
             }
 
             // receive 4 - NOTHING
-            using (var transactionContext = new DefaultTransactionContextScope())
+            using (var scope = new RebusTransactionScope())
             {
                 var sw = System.Diagnostics.Stopwatch.StartNew();
-                var msg = await transport.Receive(AmbientTransactionContext.Current, _cancellationToken);
+                var msg = await transport.Receive(scope.TransactionContext, _cancellationToken);
                 sw.Stop();
-                await transactionContext.Complete();
+                await scope.CompleteAsync();
 
                 msg.Should().BeNull();
                 sw.Elapsed.Should().BeCloseTo(operationTimeout, 2000);
@@ -122,24 +122,24 @@ namespace Rebus.AzureServiceBus.Tests
             await Task.Delay(TimeSpan.FromSeconds(2)); // wait a bit to make sure the messages are queued.
 
             // receive 5
-            using (var transactionContext = new DefaultTransactionContextScope())
+            using (var scope = new RebusTransactionScope())
             {
                 var sw = System.Diagnostics.Stopwatch.StartNew();
-                var msg = await transport.Receive(AmbientTransactionContext.Current, _cancellationToken);
+                var msg = await transport.Receive(scope.TransactionContext, _cancellationToken);
                 sw.Stop();
-                await transactionContext.Complete();
+                await scope.CompleteAsync();
 
                 msg.Should().NotBeNull();
                 sw.Elapsed.Should().BeLessThan(TimeSpan.FromMilliseconds(1500));
             }
 
             // receive 6 - NOTHING
-            using (var transactionContext = new DefaultTransactionContextScope())
+            using (var scope = new RebusTransactionScope())
             {
                 var sw = System.Diagnostics.Stopwatch.StartNew();
-                var msg = await transport.Receive(AmbientTransactionContext.Current, _cancellationToken);
+                var msg = await transport.Receive(scope.TransactionContext, _cancellationToken);
                 sw.Stop();
-                await transactionContext.Complete();
+                await scope.CompleteAsync();
 
                 msg.Should().BeNull();
                 sw.Elapsed.Should().BeCloseTo(operationTimeout, 2000);

@@ -90,9 +90,9 @@ namespace Rebus.AzureServiceBus.Tests
             CleanUpDisposables();
 
             // see if queue is empty
-            using (var transactionContext = new DefaultTransactionContextScope())
+            using (var scope = new RebusTransactionScope())
             {
-                var message = await _transport.Receive(AmbientTransactionContext.Current, new CancellationTokenSource().Token);
+                var message = await _transport.Receive(scope.TransactionContext, new CancellationTokenSource().Token);
 
                 if (message != null)
                 {
@@ -100,7 +100,7 @@ namespace Rebus.AzureServiceBus.Tests
                         $"Did not expect to receive a message - got one with ID {message.Headers.GetValue(Headers.MessageId)}");    
                 }
 
-                await transactionContext.Complete();
+                await scope.CompleteAsync();
             }
         }
     }
