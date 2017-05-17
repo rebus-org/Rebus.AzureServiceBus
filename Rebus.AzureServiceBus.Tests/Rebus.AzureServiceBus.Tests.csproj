@@ -35,8 +35,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Rebus.AzureServiceBus\Rebus.AzureServiceBus.csproj" />
     <PackageReference Include="nunit" Version="3.6.1" />
-    <PackageReference Include="rebus" Version="4.0.0-b06" />
-    <PackageReference Include="rebus.tests.contracts" Version="4.0.0-b07" />
+    <PackageReference Include="rebus" Version="4.0.0-b09" />
+    <PackageReference Include="rebus.tests.contracts" Version="4.0.0-b09" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System.Configuration" />
