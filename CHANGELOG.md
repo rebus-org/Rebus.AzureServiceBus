@@ -24,10 +24,10 @@
 
 * Update to Rebus 3
 
-## 4.0.0-b02
+## 4.0.0-b03
 
 * Update to Rebus 4
 * Update to new project structure (.NET Core unfortunately not support by the driver at this time)
-* Update deps to b09
+* Update deps to b10
 
 [Meyce]: https://github.com/Meyce
