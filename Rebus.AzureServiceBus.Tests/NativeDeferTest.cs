@@ -8,6 +8,7 @@ using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Logging;
 using Rebus.Messages;
+using Rebus.Routing.TypeBased;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
 using Rebus.Threading.TaskParallelLibrary;
@@ -35,6 +36,7 @@ namespace Rebus.AzureServiceBus.Tests
 
             _bus = Configure.With(_activator)
                 .Transport(t => t.UseAzureServiceBus(connectionString, QueueName))
+                .Routing(r => r.TypeBased().Map<TimedMessage>(QueueName))
                 .Options(o =>
                 {
                     o.LogPipeline();
