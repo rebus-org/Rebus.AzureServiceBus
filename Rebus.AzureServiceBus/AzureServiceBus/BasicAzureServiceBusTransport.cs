@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Transactions;
 using Microsoft.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
 using Rebus.Bus;
@@ -261,6 +262,7 @@ namespace Rebus.AzureServiceBus
                             {
                                 await GetRetrier().Execute(async () =>
                                 {
+                                    using (new TransactionScope(TransactionScopeOption.Suppress))
                                     using (var brokeredMessageToSend = MsgHelpers.CreateBrokeredMessage(message))
                                     {
                                         try

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Transactions;
 using Microsoft.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
 using Rebus.Bus;
@@ -298,6 +299,7 @@ namespace Rebus.AzureServiceBus
                             {
                                 await GetRetrier().Execute(async () =>
                                 {
+                                    using (new TransactionScope(TransactionScopeOption.Suppress))
                                     using (var brokeredMessageToSend = MsgHelpers.CreateBrokeredMessage(message))
                                     {
                                         try
@@ -544,19 +546,22 @@ namespace Rebus.AzureServiceBus
         /// </summary>
         public async Task RegisterSubscriber(string topic, string subscriberAddress)
         {
-            VerifyIsOwnInputQueueAddress(subscriberAddress);
+            using (new TransactionScope(TransactionScopeOption.Suppress))
+            {
+                VerifyIsOwnInputQueueAddress(subscriberAddress);
 
-            var normalizedTopic = topic.ToValidAzureServiceBusEntityName();
-            var topicDescription = EnsureTopicExists(normalizedTopic);
-            var inputQueueClient = GetQueueClient(_inputQueueAddress);
+                var normalizedTopic = topic.ToValidAzureServiceBusEntityName();
+                var topicDescription = EnsureTopicExists(normalizedTopic);
+                var inputQueueClient = GetQueueClient(_inputQueueAddress);
 
-            var inputQueuePath = inputQueueClient.Path;
-            var topicPath = topicDescription.Path;
-            var subscriptionName = GetSubscriptionName();
+                var inputQueuePath = inputQueueClient.Path;
+                var topicPath = topicDescription.Path;
+                var subscriptionName = GetSubscriptionName();
 
-            var subscription = await GetOrCreateSubscription(topicPath, subscriptionName);
-            subscription.ForwardTo = inputQueuePath;
-            await _namespaceManager.UpdateSubscriptionAsync(subscription);
+                var subscription = await GetOrCreateSubscription(topicPath, subscriptionName);
+                subscription.ForwardTo = inputQueuePath;
+                await _namespaceManager.UpdateSubscriptionAsync(subscription);
+            }
         }
 
         async Task<SubscriptionDescription> GetOrCreateSubscription(string topicPath, string subscriptionName)
@@ -576,18 +581,23 @@ namespace Rebus.AzureServiceBus
         /// </summary>
         public async Task UnregisterSubscriber(string topic, string subscriberAddress)
         {
-            VerifyIsOwnInputQueueAddress(subscriberAddress);
-
-            var normalizedTopic = topic.ToValidAzureServiceBusEntityName();
-            var topicDescription = EnsureTopicExists(normalizedTopic);
-            var topicPath = topicDescription.Path;
-            var subscriptionName = GetSubscriptionName();
-
-            try
+            using (new TransactionScope(TransactionScopeOption.Suppress))
             {
-                await _namespaceManager.DeleteSubscriptionAsync(topicPath, subscriptionName);
+                VerifyIsOwnInputQueueAddress(subscriberAddress);
+
+                var normalizedTopic = topic.ToValidAzureServiceBusEntityName();
+                var topicDescription = EnsureTopicExists(normalizedTopic);
+                var topicPath = topicDescription.Path;
+                var subscriptionName = GetSubscriptionName();
+
+                try
+                {
+                    await _namespaceManager.DeleteSubscriptionAsync(topicPath, subscriptionName);
+                }
+                catch (MessagingEntityNotFoundException)
+                {
+                }
             }
-            catch (MessagingEntityNotFoundException) { }
         }
 
         string GetSubscriptionName()
