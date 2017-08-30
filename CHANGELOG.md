@@ -24,5 +24,9 @@
 
 * Update to Rebus 3
 
+## 3.0.1-b1
+
+* Preemptive suppression of .NET's ambient transactions
+
 
 [Meyce]: https://github.com/Meyce
