@@ -20,7 +20,7 @@
     </dependencies>
   </metadata>
   <files>
-    <file src="bin\Release\Rebus.AzureServiceBus.dll" target="lib\NET45" />
-    <file src="bin\Release\Rebus.AzureServiceBus.xml" target="lib\NET45" />
+    <file src="bin\Release\Rebus.AzureServiceBus.dll" target="lib\NET451" />
+    <file src="bin\Release\Rebus.AzureServiceBus.xml" target="lib\NET451" />
   </files>
 </package>

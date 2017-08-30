@@ -262,7 +262,7 @@ namespace Rebus.AzureServiceBus
                             {
                                 await GetRetrier().Execute(async () =>
                                 {
-                                    using (new TransactionScope(TransactionScopeOption.Suppress))
+                                    using (new TransactionScope(TransactionScopeOption.Suppress, TransactionScopeAsyncFlowOption.Enabled))
                                     using (var brokeredMessageToSend = MsgHelpers.CreateBrokeredMessage(message))
                                     {
                                         try

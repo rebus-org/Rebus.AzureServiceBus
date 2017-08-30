@@ -299,7 +299,7 @@ namespace Rebus.AzureServiceBus
                             {
                                 await GetRetrier().Execute(async () =>
                                 {
-                                    using (new TransactionScope(TransactionScopeOption.Suppress))
+                                    using (new TransactionScope(TransactionScopeOption.Suppress, TransactionScopeAsyncFlowOption.Enabled))
                                     using (var brokeredMessageToSend = MsgHelpers.CreateBrokeredMessage(message))
                                     {
                                         try
@@ -546,7 +546,7 @@ namespace Rebus.AzureServiceBus
         /// </summary>
         public async Task RegisterSubscriber(string topic, string subscriberAddress)
         {
-            using (new TransactionScope(TransactionScopeOption.Suppress))
+            using (new TransactionScope(TransactionScopeOption.Suppress, TransactionScopeAsyncFlowOption.Enabled))
             {
                 VerifyIsOwnInputQueueAddress(subscriberAddress);
 
@@ -564,24 +564,12 @@ namespace Rebus.AzureServiceBus
             }
         }
 
-        async Task<SubscriptionDescription> GetOrCreateSubscription(string topicPath, string subscriptionName)
-        {
-            try
-            {
-                return await _namespaceManager.CreateSubscriptionAsync(topicPath, subscriptionName);
-            }
-            catch (MessagingEntityAlreadyExistsException)
-            {
-                return await _namespaceManager.GetSubscriptionAsync(topicPath, subscriptionName);
-            }
-        }
-
         /// <summary>
         /// Unregisters this endpoint as a subscriber by deleting the subscription for the given topic
         /// </summary>
         public async Task UnregisterSubscriber(string topic, string subscriberAddress)
         {
-            using (new TransactionScope(TransactionScopeOption.Suppress))
+            using (new TransactionScope(TransactionScopeOption.Suppress, TransactionScopeAsyncFlowOption.Enabled))
             {
                 VerifyIsOwnInputQueueAddress(subscriberAddress);
 
@@ -597,6 +585,18 @@ namespace Rebus.AzureServiceBus
                 catch (MessagingEntityNotFoundException)
                 {
                 }
+            }
+        }
+
+        async Task<SubscriptionDescription> GetOrCreateSubscription(string topicPath, string subscriptionName)
+        {
+            try
+            {
+                return await _namespaceManager.CreateSubscriptionAsync(topicPath, subscriptionName);
+            }
+            catch (MessagingEntityAlreadyExistsException)
+            {
+                return await _namespaceManager.GetSubscriptionAsync(topicPath, subscriptionName);
             }
         }
 
