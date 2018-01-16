@@ -5,7 +5,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Rebus.AzureServiceBus.Tests</RootNamespace>
     <AssemblyName>Rebus.AzureServiceBus.Tests</AssemblyName>
-    <TargetFrameworks>net45</TargetFrameworks>
+    <TargetFrameworks>net452</TargetFrameworks>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -26,8 +26,8 @@
     <WarningLevel>4</WarningLevel>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(TargetFramework)' == 'net45' ">
-    <DefineConstants>NET45</DefineConstants>
+  <PropertyGroup Condition=" '$(TargetFramework)' == 'net452' ">
+    <DefineConstants>NET452</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard1.6' ">
     <DefineConstants>NETSTANDARD1_6</DefineConstants>
