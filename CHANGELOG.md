@@ -29,8 +29,11 @@
 * Update to Rebus 4
 * Update to new project structure (.NET Core unfortunately not support by the driver at this time)
 
-## 4.0.1-b1
+## 4.0.1
 
 * Add .NET Standard 2.0 target specifically to handle dependency on `ConfigurationManager`
+* `.ConfigureAwait(false)` everywhere something is `await`ed - thanks [lezzi]
 
+
+[lezzi]: https://github.com/lezzi
 [Meyce]: https://github.com/Meyce
