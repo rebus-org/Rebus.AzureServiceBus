@@ -50,7 +50,7 @@ namespace Rebus.AzureServiceBus
             {
                 try
                 {
-                    await action();
+                    await action().ConfigureAwait(false);
                     success = true;
                     break;
                 }
@@ -71,7 +71,7 @@ namespace Rebus.AzureServiceBus
                     // otherwise....
                 }
 
-                await Task.Delay(_waitTimeBetweenAttempts[index++]);
+                await Task.Delay(_waitTimeBetweenAttempts[index++]).ConfigureAwait(false);
 
             } while (!success);
         }

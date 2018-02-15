@@ -213,9 +213,9 @@ namespace Rebus.AzureServiceBus
                 throw new InvalidOperationException("This Azure Service Bus transport does not have an input queue, hence it is not possible to reveive anything");
             }
 
-            using (await _bottleneck.Enter(cancellationToken))
+            using (await _bottleneck.Enter(cancellationToken).ConfigureAwait(false))
             {
-                var brokeredMessage = await ReceiveBrokeredMessage();
+                var brokeredMessage = await ReceiveBrokeredMessage().ConfigureAwait(false);
 
                 if (brokeredMessage == null) return null;
 
@@ -254,7 +254,7 @@ namespace Rebus.AzureServiceBus
                 {
                     try
                     {
-                        await brokeredMessage.CompleteAsync();
+                        await brokeredMessage.CompleteAsync().ConfigureAwait(false);
                     }
                     catch (MessageLockLostException exception)
                     {
@@ -273,7 +273,7 @@ namespace Rebus.AzureServiceBus
 
                 using (var memoryStream = new MemoryStream())
                 {
-                    await brokeredMessage.GetBody<Stream>().CopyToAsync(memoryStream);
+                    await brokeredMessage.GetBody<Stream>().CopyToAsync(memoryStream).ConfigureAwait(false);
                     return new TransportMessage(headers, memoryStream.ToArray());
                 }
             }
@@ -302,7 +302,7 @@ namespace Rebus.AzureServiceBus
                                     {
                                         try
                                         {
-                                            await Send(destinationAddress, brokeredMessageToSend);
+                                            await Send(destinationAddress, brokeredMessageToSend).ConfigureAwait(false);
                                         }
                                         catch (MessagingEntityNotFoundException exception)
                                         {
@@ -310,11 +310,11 @@ namespace Rebus.AzureServiceBus
                                             throw new MessagingException($"Could not send to '{destinationAddress}'!", false, exception);
                                         }
                                     }
-                                });
+                                }).ConfigureAwait(false);
                             })
                             .ToArray();
 
-                        await Task.WhenAll(sendTasks);
+                        await Task.WhenAll(sendTasks).ConfigureAwait(false);
                     }
                 });
 
@@ -328,11 +328,11 @@ namespace Rebus.AzureServiceBus
             {
                 var topic = destinationAddress.Substring(MagicSubscriptionPrefix.Length);
 
-                await GetTopicClient(topic).SendAsync(brokeredMessageToSend);
+                await GetTopicClient(topic).SendAsync(brokeredMessageToSend).ConfigureAwait(false);
             }
             else
             {
-                await GetQueueClient(destinationAddress).SendAsync(brokeredMessageToSend);
+                await GetQueueClient(destinationAddress).SendAsync(brokeredMessageToSend).ConfigureAwait(false);
             }
         }
 
@@ -367,7 +367,7 @@ namespace Rebus.AzureServiceBus
                 .Create($"RenewPeekLock-{messageId}",
                     async () =>
                     {
-                        await RenewPeekLock(messageId, brokeredMessage);
+                        await RenewPeekLock(messageId, brokeredMessage).ConfigureAwait(false);
                     },
                     intervalSeconds: (int)lockRenewalInterval.TotalSeconds,
                     prettyInsignificant: true);
@@ -383,7 +383,7 @@ namespace Rebus.AzureServiceBus
 
             try
             {
-                await brokeredMessage.RenewLockAsync();
+                await brokeredMessage.RenewLockAsync().ConfigureAwait(false);
             }
             catch (MessageLockLostException)
             {
@@ -415,8 +415,8 @@ namespace Rebus.AzureServiceBus
 
                 // Timeout can be specified in ASB ConnectionString Endpoint=sb:://...;OperationTimeout=00:00:10
                 var brokeredMessages = _receiveTimeout.HasValue
-                    ? (await client.ReceiveBatchAsync(_numberOfMessagesToPrefetch, _receiveTimeout.Value)).ToList()
-                    : (await client.ReceiveBatchAsync(_numberOfMessagesToPrefetch)).ToList();
+                    ? (await client.ReceiveBatchAsync(_numberOfMessagesToPrefetch, _receiveTimeout.Value).ConfigureAwait(false)).ToList()
+                    : (await client.ReceiveBatchAsync(_numberOfMessagesToPrefetch).ConfigureAwait(false)).ToList();
 
                 _ignorant.Reset();
 
@@ -436,8 +436,8 @@ namespace Rebus.AzureServiceBus
             {
                 // Timeout can be specified in ASB ConnectionString Endpoint=sb:://...;OperationTimeout=00:00:10
                 var brokeredMessage = _receiveTimeout.HasValue
-                    ? await GetQueueClient(queueAddress).ReceiveAsync(_receiveTimeout.Value)
-                    : await GetQueueClient(queueAddress).ReceiveAsync();
+                    ? await GetQueueClient(queueAddress).ReceiveAsync(_receiveTimeout.Value).ConfigureAwait(false)
+                    : await GetQueueClient(queueAddress).ReceiveAsync().ConfigureAwait(false);
 
                 _ignorant.Reset();
 
@@ -554,20 +554,20 @@ namespace Rebus.AzureServiceBus
             var topicPath = topicDescription.Path;
             var subscriptionName = GetSubscriptionName();
 
-            var subscription = await GetOrCreateSubscription(topicPath, subscriptionName);
+            var subscription = await GetOrCreateSubscription(topicPath, subscriptionName).ConfigureAwait(false);
             subscription.ForwardTo = inputQueuePath;
-            await _namespaceManager.UpdateSubscriptionAsync(subscription);
+            await _namespaceManager.UpdateSubscriptionAsync(subscription).ConfigureAwait(false);
         }
 
         async Task<SubscriptionDescription> GetOrCreateSubscription(string topicPath, string subscriptionName)
         {
             try
             {
-                return await _namespaceManager.CreateSubscriptionAsync(topicPath, subscriptionName);
+                return await _namespaceManager.CreateSubscriptionAsync(topicPath, subscriptionName).ConfigureAwait(false);
             }
             catch (MessagingEntityAlreadyExistsException)
             {
-                return await _namespaceManager.GetSubscriptionAsync(topicPath, subscriptionName);
+                return await _namespaceManager.GetSubscriptionAsync(topicPath, subscriptionName).ConfigureAwait(false);
             }
         }
 
@@ -585,7 +585,7 @@ namespace Rebus.AzureServiceBus
 
             try
             {
-                await _namespaceManager.DeleteSubscriptionAsync(topicPath, subscriptionName);
+                await _namespaceManager.DeleteSubscriptionAsync(topicPath, subscriptionName).ConfigureAwait(false);
             }
             catch (MessagingEntityNotFoundException) { }
         }
