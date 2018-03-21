@@ -17,9 +17,12 @@ namespace Rebus.AzureServiceBus
             
         }
 
+        public void Initialize()
+        {
+        }
+
         public void CreateQueue(string address)
         {
-            throw new System.NotImplementedException();
         }
 
         public Task Send(string destinationAddress, TransportMessage message, ITransactionContext context)
@@ -33,8 +36,11 @@ namespace Rebus.AzureServiceBus
         }
 
         public string Address { get; }
+
         public bool AutomaticallyRenewPeekLock { get; set; }
+
         public bool PartitioningEnabled { get; set; }
+
         public bool DoNotCreateQueuesEnabled { get; set; }
 
         public void PrefetchMessages(int numberOfMessagesToPrefetch)
@@ -66,11 +72,6 @@ namespace Rebus.AzureServiceBus
         public void PurgeInputQueue()
         {
             
-        }
-
-        public void Initialize()
-        {
-            throw new NotImplementedException();
         }
     }
 }
