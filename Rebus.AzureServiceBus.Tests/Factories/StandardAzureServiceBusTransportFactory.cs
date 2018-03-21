@@ -14,6 +14,7 @@ namespace Rebus.AzureServiceBus.Tests.Factories
     public class StandardAzureServiceBusTransportFactory : ITransportFactory
     {
         public static string ConnectionString => ConnectionStringFromFileOrNull(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "asb_connection_string.txt"))
+                                                 ?? ConnectionStringFromFileOrNull(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "asb_connection_string.txt"))
                                                  ?? ConnectionStringFromEnvironmentVariable("rebus2_asb_connection_string")
                                                  ?? Throw("Could not find Azure Service Bus connection string!");
 

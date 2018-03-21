@@ -40,7 +40,7 @@
     <PackageReference Include="rebus.tests.contracts" Version="5.0.0-b06" />
   </ItemGroup>
   <ItemGroup>
-    <None Update="asb_connectionstring.txt">
+    <None Update="asb_connection_string.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
