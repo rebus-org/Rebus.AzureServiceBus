@@ -16,24 +16,18 @@ using Rebus.Transport;
 
 namespace Rebus.AzureServiceBus.Tests
 {
-    [TestFixture(AzureServiceBusMode.Basic), Category(TestCategory.Azure)]
-    [TestFixture(AzureServiceBusMode.Standard), Category(TestCategory.Azure)]
+    [TestFixture, Category(TestCategory.Azure)]
+    [TestFixture, Category(TestCategory.Azure)]
     public class AzureServiceBusPeekLockRenewalTest : FixtureBase
     {
         static readonly string ConnectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
         static readonly string QueueName = TestConfig.GetName("input");
 
         readonly ConsoleLoggerFactory _consoleLoggerFactory = new ConsoleLoggerFactory(false);
-        readonly AzureServiceBusMode _azureServiceBusMode;
 
         BuiltinHandlerActivator _activator;
         AzureServiceBusTransport _transport;
         IBus _bus;
-
-        public AzureServiceBusPeekLockRenewalTest(AzureServiceBusMode azureServiceBusMode)
-        {
-            _azureServiceBusMode = azureServiceBusMode;
-        }
 
         protected override void SetUp()
         {
@@ -46,7 +40,7 @@ namespace Rebus.AzureServiceBus.Tests
             _activator = new BuiltinHandlerActivator();
 
             _bus = Configure.With(_activator)
-                .Transport(t => t.UseAzureServiceBus(ConnectionString, QueueName, _azureServiceBusMode)
+                .Transport(t => t.UseAzureServiceBus(ConnectionString, QueueName)
                 .AutomaticallyRenewPeekLock())
                 .Options(o =>
                 {
@@ -97,7 +91,7 @@ namespace Rebus.AzureServiceBus.Tests
                 if (message != null)
                 {
                     throw new AssertionException(
-                        $"Did not expect to receive a message - got one with ID {message.Headers.GetValue(Headers.MessageId)}");    
+                        $"Did not expect to receive a message - got one with ID {message.Headers.GetValue(Headers.MessageId)}");
                 }
 
                 await scope.CompleteAsync();

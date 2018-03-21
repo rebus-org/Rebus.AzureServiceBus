@@ -15,17 +15,16 @@ namespace Rebus.AzureServiceBus.Tests
         static readonly string ConnectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
         static readonly string QueueName = TestConfig.GetName("timeouttest");
 
-        [TestCase(AzureServiceBusMode.Basic)]
-        [TestCase(AzureServiceBusMode.Standard)]
         [Description("Verifies that all pending receive operations are cancelled when the bus is disposed")]
-        public void FoundWayToCancelAllPendingReceiveOperations(AzureServiceBusMode mode)
+        [Test]
+        public void FoundWayToCancelAllPendingReceiveOperations()
         {
             var stopwatch = new Stopwatch();
 
             using (var activator = new BuiltinHandlerActivator())
             {
                 Configure.With(activator)
-                    .Transport(t => t.UseAzureServiceBus(ConnectionString, QueueName, mode: mode))
+                    .Transport(t => t.UseAzureServiceBus(ConnectionString, QueueName))
                     .Start();
 
                 Thread.Sleep(1000);

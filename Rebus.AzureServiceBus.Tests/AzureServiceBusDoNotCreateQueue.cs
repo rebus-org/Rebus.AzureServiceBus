@@ -2,7 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
-using Microsoft.ServiceBus;
+using Microsoft.Azure.ServiceBus;
 using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.AzureServiceBus.Tests.Factories;
@@ -29,18 +29,18 @@ namespace Rebus.AzureServiceBus.Tests
         }
 
         [Test]
-        [TestCase(AzureServiceBusMode.Basic, 5)]
-        [TestCase(AzureServiceBusMode.Basic, 10)]
-        [TestCase(AzureServiceBusMode.Standard, 5)]
-        [TestCase(AzureServiceBusMode.Standard, 10)]
-        public async Task DoesntIgnoreDefinedTimeoutWhenReceiving(AzureServiceBusMode mode, int operationTimeoutInSeconds)
+        [TestCase(5)]
+        [TestCase(10)]
+        [TestCase(5)]
+        [TestCase(10)]
+        public async Task DoesntIgnoreDefinedTimeoutWhenReceiving( int operationTimeoutInSeconds)
         {
             var operationTimeout = TimeSpan.FromSeconds(operationTimeoutInSeconds);
 
             var connString = StandardAzureServiceBusTransportFactory.ConnectionString;
             var builder = new ServiceBusConnectionStringBuilder(connString)
             {
-                OperationTimeout = operationTimeout
+               // OperationTimeout = operationTimeout
             };
             var newConnString = builder.ToString();
 
@@ -56,7 +56,7 @@ namespace Rebus.AzureServiceBus.Tests
             var senderActivator = new BuiltinHandlerActivator();
 
             var senderBus = Configure.With(senderActivator)
-                .Transport(t => t.UseAzureServiceBus(newConnString, "sender", mode))
+                .Transport(t => t.UseAzureServiceBus(newConnString, "sender"))
                 .Start();
 
             Using(senderBus);
@@ -147,9 +147,7 @@ namespace Rebus.AzureServiceBus.Tests
         }
 
         [Test]
-        [TestCase(AzureServiceBusMode.Basic)]
-        [TestCase(AzureServiceBusMode.Standard)]
-        public async Task ShouldBeAbleToRecieveEvenWhenNotCreatingQueue(AzureServiceBusMode mode)
+        public async Task ShouldBeAbleToRecieveEvenWhenNotCreatingQueue()
         {
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var transport = new AzureServiceBusTransport(StandardAzureServiceBusTransportFactory.ConnectionString, QueueName, consoleLoggerFactory, new TplAsyncTaskFactory(consoleLoggerFactory));
@@ -168,7 +166,7 @@ namespace Rebus.AzureServiceBus.Tests
                 .Start();
 
             var senderBus = Configure.With(senderActivator)
-                .Transport(t => t.UseAzureServiceBus(StandardAzureServiceBusTransportFactory.ConnectionString, "sender", mode))
+                .Transport(t => t.UseAzureServiceBus(StandardAzureServiceBusTransportFactory.ConnectionString, "sender"))
                 .Start();
 
             Using(receiverBus);

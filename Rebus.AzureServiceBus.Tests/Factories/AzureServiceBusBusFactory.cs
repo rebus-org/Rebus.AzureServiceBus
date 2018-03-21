@@ -13,13 +13,6 @@ namespace Rebus.AzureServiceBus.Tests.Factories
 {
     public abstract class AzureServiceBusBusFactory : IBusFactory
     {
-        readonly AzureServiceBusMode _mode;
-
-        protected AzureServiceBusBusFactory(AzureServiceBusMode mode)
-        {
-            _mode = mode;
-        }
-
         readonly List<IDisposable> _stuffToDispose = new List<IDisposable>();
 
         public IBus GetBus<TMessage>(string inputQueueAddress, Func<TMessage, Task> handler)
@@ -33,7 +26,7 @@ namespace Rebus.AzureServiceBus.Tests.Factories
             PurgeQueue(queueName);
 
             var bus = Configure.With(builtinHandlerActivator)
-                .Transport(t => t.UseAzureServiceBus(StandardAzureServiceBusTransportFactory.ConnectionString, queueName, _mode))
+                .Transport(t => t.UseAzureServiceBus(StandardAzureServiceBusTransportFactory.ConnectionString, queueName))
                 .Options(o =>
                 {
                     o.SetNumberOfWorkers(10);
@@ -51,7 +44,7 @@ namespace Rebus.AzureServiceBus.Tests.Factories
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
             var connectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
-            var busLifetimeEvents = new BusLifetimeEvents();
+
             new AzureServiceBusTransport(connectionString, queueName, consoleLoggerFactory, asyncTaskFactory)
                 .PurgeInputQueue();
         }

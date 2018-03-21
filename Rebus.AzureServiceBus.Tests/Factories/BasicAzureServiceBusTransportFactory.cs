@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.IO;
-using Microsoft.ServiceBus;
-using Microsoft.ServiceBus.Messaging;
+using Rebus.Exceptions;
 using Rebus.Extensions;
 using Rebus.Logging;
 using Rebus.Tests.Contracts.Transports;
@@ -20,7 +18,7 @@ namespace Rebus.AzureServiceBus.Tests.Factories
 
         static string Throw(string message)
         {
-            throw new ConfigurationErrorsException(message);
+            throw new RebusConfigurationException(message);
         }
 
         static string ConnectionStringFromEnvironmentVariable(string environmentVariableName)
@@ -50,7 +48,7 @@ namespace Rebus.AzureServiceBus.Tests.Factories
             return File.ReadAllText(filePath);
         }
 
-        readonly Dictionary<string, BasicAzureServiceBusTransport> _queuesToDelete = new Dictionary<string, BasicAzureServiceBusTransport>();
+        readonly Dictionary<string, AzureServiceBusTransport> _queuesToDelete = new Dictionary<string, AzureServiceBusTransport>();
 
         public ITransport CreateOneWayClient()
         {

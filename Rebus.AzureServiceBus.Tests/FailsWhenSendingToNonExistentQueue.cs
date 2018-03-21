@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Linq;
-using Microsoft.ServiceBus.Messaging;
 using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.AzureServiceBus.Tests.Factories;
 using Rebus.Config;
-using Rebus.Tests;
 using Rebus.Tests.Contracts;
 
 namespace Rebus.AzureServiceBus.Tests
@@ -32,7 +30,7 @@ namespace Rebus.AzureServiceBus.Tests
             });
 
             var notFoundException = exception.InnerExceptions
-                .OfType<MessagingException>()
+                .OfType<ArgumentException>()
                 .Single();
 
             Console.WriteLine(notFoundException);
@@ -45,14 +43,14 @@ namespace Rebus.AzureServiceBus.Tests
         [Test]
         public void ExceptionsWithOverriddenToString()
         {
-            var typesWithOverriddenToStringMethod = typeof(MessagingException).Assembly.GetTypes()
-                .Where(typeof (MessagingException).IsAssignableFrom)
-                .Where(exceptionType => exceptionType.GetMethod("ToString", new Type[0]).DeclaringType == exceptionType)
-                .ToList();
+//            var typesWithOverriddenToStringMethod = typeof(MessagingException).Assembly.GetTypes()
+//                .Where(typeof (MessagingException).IsAssignableFrom)
+//                .Where(exceptionType => exceptionType.GetMethod("ToString", new Type[0]).DeclaringType == exceptionType)
+//                .ToList();
 
-            Console.WriteLine($@"Here they are:
+//            Console.WriteLine($@"Here they are:
 
-{string.Join(Environment.NewLine, typesWithOverriddenToStringMethod)}");
+//{string.Join(Environment.NewLine, typesWithOverriddenToStringMethod)}");
         }
     }
 }
