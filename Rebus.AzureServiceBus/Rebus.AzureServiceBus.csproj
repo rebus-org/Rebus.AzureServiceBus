@@ -48,7 +48,7 @@
     <None Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Rebus" Version="4.0.0" />
+    <PackageReference Include="Rebus" Version="5.0.0-b06" />
     <PackageReference Include="Microsoft.Azure.ServiceBus" Version="3.0.0-preview-02" />
   </ItemGroup>
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">

@@ -34,9 +34,10 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Rebus.AzureServiceBus\Rebus.AzureServiceBus.csproj" />
+    <PackageReference Include="newtonsoft.json" Version="11.0.1" />
     <PackageReference Include="nunit" Version="3.7.1" />
-    <PackageReference Include="rebus" Version="4.0.0" />
-    <PackageReference Include="rebus.tests.contracts" Version="4.0.0" />
+    <PackageReference Include="rebus" Version="5.0.0-b06" />
+    <PackageReference Include="rebus.tests.contracts" Version="5.0.0-b06" />
   </ItemGroup>
   <ItemGroup>
     <None Update="asb_connectionstring.txt">

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using FluentAssertions;
 using Microsoft.Azure.ServiceBus;
 using NUnit.Framework;
 using Rebus.Activation;
@@ -76,8 +75,8 @@ namespace Rebus.AzureServiceBus.Tests
                 sw.Stop();
                 await scope.CompleteAsync();
 
-                msg.Should().NotBeNull();
-                sw.Elapsed.Should().BeLessThan(TimeSpan.FromMilliseconds(1500));
+                Assert.That(msg, Is.Not.Null);
+                Assert.That(sw.Elapsed, Is.LessThan(TimeSpan.FromMilliseconds(1500)));
             }
 
             // receive 2
@@ -88,8 +87,8 @@ namespace Rebus.AzureServiceBus.Tests
                 sw.Stop();
                 await scope.CompleteAsync();
 
-                msg.Should().NotBeNull();
-                sw.Elapsed.Should().BeLessThan(TimeSpan.FromMilliseconds(1500));
+                Assert.That(msg, Is.Not.Null);
+                Assert.That(sw.Elapsed, Is.LessThan(TimeSpan.FromMilliseconds(1500)));
             }
 
             // receive 3
@@ -100,8 +99,8 @@ namespace Rebus.AzureServiceBus.Tests
                 sw.Stop();
                 await scope.CompleteAsync();
 
-                msg.Should().NotBeNull();
-                sw.Elapsed.Should().BeLessThan(TimeSpan.FromMilliseconds(1500));
+                Assert.That(msg, Is.Not.Null);
+                Assert.That(sw.Elapsed, Is.LessThan(TimeSpan.FromMilliseconds(1500)));
             }
 
             // receive 4 - NOTHING
@@ -112,8 +111,8 @@ namespace Rebus.AzureServiceBus.Tests
                 sw.Stop();
                 await scope.CompleteAsync();
 
-                msg.Should().BeNull();
-                sw.Elapsed.Should().BeCloseTo(operationTimeout, 2000);
+                Assert.That(msg, Is.Null);
+                Assert.That(sw.Elapsed, Is.GreaterThan(TimeSpan.FromMilliseconds(1500)));
             }
 
             // put 1 more message 
@@ -129,8 +128,8 @@ namespace Rebus.AzureServiceBus.Tests
                 sw.Stop();
                 await scope.CompleteAsync();
 
-                msg.Should().NotBeNull();
-                sw.Elapsed.Should().BeLessThan(TimeSpan.FromMilliseconds(1500));
+                Assert.That(msg, Is.Not.Null);
+                Assert.That(sw.Elapsed, Is.LessThan(TimeSpan.FromMilliseconds(1500)));
             }
 
             // receive 6 - NOTHING
@@ -141,8 +140,8 @@ namespace Rebus.AzureServiceBus.Tests
                 sw.Stop();
                 await scope.CompleteAsync();
 
-                msg.Should().BeNull();
-                sw.Elapsed.Should().BeCloseTo(operationTimeout, 2000);
+                Assert.That(msg, Is.Null);
+                Assert.That(sw.Elapsed, Is.GreaterThan(TimeSpan.FromMilliseconds(1500)));
             }
         }
 
