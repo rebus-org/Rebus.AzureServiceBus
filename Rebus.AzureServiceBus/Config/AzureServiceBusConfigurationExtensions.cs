@@ -22,21 +22,9 @@ namespace Rebus.Config
         /// <summary>
         /// Configures Rebus to use Azure Service Bus to transport messages as a one-way client (i.e. will not be able to receive any messages)
         /// </summary>
-        public static void UseAzureServiceBusAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionStringNameOrConnectionString, AzureServiceBusMode mode = AzureServiceBusMode.Standard)
+        public static void UseAzureServiceBusAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionStringNameOrConnectionString)
         {
             var connectionString = GetConnectionString(connectionStringNameOrConnectionString);
-
-            if (mode == AzureServiceBusMode.Basic)
-            {
-                configurer.Register(c =>
-                {
-                    var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
-                    var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
-                    return new BasicAzureServiceBusTransport(connectionString, null, rebusLoggerFactory, asyncTaskFactory);
-                });
-                OneWayClientBackdoor.ConfigureOneWayClient(configurer);
-                return;
-            }
 
             configurer
                 .OtherService<AzureServiceBusTransport>()
@@ -62,42 +50,14 @@ namespace Rebus.Config
         /// Configures Rebus to use Azure Service Bus queues to transport messages, connecting to the service bus instance pointed to by the connection string
         /// (or the connection string with the specified name from the current app.config)
         /// </summary>
-        public static AzureServiceBusTransportSettings UseAzureServiceBus(this StandardConfigurer<ITransport> configurer, string connectionStringNameOrConnectionString, string inputQueueAddress, AzureServiceBusMode mode = AzureServiceBusMode.Standard)
+        public static AzureServiceBusTransportSettings UseAzureServiceBus(this StandardConfigurer<ITransport> configurer, string connectionStringNameOrConnectionString, string inputQueueAddress)
         {
             var connectionString = GetConnectionString(connectionStringNameOrConnectionString);
             var settingsBuilder = new AzureServiceBusTransportSettings();
 
-            if (mode == AzureServiceBusMode.Basic)
-            {
-                RegisterBasicTransport(configurer, inputQueueAddress, connectionString, settingsBuilder);
-            }
-            else
-            {
-                RegisterStandardTransport(configurer, inputQueueAddress, connectionString, settingsBuilder);
-            }
+            RegisterStandardTransport(configurer, inputQueueAddress, connectionString, settingsBuilder);
 
             return settingsBuilder;
-        }
-
-        static void RegisterBasicTransport(StandardConfigurer<ITransport> configurer, string inputQueueAddress, string connectionString, AzureServiceBusTransportSettings settings)
-        {
-            configurer.Register(c =>
-            {
-                var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
-                var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
-                var transport = new BasicAzureServiceBusTransport(connectionString, inputQueueAddress, rebusLoggerFactory, asyncTaskFactory);
-
-                if (settings.PrefetchingEnabled)
-                {
-                    transport.PrefetchMessages(settings.NumberOfMessagesToPrefetch);
-                }
-
-                transport.AutomaticallyRenewPeekLock = settings.AutomaticPeekLockRenewalEnabled;
-
-                transport.PartitioningEnabled = settings.PartitioningEnabled;
-                transport.DoNotCreateQueuesEnabled = settings.DoNotCreateQueuesEnabled;
-                return transport;
-            });
         }
 
         static void RegisterStandardTransport(StandardConfigurer<ITransport> configurer, string inputQueueAddress, string connectionString, AzureServiceBusTransportSettings settings)

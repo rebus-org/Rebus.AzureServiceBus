@@ -19,17 +19,10 @@ using Rebus.Transport;
 
 namespace Rebus.AzureServiceBus.Tests
 {
-    [TestFixture(AzureServiceBusMode.Basic), Category(TestCategory.Azure)]
-    [TestFixture(AzureServiceBusMode.Standard), Category(TestCategory.Azure)]
+    [TestFixture, Category(TestCategory.Azure)]
     public class AzureServiceBusPrefetchTest : FixtureBase
     {
-        readonly AzureServiceBusMode _mode;
         readonly string _queueName = TestConfig.GetName("prefetch");
-
-        public AzureServiceBusPrefetchTest(AzureServiceBusMode mode)
-        {
-            _mode = mode;
-        }
 
         /// <summary>
         /// Initial: 
@@ -105,7 +98,7 @@ namespace Rebus.AzureServiceBus.Tests
             Configure.With(activator)
                 .Transport(t =>
                 {
-                    t.UseAzureServiceBus(StandardAzureServiceBusTransportFactory.ConnectionString, _queueName, _mode)
+                    t.UseAzureServiceBus(StandardAzureServiceBusTransportFactory.ConnectionString, _queueName)
                         .EnablePrefetching(prefetch);
                 })
                 .Options(o =>
@@ -142,15 +135,6 @@ namespace Rebus.AzureServiceBus.Tests
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
             var connectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
-
-            if (_mode == AzureServiceBusMode.Basic)
-            {
-                var basicTransport = new BasicAzureServiceBusTransport(connectionString, _queueName, consoleLoggerFactory, asyncTaskFactory);
-                Using(basicTransport);
-                basicTransport.Initialize();
-                basicTransport.PurgeInputQueue();
-                return basicTransport;
-            }
 
             var transport = new AzureServiceBusTransport(connectionString, _queueName, consoleLoggerFactory, asyncTaskFactory);
             Using(transport);

@@ -34,6 +34,11 @@
 * Add .NET Standard 2.0 target specifically to handle dependency on `ConfigurationManager`
 * `.ConfigureAwait(false)` everywhere something is `await`ed - thanks [lezzi]
 
+## 5.0.0-b01
+
+* Remove ability to run on the "Basic" tier because it makes the world simpler, and you should at least be using "Standard" anyway
+
+
 
 [lezzi]: https://github.com/lezzi
 [Meyce]: https://github.com/Meyce
