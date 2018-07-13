@@ -14,32 +14,33 @@ namespace Rebus.AzureServiceBus
             var headers = message.Headers.Clone();
             var brokeredMessage = new BrokeredMessage(new MemoryStream(message.Body), true);
 
-            string timeToBeReceivedStr;
-            if (headers.TryGetValue(Headers.TimeToBeReceived, out timeToBeReceivedStr))
+            if (headers.TryGetValue(Headers.TimeToBeReceived, out var timeToBeReceivedStr))
             {
                 timeToBeReceivedStr = headers[Headers.TimeToBeReceived];
                 var timeToBeReceived = TimeSpan.Parse(timeToBeReceivedStr);
                 brokeredMessage.TimeToLive = timeToBeReceived;
             }
 
-            string deferUntilTime;
-            if (headers.TryGetValue(Headers.DeferredUntil, out deferUntilTime))
+            if (headers.TryGetValue(Headers.DeferredUntil, out var deferUntilTime))
             {
                 var deferUntilDateTimeOffset = deferUntilTime.ToDateTimeOffset();
                 brokeredMessage.ScheduledEnqueueTimeUtc = deferUntilDateTimeOffset.UtcDateTime;
                 headers.Remove(Headers.DeferredUntil);
             }
 
-            string contentType;
-            if (headers.TryGetValue(Headers.ContentType, out contentType))
+            if (headers.TryGetValue(Headers.ContentType, out var contentType))
             {
                 brokeredMessage.ContentType = contentType;
             }
 
-            string correlationId;
-            if (headers.TryGetValue(Headers.CorrelationId, out correlationId))
+            if (headers.TryGetValue(Headers.CorrelationId, out var correlationId))
             {
                 brokeredMessage.CorrelationId = correlationId;
+            }
+
+            if (headers.TryGetValue(Headers.MessageId, out var messageId))
+            {
+                brokeredMessage.MessageId = messageId;
             }
 
             brokeredMessage.Label = message.GetMessageLabel();

@@ -37,7 +37,7 @@
 ## 5.0.0-b01
 
 * Remove ability to run on the "Basic" tier because it makes the world simpler, and you should at least be using "Standard" anyway
-
+* Add ability to set actual message ID on the `BrokeredMessage` by using Rebus' message ID as the value
 
 
 [lezzi]: https://github.com/lezzi
