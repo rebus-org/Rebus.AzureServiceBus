@@ -1,5 +1,4 @@
 ﻿using System;
-using Microsoft.ServiceBus;
 using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.AzureServiceBus.Tests.Factories;
@@ -15,24 +14,26 @@ namespace Rebus.AzureServiceBus.Tests
         [Test]
         public void ShouldNotCreateInputQueueWhenConfiguredNotTo()
         {
-            var connectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
-            var manager = NamespaceManager.CreateFromConnectionString(connectionString);
-            var queueName = Guid.NewGuid().ToString("N");
+            throw new NotImplementedException("Figure out how to do this");
 
-            Assert.IsFalse(manager.QueueExists(queueName));
+            //var connectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
+            //var manager = NamespaceManager.CreateFromConnectionString(connectionString);
+            //var queueName = Guid.NewGuid().ToString("N");
 
-            var activator = Using(new BuiltinHandlerActivator());
+            //Assert.IsFalse(manager.QueueExists(queueName));
 
-            Configure.With(activator)
-                .Logging(l => l.ColoredConsole())
-                .Transport(t =>
-                {
-                    t.UseAzureServiceBus(connectionString, queueName)
-                        .DoNotCreateQueues();
-                })
-                .Start();
+            //var activator = Using(new BuiltinHandlerActivator());
 
-            Assert.IsFalse(manager.QueueExists(queueName));
+            //Configure.With(activator)
+            //    .Logging(l => l.ColoredConsole())
+            //    .Transport(t =>
+            //    {
+            //        t.UseAzureServiceBus(connectionString, queueName)
+            //            .DoNotCreateQueues();
+            //    })
+            //    .Start();
+
+            //Assert.IsFalse(manager.QueueExists(queueName));
         }
     }
 }

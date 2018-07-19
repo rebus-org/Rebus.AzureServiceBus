@@ -32,7 +32,7 @@ namespace Rebus.Config
                 {
                     var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                     var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
-                    return new AzureServiceBusTransport(connectionString, null, rebusLoggerFactory, asyncTaskFactory);
+                    return new AzureServiceBusTransport(null);
                 });
 
             configurer
@@ -69,7 +69,7 @@ namespace Rebus.Config
                 {
                     var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                     var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
-                    var transport = new AzureServiceBusTransport(connectionString, inputQueueAddress, rebusLoggerFactory, asyncTaskFactory);
+                    var transport = new AzureServiceBusTransport(inputQueueAddress);
 
                     if (settings.PrefetchingEnabled)
                     {
@@ -77,9 +77,9 @@ namespace Rebus.Config
                     }
 
                     transport.AutomaticallyRenewPeekLock = settings.AutomaticPeekLockRenewalEnabled;
-
                     transport.PartitioningEnabled = settings.PartitioningEnabled;
                     transport.DoNotCreateQueuesEnabled = settings.DoNotCreateQueuesEnabled;
+                    
                     return transport;
                 });
 
@@ -105,11 +105,9 @@ namespace Rebus.Config
                 .Register(c => new DisabledTimeoutManager(), description: AsbTimeoutManagerText);
         }
 
-        static string GetConnectionString(string connectionStringNameOrConnectionString)
+        static string GetConnectionString(string connectionString)
         {
-            var connectionStringSettings = ConfigurationManager.ConnectionStrings[connectionStringNameOrConnectionString];
-
-            return connectionStringSettings?.ConnectionString ?? connectionStringNameOrConnectionString;
+            return connectionString;
         }
     }
 }

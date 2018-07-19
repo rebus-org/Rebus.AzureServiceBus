@@ -2,7 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
-using Microsoft.ServiceBus;
+using Microsoft.Azure.ServiceBus;
 using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.AzureServiceBus.Tests.Factories;
@@ -33,17 +33,21 @@ namespace Rebus.AzureServiceBus.Tests
         [TestCase(10)]
         public async Task DoesntIgnoreDefinedTimeoutWhenReceiving(int operationTimeoutInSeconds)
         {
+
             var operationTimeout = TimeSpan.FromSeconds(operationTimeoutInSeconds);
 
             var connString = StandardAzureServiceBusTransportFactory.ConnectionString;
             var builder = new ServiceBusConnectionStringBuilder(connString)
             {
-                OperationTimeout = operationTimeout
+            //    OperationTimeout = operationTimeout
             };
+            throw new NotImplementedException("Figure out how to do this");
+
             var newConnString = builder.ToString();
 
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
-            var transport = new AzureServiceBusTransport(newConnString, QueueName, consoleLoggerFactory, new TplAsyncTaskFactory(consoleLoggerFactory));
+            var transport = new AzureServiceBusTransport(QueueName);
+            //var transport = new AzureServiceBusTransport(newConnString, QueueName, consoleLoggerFactory, new TplAsyncTaskFactory(consoleLoggerFactory));
 
             Using(transport);
 
@@ -148,7 +152,8 @@ namespace Rebus.AzureServiceBus.Tests
         public async Task ShouldBeAbleToRecieveEvenWhenNotCreatingQueue()
         {
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
-            var transport = new AzureServiceBusTransport(StandardAzureServiceBusTransportFactory.ConnectionString, QueueName, consoleLoggerFactory, new TplAsyncTaskFactory(consoleLoggerFactory));
+            var transport = new AzureServiceBusTransport(QueueName);
+            //var transport = new AzureServiceBusTransport(StandardAzureServiceBusTransportFactory.ConnectionString, QueueName, consoleLoggerFactory, new TplAsyncTaskFactory(consoleLoggerFactory));
             transport.PurgeInputQueue();
             //Create the queue for the receiver since it cannot create it self beacuse of lacking rights on the namespace
             transport.CreateQueue(QueueName);

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using Microsoft.ServiceBus.Messaging;
 using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.AzureServiceBus.Tests.Factories;
@@ -31,13 +30,15 @@ namespace Rebus.AzureServiceBus.Tests
                 activator.Bus.Advanced.Routing.Send("yunoexist", "hej med dig min ven!").Wait();
             });
 
-            var notFoundException = exception.InnerExceptions
-                .OfType<MessagingException>()
-                .Single();
+            throw new NotImplementedException("Figure out how to do this");
 
-            Console.WriteLine(notFoundException);
+            //var notFoundException = exception.InnerExceptions
+            //    .OfType<MessagingException>()
+            //    .Single();
 
-            var bimse = notFoundException.ToString();
+            //Console.WriteLine(notFoundException);
+
+            //var bimse = notFoundException.ToString();
 
 
         }
@@ -45,14 +46,16 @@ namespace Rebus.AzureServiceBus.Tests
         [Test]
         public void ExceptionsWithOverriddenToString()
         {
-            var typesWithOverriddenToStringMethod = typeof(MessagingException).Assembly.GetTypes()
-                .Where(typeof (MessagingException).IsAssignableFrom)
-                .Where(exceptionType => exceptionType.GetMethod("ToString", new Type[0]).DeclaringType == exceptionType)
-                .ToList();
+            throw new NotImplementedException("Figure out how to do this");
 
-            Console.WriteLine($@"Here they are:
+//            var typesWithOverriddenToStringMethod = typeof(MessagingException).Assembly.GetTypes()
+//                .Where(typeof (MessagingException).IsAssignableFrom)
+//                .Where(exceptionType => exceptionType.GetMethod("ToString", new Type[0]).DeclaringType == exceptionType)
+//                .ToList();
 
-{string.Join(Environment.NewLine, typesWithOverriddenToStringMethod)}");
+//            Console.WriteLine($@"Here they are:
+
+//{string.Join(Environment.NewLine, typesWithOverriddenToStringMethod)}");
         }
     }
 }

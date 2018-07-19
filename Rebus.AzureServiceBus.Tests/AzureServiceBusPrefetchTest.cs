@@ -136,7 +136,8 @@ namespace Rebus.AzureServiceBus.Tests
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
             var connectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
 
-            var transport = new AzureServiceBusTransport(connectionString, _queueName, consoleLoggerFactory, asyncTaskFactory);
+            var transport = new AzureServiceBusTransport(_queueName);
+            //var transport = new AzureServiceBusTransport(connectionString, _queueName, consoleLoggerFactory, asyncTaskFactory);
             Using(transport);
             transport.Initialize();
             transport.PurgeInputQueue();
