@@ -5,7 +5,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Rebus.AzureServiceBus.Tests</RootNamespace>
     <AssemblyName>Rebus.AzureServiceBus.Tests</AssemblyName>
-    <TargetFrameworks>net462</TargetFrameworks>
+    <TargetFramework>net462</TargetFramework>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -39,7 +39,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Rebus.AzureServiceBus\Rebus.AzureServiceBus.csproj" />
     <PackageReference Include="Microsoft.Azure.ServiceBus" Version="3.1.0-preview" />
-    <PackageReference Include="nunit" Version="3.10.1" />
     <PackageReference Include="rebus" Version="4.2.1" />
     <PackageReference Include="rebus.tests.contracts" Version="4.2.1" />
   </ItemGroup>
