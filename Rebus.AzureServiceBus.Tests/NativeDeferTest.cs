@@ -30,7 +30,7 @@ namespace Rebus.AzureServiceBus.Tests
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
             var busLifetimeEvents = new BusLifetimeEvents();
-            new AzureServiceBusTransport(QueueName).PurgeInputQueue();
+            new AzureServiceBusTransport(connectionString, QueueName, consoleLoggerFactory).PurgeInputQueue();
             //new AzureServiceBusTransport(connectionString, QueueName, consoleLoggerFactory, asyncTaskFactory).PurgeInputQueue();
 
             _activator = new BuiltinHandlerActivator();

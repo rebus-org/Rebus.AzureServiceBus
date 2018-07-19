@@ -1,10 +1,19 @@
 ﻿using System;
+using System.Collections.Concurrent;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.ServiceBus;
+using Microsoft.Azure.ServiceBus.Management;
 using Rebus.Bus;
+using Rebus.Internals;
+using Rebus.Logging;
 using Rebus.Messages;
 using Rebus.Subscriptions;
 using Rebus.Transport;
+using Message = Microsoft.Azure.ServiceBus.Message;
+
+// ReSharper disable RedundantArgumentDefaultValue
 
 #pragma warning disable 1998
 
@@ -15,12 +24,38 @@ namespace Rebus.AzureServiceBus
     /// </summary>
     public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable, ISubscriptionStorage
     {
-        public AzureServiceBusTransport(string queueName)
+        readonly ConcurrentStack<IDisposable> _disposables = new ConcurrentStack<IDisposable>();
+        readonly ConcurrentDictionary<string, QueueClient> _clients = new ConcurrentDictionary<string, QueueClient>();
+        readonly Func<string, QueueClient> _getQueueClient;
+        readonly ManagementClient _managementClient;
+        readonly ILog _log;
+
+        /// <summary>
+        /// Constructs the transport, connecting to the service bus pointed to by the connection string.
+        /// </summary>
+        public AzureServiceBusTransport(string connectionString, string queueName, IRebusLoggerFactory rebusLoggerFactory)
         {
+            if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
+            if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
+
             if (queueName != null)
             {
                 Address = queueName;
             }
+
+            _log = rebusLoggerFactory.GetLogger<AzureServiceBusTransport>();
+            _managementClient = new ManagementClient(connectionString);
+            _getQueueClient = queue => _clients.GetOrAdd(queue, _ =>
+            {
+                var queueClient = new QueueClient(
+                    connectionString,
+                    queue,
+                    receiveMode: ReceiveMode.PeekLock,
+                    retryPolicy: new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(10), 10)
+                );
+                _disposables.Push(queueClient.AsDisposable(d => AsyncHelpers.RunSync(d.CloseAsync)));
+                return queueClient;
+            });
         }
         //const string OutgoingMessagesKey = "azure-service-bus-transport";
 
@@ -637,12 +672,79 @@ namespace Rebus.AzureServiceBus
 
         public void CreateQueue(string address)
         {
-            throw new NotImplementedException();
+            if (DoNotCreateQueuesEnabled)
+            {
+                _log.Info("Transport configured to not create queue - skipping existence check and potential creation for {queueName}", address);
+                return;
+            }
+
+            if (AsyncHelpers.ReturnSync(() => _managementClient.QueueExistsAsync(address))) return;
+
+            try
+            {
+                _log.Info("Creating ASB queue {queueName}", address);
+
+                AsyncHelpers.RunSync(() => _managementClient.CreateQueueIfNotExistsAsync(address));
+            }
+            catch (Exception exception)
+            {
+                throw new ArgumentException($"Could not create ASB queue '{address}'", exception);
+            }
         }
 
-        public Task Send(string destinationAddress, TransportMessage message, ITransactionContext context)
+        public async Task Send(string destinationAddress, TransportMessage message, ITransactionContext context)
         {
-            throw new NotImplementedException();
+            var outgoingMessages = context.GetOrAdd("asb-outgoing-messages", () =>
+            {
+                var messagesToSend = new ConcurrentQueue<OutgoingMessage>();
+
+                context.OnCommitted(async () =>
+                {
+                    var messagesByDestinationQueue = messagesToSend.GroupBy(m => m.DestinationAddress);
+
+                    await Task.WhenAll(messagesByDestinationQueue.Select(async group =>
+                    {
+                        var destinationQueue = group.Key;
+                        var messages = group;
+
+                        foreach (var batch in messages.Batch(50))
+                        {
+                            var list = batch.Select(GetMessage).ToList();
+
+                            await _getQueueClient(destinationQueue).SendAsync(list);
+                        }
+                    }));
+                });
+
+                return messagesToSend;
+            });
+
+            outgoingMessages.Enqueue(new OutgoingMessage(destinationAddress, message));
+        }
+
+        static Message GetMessage(OutgoingMessage outgoingMessage)
+        {
+            var transportMessage = outgoingMessage.TransportMessage;
+            var message = new Message(transportMessage.Body);
+
+            foreach (var kvp in transportMessage.Headers)
+            {
+                message.UserProperties[kvp.Key] = kvp.Value;
+            }
+
+            return message;
+        }
+
+        class OutgoingMessage
+        {
+            public string DestinationAddress { get; }
+            public TransportMessage TransportMessage { get; }
+
+            public OutgoingMessage(string destinationAddress, TransportMessage transportMessage)
+            {
+                DestinationAddress = destinationAddress;
+                TransportMessage = transportMessage;
+            }
         }
 
         public Task<TransportMessage> Receive(ITransactionContext context, CancellationToken cancellationToken)
@@ -651,7 +753,7 @@ namespace Rebus.AzureServiceBus
         }
 
         public string Address { get; }
-        
+
         public void Initialize()
         {
             throw new NotImplementedException();
@@ -682,7 +784,7 @@ namespace Rebus.AzureServiceBus
 
         public void PurgeInputQueue()
         {
-            
+
         }
 
         public void PrefetchMessages(int prefetchCount)
