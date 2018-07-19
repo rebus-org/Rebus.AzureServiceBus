@@ -24,9 +24,33 @@ namespace Rebus.AzureServiceBus
     /// </summary>
     public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable, ISubscriptionStorage
     {
+        /// <summary>
+        /// Outgoing messages are stashed in a concurrent queue under this key
+        /// </summary>
+        const string OutgoingMessagesKey = "new-azure-service-bus-transport";
+
+        /// <summary>
+        /// Subscriber "addresses" are prefixed with this bad boy so we can recognize it and publish to a topic client instead
+        /// </summary>
+        const string MagicSubscriptionPrefix = "subscription/";
+
+        /// <summary>
+        /// Defines the maxiumum number of outgoing messages to batch together when sending/publishing
+        /// </summary>
+        const int DefaultOutgoingBatchSize = 50;
+
+        static readonly RetryExponential DefaultRetryStrategy = new RetryExponential(
+            minimumBackoff: TimeSpan.FromMilliseconds(100),
+            maximumBackoff: TimeSpan.FromSeconds(10),
+            maximumRetryCount: 10
+        );
+
         readonly ConcurrentStack<IDisposable> _disposables = new ConcurrentStack<IDisposable>();
-        readonly ConcurrentDictionary<string, QueueClient> _clients = new ConcurrentDictionary<string, QueueClient>();
+        readonly ConcurrentDictionary<string, QueueClient> _queueClients = new ConcurrentDictionary<string, QueueClient>();
+        readonly ConcurrentDictionary<string, TopicClient> _topicClients = new ConcurrentDictionary<string, TopicClient>();
         readonly Func<string, QueueClient> _getQueueClient;
+        readonly Func<string, TopicClient> _getTopicClient;
+        readonly Action _purgeInputQueue;
         readonly ManagementClient _managementClient;
         readonly ILog _log;
 
@@ -38,31 +62,47 @@ namespace Rebus.AzureServiceBus
             if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
 
-            if (queueName != null)
-            {
-                Address = queueName;
-            }
+            Address = queueName?.ToLowerInvariant();
 
             _log = rebusLoggerFactory.GetLogger<AzureServiceBusTransport>();
+            
             _managementClient = new ManagementClient(connectionString);
-            _getQueueClient = queue => _clients.GetOrAdd(queue, _ =>
+            
+            _getQueueClient = queue => _queueClients.GetOrAdd(queue, _ =>
             {
                 var queueClient = new QueueClient(
                     connectionString,
                     queue,
                     receiveMode: ReceiveMode.PeekLock,
-                    retryPolicy: new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(10), 10)
+                    retryPolicy: DefaultRetryStrategy
                 );
                 _disposables.Push(queueClient.AsDisposable(d => AsyncHelpers.RunSync(d.CloseAsync)));
                 return queueClient;
             });
+            
+            _getTopicClient = topic => _topicClients.GetOrAdd(topic, _ =>
+            {
+                var topicClient = new TopicClient(
+                    connectionString,
+                    topic,
+                    retryPolicy: DefaultRetryStrategy
+                );
+                _disposables.Push(topicClient.AsDisposable(t => AsyncHelpers.RunSync(t.CloseAsync)));
+                return topicClient;
+            });
+            
+            _purgeInputQueue = () =>
+            {
+                try
+                {
+                    AsyncHelpers.RunSync(() => ManagementExtensions.PurgeQueue(connectionString, queueName));
+                }
+                catch (Exception exception)
+                {
+                    throw new ArgumentException($"Could not purge queue '{queueName}'", exception);
+                }
+            };
         }
-        //const string OutgoingMessagesKey = "azure-service-bus-transport";
-
-        ///// <summary>
-        ///// Subscriber "addresses" are prefixed with this bad boy so we can recognize it and publish to a topic client instead
-        ///// </summary>
-        //const string MagicSubscriptionPrefix = "subscription/";
 
         //static readonly TimeSpan[] RetryWaitTimes =
         //{
@@ -560,104 +600,107 @@ namespace Rebus.AzureServiceBus
         //    }
         //}
 
-        ///// <summary>
-        ///// Gets "subscriber addresses" by getting one single magic "queue name", which is then
-        ///// interpreted as a publish operation to a topic when the time comes to send to that "queue"
-        ///// </summary>
-        //public async Task<string[]> GetSubscriberAddresses(string topic)
-        //{
-        //    var normalizedTopic = topic.ToValidAzureServiceBusEntityName();
+        /// <summary>
+        /// Gets "subscriber addresses" by getting one single magic "queue name", which is then
+        /// interpreted as a publish operation to a topic when the time comes to send to that "queue"
+        /// </summary>
+        public async Task<string[]> GetSubscriberAddresses(string topic)
+        {
+            var normalizedTopic = topic.ToValidAzureServiceBusEntityName();
 
-        //    return new[] { $"{MagicSubscriptionPrefix}{normalizedTopic}" };
-        //}
+            return new[] { $"{MagicSubscriptionPrefix}{normalizedTopic}" };
+        }
 
-        ///// <summary>
-        ///// Registers this endpoint as a subscriber by creating a subscription for the given topic, setting up
-        ///// auto-forwarding from that subscription to this endpoint's input queue
-        ///// </summary>
-        //public async Task RegisterSubscriber(string topic, string subscriberAddress)
-        //{
-        //    VerifyIsOwnInputQueueAddress(subscriberAddress);
+        /// <summary>
+        /// Registers this endpoint as a subscriber by creating a subscription for the given topic, setting up
+        /// auto-forwarding from that subscription to this endpoint's input queue
+        /// </summary>
+        public async Task RegisterSubscriber(string topic, string subscriberAddress)
+        {
+            VerifyIsOwnInputQueueAddress(subscriberAddress);
 
-        //    var normalizedTopic = topic.ToValidAzureServiceBusEntityName();
-        //    var topicDescription = EnsureTopicExists(normalizedTopic);
-        //    var inputQueueClient = GetQueueClient(_inputQueueAddress);
+            var normalizedTopic = topic.ToValidAzureServiceBusEntityName();
+            var topicDescription = await EnsureTopicExists(normalizedTopic);
+            var inputQueueClient = _getQueueClient(Address);
 
-        //    var inputQueuePath = inputQueueClient.Path;
-        //    var topicPath = topicDescription.Path;
-        //    var subscriptionName = GetSubscriptionName();
+            var inputQueuePath = inputQueueClient.Path;
+            var topicPath = topicDescription.Path;
+            var subscriptionName = GetSubscriptionName();
 
-        //    var subscription = await GetOrCreateSubscription(topicPath, subscriptionName).ConfigureAwait(false);
-        //    subscription.ForwardTo = inputQueuePath;
-        //    await _namespaceManager.UpdateSubscriptionAsync(subscription).ConfigureAwait(false);
-        //}
+            var subscription = await GetOrCreateSubscription(topicPath, subscriptionName).ConfigureAwait(false);
+            
+            subscription.ForwardTo = inputQueuePath;
+            
+            await _managementClient.UpdateSubscriptionAsync(subscription);
+        }
 
-        //async Task<SubscriptionDescription> GetOrCreateSubscription(string topicPath, string subscriptionName)
-        //{
-        //    try
-        //    {
-        //        return await _namespaceManager.CreateSubscriptionAsync(topicPath, subscriptionName).ConfigureAwait(false);
-        //    }
-        //    catch (MessagingEntityAlreadyExistsException)
-        //    {
-        //        return await _namespaceManager.GetSubscriptionAsync(topicPath, subscriptionName).ConfigureAwait(false);
-        //    }
-        //}
+        /// <summary>
+        /// Unregisters this endpoint as a subscriber by deleting the subscription for the given topic
+        /// </summary>
+        public async Task UnregisterSubscriber(string topic, string subscriberAddress)
+        {
+            VerifyIsOwnInputQueueAddress(subscriberAddress);
 
-        ///// <summary>
-        ///// Unregisters this endpoint as a subscriber by deleting the subscription for the given topic
-        ///// </summary>
-        //public async Task UnregisterSubscriber(string topic, string subscriberAddress)
-        //{
-        //    VerifyIsOwnInputQueueAddress(subscriberAddress);
+            var normalizedTopic = topic.ToValidAzureServiceBusEntityName();
+            var topicDescription = await EnsureTopicExists(normalizedTopic);
+            var topicPath = topicDescription.Path;
+            var subscriptionName = GetSubscriptionName();
 
-        //    var normalizedTopic = topic.ToValidAzureServiceBusEntityName();
-        //    var topicDescription = EnsureTopicExists(normalizedTopic);
-        //    var topicPath = topicDescription.Path;
-        //    var subscriptionName = GetSubscriptionName();
+            try
+            {
+                await _managementClient.DeleteSubscriptionAsync(topicPath, subscriptionName).ConfigureAwait(false);
+            }
+            catch (MessagingEntityNotFoundException)
+            {
+                // it's alright man
+            }
+        }
 
-        //    try
-        //    {
-        //        await _namespaceManager.DeleteSubscriptionAsync(topicPath, subscriptionName).ConfigureAwait(false);
-        //    }
-        //    catch (MessagingEntityNotFoundException) { }
-        //}
+        async Task<SubscriptionDescription> GetOrCreateSubscription(string topicPath, string subscriptionName)
+        {
+            try
+            {
+                return await _managementClient.CreateSubscriptionAsync(topicPath, subscriptionName);
+            }
+            catch (MessagingEntityAlreadyExistsException)
+            {
+                return await _managementClient.GetSubscriptionAsync(topicPath, subscriptionName);
+            }
+        }
 
-        //string GetSubscriptionName()
-        //{
-        //    var idx = _inputQueueAddress.LastIndexOf("/", StringComparison.Ordinal) + 1;
-        //    return _inputQueueAddress.Substring(idx).ToValidAzureServiceBusEntityName();
-        //}
+        string GetSubscriptionName()
+        {
+            var idx = Address.LastIndexOf("/", StringComparison.Ordinal) + 1;
+            
+            return Address.Substring(idx).ToValidAzureServiceBusEntityName();
+        }
 
-        //void VerifyIsOwnInputQueueAddress(string subscriberAddress)
-        //{
-        //    if (subscriberAddress == _inputQueueAddress) return;
+        void VerifyIsOwnInputQueueAddress(string subscriberAddress)
+        {
+            if (subscriberAddress == Address) return;
 
-        //    var message = $"Cannot register subscriptions endpoint with input queue '{subscriberAddress}' in endpoint with input" +
-        //                  $" queue '{_inputQueueAddress}'! The Azure Service Bus transport functions as a centralized subscription" +
-        //                  " storage, which means that all subscribers are capable of managing their own subscriptions";
+            var message = $"Cannot register subscriptions endpoint with input queue '{subscriberAddress}' in endpoint with input" +
+                          $" queue '{Address}'! The Azure Service Bus transport functions as a centralized subscription" +
+                          " storage, which means that all subscribers are capable of managing their own subscriptions";
 
-        //    throw new ArgumentException(message);
-        //}
+            throw new ArgumentException(message);
+        }
 
-        //TopicDescription EnsureTopicExists(string normalizedTopic)
-        //{
-        //    return _topics.GetOrAdd(normalizedTopic, t =>
-        //    {
-        //        try
-        //        {
-        //            return _namespaceManager.CreateTopic(normalizedTopic);
-        //        }
-        //        catch (MessagingEntityAlreadyExistsException)
-        //        {
-        //            return _namespaceManager.GetTopic(normalizedTopic);
-        //        }
-        //        catch (Exception exception)
-        //        {
-        //            throw new ArgumentException($"Could not create topic '{normalizedTopic}'", exception);
-        //        }
-        //    });
-        //}
+        async Task<TopicDescription> EnsureTopicExists(string normalizedTopic)
+        {
+            try
+            {
+                return await _managementClient.CreateTopicAsync(normalizedTopic);
+            }
+            catch (MessagingEntityAlreadyExistsException)
+            {
+                return await _managementClient.GetTopicAsync(normalizedTopic);
+            }
+            catch (Exception exception)
+            {
+                throw new ArgumentException($"Could not create topic '{normalizedTopic}'", exception);
+            }
+        }
 
         ///// <summary>
         ///// Always returns true because Azure Service Bus topics and subscriptions are global
@@ -692,32 +735,13 @@ namespace Rebus.AzureServiceBus
             }
         }
 
+        /// <inheritdoc />
+        /// <summary>
+        /// Sends the given message to the queue with the given <paramref name="destinationAddress" />
+        /// </summary>
         public async Task Send(string destinationAddress, TransportMessage message, ITransactionContext context)
         {
-            var outgoingMessages = context.GetOrAdd("asb-outgoing-messages", () =>
-            {
-                var messagesToSend = new ConcurrentQueue<OutgoingMessage>();
-
-                context.OnCommitted(async () =>
-                {
-                    var messagesByDestinationQueue = messagesToSend.GroupBy(m => m.DestinationAddress);
-
-                    await Task.WhenAll(messagesByDestinationQueue.Select(async group =>
-                    {
-                        var destinationQueue = group.Key;
-                        var messages = group;
-
-                        foreach (var batch in messages.Batch(50))
-                        {
-                            var list = batch.Select(GetMessage).ToList();
-
-                            await _getQueueClient(destinationQueue).SendAsync(list);
-                        }
-                    }));
-                });
-
-                return messagesToSend;
-            });
+            var outgoingMessages = GetOutgoingMessages(context);
 
             outgoingMessages.Enqueue(new OutgoingMessage(destinationAddress, message));
         }
@@ -733,6 +757,49 @@ namespace Rebus.AzureServiceBus
             }
 
             return message;
+        }
+
+        ConcurrentQueue<OutgoingMessage> GetOutgoingMessages(ITransactionContext context)
+        {
+            return context.GetOrAdd(OutgoingMessagesKey, () =>
+            {
+                var messagesToSend = new ConcurrentQueue<OutgoingMessage>();
+
+                context.OnCommitted(async () =>
+                {
+                    var messagesByDestinationQueue = messagesToSend.GroupBy(m => m.DestinationAddress);
+
+                    await Task.WhenAll(messagesByDestinationQueue.Select(async group =>
+                    {
+                        var destinationQueue = group.Key;
+                        var messages = group;
+
+                        if (destinationQueue.StartsWith(MagicSubscriptionPrefix))
+                        {
+                            var topicName = destinationQueue.Substring(MagicSubscriptionPrefix.Length);
+
+                            foreach (var batch in messages.Batch(DefaultOutgoingBatchSize))
+                            {
+                                var list = batch.Select(GetMessage).ToList();
+
+                                await _getTopicClient(topicName).SendAsync(list);
+                            }
+                        }
+                        else
+                        {
+                            foreach (var batch in messages.Batch(DefaultOutgoingBatchSize))
+                            {
+                                var list = batch.Select(GetMessage).ToList();
+
+                                await _getQueueClient(destinationQueue).SendAsync(list);
+                            }
+                        }
+
+                    }));
+                });
+
+                return messagesToSend;
+            });
         }
 
         class OutgoingMessage
@@ -752,28 +819,30 @@ namespace Rebus.AzureServiceBus
             throw new NotImplementedException();
         }
 
+        /// <summary>
+        /// Gets the input queue name for this transport
+        /// </summary>
         public string Address { get; }
 
+        ///// <summary>
+        ///// Initializes the transport by ensuring that the input queue has been created
+        ///// </summary>
+        /// <inheritdoc />
         public void Initialize()
         {
-            throw new NotImplementedException();
+            if (Address != null)
+            {
+                _log.Info("Initializing Azure Service Bus transport with queue {queueName}", Address);
+                CreateQueue(Address);
+                return;
+            }
+
+            _log.Info("Initializing one-way Azure Service Bus transport");
         }
 
-        public Task<string[]> GetSubscriberAddresses(string topic)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task RegisterSubscriber(string topic, string subscriberAddress)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task UnregisterSubscriber(string topic, string subscriberAddress)
-        {
-            throw new NotImplementedException();
-        }
-
+        /// <summary>
+        /// Always returns true because Azure Service Bus topics and subscriptions are global
+        /// </summary>
         public bool IsCentralized => true;
 
         public bool AutomaticallyRenewPeekLock { get; set; }
@@ -782,19 +851,21 @@ namespace Rebus.AzureServiceBus
 
         public bool DoNotCreateQueuesEnabled { get; set; }
 
-        public void PurgeInputQueue()
-        {
-
-        }
+        public void PurgeInputQueue() => _purgeInputQueue();
 
         public void PrefetchMessages(int prefetchCount)
         {
-            throw new NotImplementedException();
         }
 
+        /// <summary>
+        /// Disposes all resources associated with this particular transport instance
+        /// </summary>
         public void Dispose()
         {
-            throw new NotImplementedException();
+            while (_disposables.TryPop(out var disposable))
+            {
+                disposable.Dispose();
+            }
         }
     }
 }
