@@ -7,7 +7,9 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using NUnit.Framework;
 using Rebus.Activation;
+using Rebus.AzureServiceBus.Tests.Extensions;
 using Rebus.AzureServiceBus.Tests.Factories;
+using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Logging;
 using Rebus.Messages;
@@ -137,10 +139,13 @@ namespace Rebus.AzureServiceBus.Tests
             var connectionString = AzureServiceBusTransportFactory.ConnectionString;
 
             //var transport = new AzureServiceBusTransport(connectionString, _queueName, consoleLoggerFactory, asyncTaskFactory);
-            var transport = new AzureServiceBusTransport(connectionString, _queueName, consoleLoggerFactory);
+            var busLifetimeEvents = new BusLifetimeEvents();
+            var transport = new AzureServiceBusTransport(connectionString, _queueName, consoleLoggerFactory, busLifetimeEvents);
             Using(transport);
             transport.Initialize();
             transport.PurgeInputQueue();
+
+            busLifetimeEvents.RaiseBusStartedBackdoor();
 
             return transport;
         }

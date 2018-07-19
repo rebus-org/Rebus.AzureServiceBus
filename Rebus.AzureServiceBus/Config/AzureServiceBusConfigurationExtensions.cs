@@ -1,5 +1,6 @@
 ﻿using System.Configuration;
 using Rebus.AzureServiceBus;
+using Rebus.Bus;
 using Rebus.Logging;
 using Rebus.Pipeline;
 using Rebus.Pipeline.Receive;
@@ -32,7 +33,7 @@ namespace Rebus.Config
                 {
                     var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                     var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
-                    return new AzureServiceBusTransport(connectionString, null, rebusLoggerFactory);
+                    return new AzureServiceBusTransport(connectionString, null, rebusLoggerFactory, c.Get<BusLifetimeEvents>());
                 });
 
             configurer
@@ -69,7 +70,7 @@ namespace Rebus.Config
                 {
                     var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                     var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
-                    var transport = new AzureServiceBusTransport(connectionString, inputQueueAddress, rebusLoggerFactory);
+                    var transport = new AzureServiceBusTransport(connectionString, inputQueueAddress, rebusLoggerFactory, c.Get<BusLifetimeEvents>());
 
                     if (settings.PrefetchingEnabled)
                     {

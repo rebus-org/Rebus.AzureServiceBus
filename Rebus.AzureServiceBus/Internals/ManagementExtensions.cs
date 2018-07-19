@@ -33,7 +33,7 @@ namespace Rebus.Internals
             }
         }
 
-        public static async Task PurgeQueue(string connectionString, string queuePath, CancellationToken cancellationToken = default(CancellationToken))
+        public static async Task PurgeQueue(string connectionString, string queuePath, CancellationToken cancellationToken = default(CancellationToken), bool ignoreNonExistentQueue = false)
         {
             var queueClient = new QueueClient(connectionString, queuePath, receiveMode: ReceiveMode.ReceiveAndDelete);
 
@@ -55,6 +55,10 @@ namespace Rebus.Internals
                 {
                     await Task.Delay(300, cancellationToken);
                 }
+            }
+            catch (MessagingEntityNotFoundException) when (ignoreNonExistentQueue)
+            {
+                // ignore it then
             }
             finally
             {

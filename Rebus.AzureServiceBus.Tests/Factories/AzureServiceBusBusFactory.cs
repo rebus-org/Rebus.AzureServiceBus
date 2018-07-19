@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Azure.ServiceBus;
 using Rebus.Activation;
+using Rebus.AzureServiceBus.Tests.Extensions;
 using Rebus.Bus;
 using Rebus.Config;
+using Rebus.Internals;
 using Rebus.Logging;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Transports;
@@ -41,11 +44,17 @@ namespace Rebus.AzureServiceBus.Tests.Factories
 
         static void PurgeQueue(string queueName)
         {
-            var consoleLoggerFactory = new ConsoleLoggerFactory(false);
-            var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
-            var connectionString = AzureServiceBusTransportFactory.ConnectionString;
-            var busLifetimeEvents = new BusLifetimeEvents();
-            new AzureServiceBusTransport(connectionString, queueName, consoleLoggerFactory).PurgeInputQueue();
+            AsyncHelpers.RunSync(async () =>
+            {
+                try
+                {
+                    await ManagementExtensions.PurgeQueue(AzureServiceBusTransportFactory.ConnectionString, queueName);
+                }
+                catch (MessagingEntityNotFoundException)
+                {
+                    // chill out man
+                }
+            });
         }
 
         public void Cleanup()

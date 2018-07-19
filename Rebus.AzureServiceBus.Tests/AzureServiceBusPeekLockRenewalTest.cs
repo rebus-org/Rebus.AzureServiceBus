@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Activation;
+using Rebus.AzureServiceBus.Tests.Extensions;
 using Rebus.AzureServiceBus.Tests.Factories;
 using Rebus.Bus;
 using Rebus.Config;
@@ -27,11 +29,13 @@ namespace Rebus.AzureServiceBus.Tests
         BuiltinHandlerActivator _activator;
         AzureServiceBusTransport _transport;
         IBus _bus;
+        BusLifetimeEvents _busLifetimeEvents;
 
         protected override void SetUp()
         {
             //_transport = new AzureServiceBusTransport(ConnectionString, QueueName, _consoleLoggerFactory, new TplAsyncTaskFactory(_consoleLoggerFactory));
-            _transport = new AzureServiceBusTransport(ConnectionString, QueueName, _consoleLoggerFactory);
+            _busLifetimeEvents = new BusLifetimeEvents();
+            _transport = new AzureServiceBusTransport(ConnectionString, QueueName, _consoleLoggerFactory, _busLifetimeEvents);
 
             Using(_transport);
 
@@ -50,6 +54,8 @@ namespace Rebus.AzureServiceBus.Tests
                 .Start();
 
             Using(_bus);
+
+            _busLifetimeEvents.RaiseBusStartedBackdoor();
         }
 
         [Test, Ignore("Can be used to check silencing behavior when receive errors occur")]

@@ -5,7 +5,9 @@ using FluentAssertions;
 using Microsoft.Azure.ServiceBus;
 using NUnit.Framework;
 using Rebus.Activation;
+using Rebus.AzureServiceBus.Tests.Extensions;
 using Rebus.AzureServiceBus.Tests.Factories;
+using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Logging;
 using Rebus.Tests.Contracts;
@@ -47,7 +49,7 @@ namespace Rebus.AzureServiceBus.Tests
 
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             //var transport = new AzureServiceBusTransport(newConnString, QueueName, consoleLoggerFactory, new TplAsyncTaskFactory(consoleLoggerFactory));
-            var transport = new AzureServiceBusTransport(newConnString, QueueName, consoleLoggerFactory);
+            var transport = new AzureServiceBusTransport(newConnString, QueueName, consoleLoggerFactory, new BusLifetimeEvents());
 
             Using(transport);
 
@@ -153,7 +155,9 @@ namespace Rebus.AzureServiceBus.Tests
         {
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             //var transport = new AzureServiceBusTransport(AzureServiceBusTransportFactory.ConnectionString, QueueName, consoleLoggerFactory, new TplAsyncTaskFactory(consoleLoggerFactory));
-            var transport = new AzureServiceBusTransport(AzureServiceBusTransportFactory.ConnectionString, QueueName, consoleLoggerFactory);
+            var busLifetimeEvents = new BusLifetimeEvents();
+            busLifetimeEvents.RaiseBusStartedBackdoor();
+            var transport = new AzureServiceBusTransport(AzureServiceBusTransportFactory.ConnectionString, QueueName, consoleLoggerFactory, busLifetimeEvents);
             transport.PurgeInputQueue();
             //Create the queue for the receiver since it cannot create it self beacuse of lacking rights on the namespace
             transport.CreateQueue(QueueName);
