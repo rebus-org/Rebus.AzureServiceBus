@@ -14,7 +14,7 @@ namespace Rebus.AzureServiceBus.Tests
     public class WorksWhenEnablingPartitioning : FixtureBase
     {
         readonly string _queueName = TestConfig.GetName("input");
-        readonly string _connectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
+        readonly string _connectionString = AzureServiceBusTransportFactory.ConnectionString;
 
         [Test]
         public async Task YesItDoes()
@@ -39,7 +39,7 @@ namespace Rebus.AzureServiceBus.Tests
 
         protected override void TearDown()
         {
-            StandardAzureServiceBusTransportFactory.DeleteQueue(_queueName);
+            AzureServiceBusTransportFactory.DeleteQueue(_queueName);
         }
     }
 }

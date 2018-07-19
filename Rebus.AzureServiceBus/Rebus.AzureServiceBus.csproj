@@ -50,9 +50,6 @@
     <PackageReference Include="Microsoft.Azure.ServiceBus" Version="3.1.0-preview" />
     <PackageReference Include="Rebus" Version="4.0.0" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Internals\" />
-  </ItemGroup>
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
     <Exec Command="$(ProjectDir)..\scripts\patch_assemblyinfo.cmd $(ProjectDir)" />
   </Target>

@@ -36,7 +36,7 @@ namespace Rebus.AzureServiceBus.Tests
 
             var operationTimeout = TimeSpan.FromSeconds(operationTimeoutInSeconds);
 
-            var connString = StandardAzureServiceBusTransportFactory.ConnectionString;
+            var connString = AzureServiceBusTransportFactory.ConnectionString;
             var builder = new ServiceBusConnectionStringBuilder(connString)
             {
             //    OperationTimeout = operationTimeout
@@ -153,7 +153,7 @@ namespace Rebus.AzureServiceBus.Tests
         {
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var transport = new AzureServiceBusTransport(QueueName);
-            //var transport = new AzureServiceBusTransport(StandardAzureServiceBusTransportFactory.ConnectionString, QueueName, consoleLoggerFactory, new TplAsyncTaskFactory(consoleLoggerFactory));
+            //var transport = new AzureServiceBusTransport(AzureServiceBusTransportFactory.ConnectionString, QueueName, consoleLoggerFactory, new TplAsyncTaskFactory(consoleLoggerFactory));
             transport.PurgeInputQueue();
             //Create the queue for the receiver since it cannot create it self beacuse of lacking rights on the namespace
             transport.CreateQueue(QueueName);
@@ -164,12 +164,12 @@ namespace Rebus.AzureServiceBus.Tests
             var receiverBus = Configure.With(recieverActivator)
                 .Logging(l => l.ColoredConsole())
                 .Transport(t =>
-                    t.UseAzureServiceBus(StandardAzureServiceBusTransportFactory.ConnectionString, QueueName)
+                    t.UseAzureServiceBus(AzureServiceBusTransportFactory.ConnectionString, QueueName)
                         .DoNotCreateQueues())
                 .Start();
 
             var senderBus = Configure.With(senderActivator)
-                .Transport(t => t.UseAzureServiceBus(StandardAzureServiceBusTransportFactory.ConnectionString, "sender"))
+                .Transport(t => t.UseAzureServiceBus(AzureServiceBusTransportFactory.ConnectionString, "sender"))
                 .Start();
 
             Using(receiverBus);

@@ -5,5 +5,5 @@ using Rebus.Tests.Contracts.Transports;
 namespace Rebus.AzureServiceBus.Tests
 {
     [TestFixture, Category(TestCategory.Azure)]
-    public class AzureServiceBusBasicSendReceive : BasicSendReceive<StandardAzureServiceBusTransportFactory> { }
+    public class AzureServiceBusBasicSendReceive : BasicSendReceive<AzureServiceBusTransportFactory> { }
 }

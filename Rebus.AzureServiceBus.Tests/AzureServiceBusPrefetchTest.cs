@@ -98,7 +98,7 @@ namespace Rebus.AzureServiceBus.Tests
             Configure.With(activator)
                 .Transport(t =>
                 {
-                    t.UseAzureServiceBus(StandardAzureServiceBusTransportFactory.ConnectionString, _queueName)
+                    t.UseAzureServiceBus(AzureServiceBusTransportFactory.ConnectionString, _queueName)
                         .EnablePrefetching(prefetch);
                 })
                 .Options(o =>
@@ -118,7 +118,7 @@ namespace Rebus.AzureServiceBus.Tests
 
         protected override void TearDown()
         {
-            //StandardAzureServiceBusTransportFactory.DeleteQueue(_queueName);
+            //AzureServiceBusTransportFactory.DeleteQueue(_queueName);
         }
 
         Dictionary<string, string> DefaultHeaders()
@@ -134,7 +134,7 @@ namespace Rebus.AzureServiceBus.Tests
         {
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
-            var connectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
+            var connectionString = AzureServiceBusTransportFactory.ConnectionString;
 
             var transport = new AzureServiceBusTransport(_queueName);
             //var transport = new AzureServiceBusTransport(connectionString, _queueName, consoleLoggerFactory, asyncTaskFactory);

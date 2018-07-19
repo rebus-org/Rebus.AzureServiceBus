@@ -26,7 +26,7 @@ namespace Rebus.AzureServiceBus.Tests
 
         protected override void SetUp()
         {
-            var connectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
+            var connectionString = AzureServiceBusTransportFactory.ConnectionString;
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
             var busLifetimeEvents = new BusLifetimeEvents();

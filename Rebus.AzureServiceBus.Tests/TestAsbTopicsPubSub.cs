@@ -18,7 +18,7 @@ namespace Rebus.AzureServiceBus.Tests
         readonly string _inputQueueName1 = TestConfig.GetName("pubsub1");
         readonly string _inputQueueName2 = TestConfig.GetName("pubsub2");
         readonly string _inputQueueName3 = TestConfig.GetName("pubsub3");
-        readonly string _connectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
+        readonly string _connectionString = AzureServiceBusTransportFactory.ConnectionString;
         
         BuiltinHandlerActivator _bus1;
         BuiltinHandlerActivator _bus2;
@@ -26,7 +26,7 @@ namespace Rebus.AzureServiceBus.Tests
 
         protected override void SetUp()
         {
-            StandardAzureServiceBusTransportFactory.DeleteTopic(typeof (string).GetSimpleAssemblyQualifiedName().ToValidAzureServiceBusEntityName());
+            AzureServiceBusTransportFactory.DeleteTopic(typeof (string).GetSimpleAssemblyQualifiedName().ToValidAzureServiceBusEntityName());
 
             _bus1 = StartBus(_inputQueueName1);
             _bus2 = StartBus(_inputQueueName2);

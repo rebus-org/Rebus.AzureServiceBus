@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using Microsoft.Azure.ServiceBus;
 using Rebus.Extensions;
 using Rebus.Logging;
 using Rebus.Tests.Contracts.Transports;
@@ -10,7 +9,7 @@ using Rebus.Transport;
 
 namespace Rebus.AzureServiceBus.Tests.Factories
 {
-    public class StandardAzureServiceBusTransportFactory : ITransportFactory
+    public class AzureServiceBusTransportFactory : ITransportFactory
     {
         public static string ConnectionString => ConnectionStringFromFileOrNull(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "asb_connection_string.txt"))
                                                  ?? ConnectionStringFromEnvironmentVariable("rebus2_asb_connection_string")

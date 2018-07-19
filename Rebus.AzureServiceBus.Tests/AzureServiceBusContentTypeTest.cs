@@ -10,7 +10,7 @@ namespace Rebus.AzureServiceBus.Tests
     [TestFixture, Category(TestCategory.Azure)]
     public class AzureServiceBusContentTypeTest : FixtureBase
     {
-        static readonly string ConnectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
+        static readonly string ConnectionString = AzureServiceBusTransportFactory.ConnectionString;
 
         [Test]
         public void LooksGood()

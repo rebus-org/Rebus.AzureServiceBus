@@ -16,7 +16,7 @@ namespace Rebus.AzureServiceBus.Tests
         {
             throw new NotImplementedException("Figure out how to do this");
 
-            //var connectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
+            //var connectionString = AzureServiceBusTransportFactory.ConnectionString;
             //var manager = NamespaceManager.CreateFromConnectionString(connectionString);
             //var queueName = Guid.NewGuid().ToString("N");
 
