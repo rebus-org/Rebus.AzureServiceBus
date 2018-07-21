@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using Microsoft.Azure.ServiceBus;
+using Microsoft.Azure.ServiceBus.Management;
 using Rebus.AzureServiceBus.Tests.Extensions;
 using Rebus.Bus;
 using Rebus.Extensions;
+using Rebus.Internals;
 using Rebus.Logging;
 using Rebus.Tests.Contracts.Transports;
 using Rebus.Threading.TaskParallelLibrary;
@@ -63,7 +66,7 @@ namespace Rebus.AzureServiceBus.Tests.Factories
 
             if (inputQueueAddress == null)
             {
-                var transport = new AzureServiceBusTransport(ConnectionString, inputQueueAddress, consoleLoggerFactory, new BusLifetimeEvents());
+                var transport = new AzureServiceBusTransport(ConnectionString, inputQueueAddress, consoleLoggerFactory);
 
                 transport.Initialize();
 
@@ -72,14 +75,11 @@ namespace Rebus.AzureServiceBus.Tests.Factories
 
             return _queuesToDelete.GetOrAdd(inputQueueAddress, () =>
             {
-                var busLifetimeEvents = new BusLifetimeEvents();
-                var transport = new AzureServiceBusTransport(ConnectionString, inputQueueAddress, consoleLoggerFactory, busLifetimeEvents);
+                var transport = new AzureServiceBusTransport(ConnectionString, inputQueueAddress, consoleLoggerFactory);
 
                 transport.PurgeInputQueue();
 
                 transport.Initialize();
-
-                busLifetimeEvents.RaiseBusStartedBackdoor();
 
                 return transport;
             });
@@ -92,41 +92,41 @@ namespace Rebus.AzureServiceBus.Tests.Factories
 
         public static void DeleteQueue(string queueName)
         {
-            throw new NotImplementedException("Figure out how to do this");
+            var managementClient = new ManagementClient(ConnectionString);
 
-            //var namespaceManager = NamespaceManager.CreateFromConnectionString(ConnectionString);
-
-            //if (!namespaceManager.QueueExists(queueName)) return;
-
-            //Console.Write("Deleting ASB queue {0}...", queueName);
-
-            //try
-            //{
-            //    namespaceManager.DeleteQueue(queueName);
-            //    Console.WriteLine("OK!");
-            //}
-            //catch (MessagingEntityNotFoundException)
-            //{
-            //    Console.WriteLine("OK (was not there)");
-            //}
+            AsyncHelpers.RunSync(async () =>
+            {
+                try
+                {
+                    Console.Write("Deleting ASB queue {0}...", queueName);
+                    await managementClient.DeleteQueueAsync(queueName);
+                    Console.WriteLine("OK!");
+                }
+                catch (MessagingEntityNotFoundException)
+                {
+                    Console.WriteLine("OK (was not there)");
+                }
+            });
         }
 
         public static void DeleteTopic(string topic)
         {
-            throw new NotImplementedException("Figure out how to do this");
+            var managementClient = new ManagementClient(ConnectionString);
 
-            //var namespaceManager = NamespaceManager.CreateFromConnectionString(ConnectionString);
+            AsyncHelpers.RunSync(async () =>
+            {
 
-            //try
-            //{
-            //    Console.Write("Deleting topic '{0}' ...", topic);
-            //    namespaceManager.DeleteTopic(topic);
-            //    Console.WriteLine("OK!");
-            //}
-            //catch (MessagingEntityNotFoundException)
-            //{
-            //    Console.WriteLine("OK! (wasn't even there)");
-            //}
+                try
+                {
+                    Console.Write("Deleting topic '{0}' ...", topic);
+                    await managementClient.DeleteTopicAsync(topic);
+                    Console.WriteLine("OK!");
+                }
+                catch (MessagingEntityNotFoundException)
+                {
+                    Console.WriteLine("OK! (wasn't even there)");
+                }
+            });
         }
     }
 }

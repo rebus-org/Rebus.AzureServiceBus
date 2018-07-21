@@ -84,9 +84,7 @@ namespace Rebus.Internals
 
                 while (!_done)
                 {
-                    Tuple<SendOrPostCallback, object> task;
-
-                    if (_items.TryDequeue(out task))
+                    if (_items.TryDequeue(out var task))
                     {
                         task.Item1(task.Item2);
 

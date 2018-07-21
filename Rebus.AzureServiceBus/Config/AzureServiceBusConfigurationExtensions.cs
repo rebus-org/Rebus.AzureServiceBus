@@ -33,7 +33,7 @@ namespace Rebus.Config
                 {
                     var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                     var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
-                    return new AzureServiceBusTransport(connectionString, null, rebusLoggerFactory, c.Get<BusLifetimeEvents>());
+                    return new AzureServiceBusTransport(connectionString, null, rebusLoggerFactory);
                 });
 
             configurer
@@ -70,7 +70,7 @@ namespace Rebus.Config
                 {
                     var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                     var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
-                    var transport = new AzureServiceBusTransport(connectionString, inputQueueAddress, rebusLoggerFactory, c.Get<BusLifetimeEvents>());
+                    var transport = new AzureServiceBusTransport(connectionString, inputQueueAddress, rebusLoggerFactory);
 
                     if (settings.PrefetchingEnabled)
                     {

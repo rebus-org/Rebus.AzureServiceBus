@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.ServiceBus;
+using Microsoft.Azure.ServiceBus.Core;
 using Microsoft.Azure.ServiceBus.Management;
 using Rebus.Bus;
 using Rebus.Exceptions;
@@ -23,7 +24,7 @@ namespace Rebus.AzureServiceBus
     /// </summary>
     public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable, ISubscriptionStorage
     {
-        readonly BusLifetimeEvents _busLifetimeEvents;
+        readonly string _connectionString;
 
         /// <summary>
         /// Outgoing messages are stashed in a concurrent queue under this key
@@ -47,39 +48,41 @@ namespace Rebus.AzureServiceBus
         );
 
         readonly ConcurrentStack<IDisposable> _disposables = new ConcurrentStack<IDisposable>();
-        readonly ConcurrentDictionary<string, QueueClient> _queueClients = new ConcurrentDictionary<string, QueueClient>();
+        readonly ConcurrentDictionary<string, MessageSender> _messageSenders = new ConcurrentDictionary<string, MessageSender>();
         readonly ConcurrentDictionary<string, TopicClient> _topicClients = new ConcurrentDictionary<string, TopicClient>();
-        readonly Func<string, QueueClient> _getQueueClient;
+        readonly Func<string, MessageSender> _getMessageSender;
         readonly Func<string, TopicClient> _getTopicClient;
-        readonly Action _purgeInputQueue;
         readonly ManagementClient _managementClient;
+        readonly Action _purgeInputQueue;
         readonly ILog _log;
+
+        MessageReceiver _messageReceiver;
 
         /// <summary>
         /// Constructs the transport, connecting to the service bus pointed to by the connection string.
         /// </summary>
-        public AzureServiceBusTransport(string connectionString, string queueName, IRebusLoggerFactory rebusLoggerFactory, BusLifetimeEvents busLifetimeEvents)
+        public AzureServiceBusTransport(string connectionString, string queueName, IRebusLoggerFactory rebusLoggerFactory)
         {
             if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
 
             Address = queueName?.ToLowerInvariant();
 
-            _busLifetimeEvents = busLifetimeEvents ?? throw new ArgumentNullException(nameof(busLifetimeEvents));
+            _connectionString = connectionString;
             _log = rebusLoggerFactory.GetLogger<AzureServiceBusTransport>();
             _managementClient = new ManagementClient(connectionString);
 
-            _getQueueClient = queue => _queueClients.GetOrAdd(queue, _ =>
-            {
-                var queueClient = new QueueClient(
-                    connectionString,
-                    queue,
-                    receiveMode: ReceiveMode.PeekLock,
-                    retryPolicy: DefaultRetryStrategy
-                );
-                _disposables.Push(queueClient.AsDisposable(d => AsyncHelpers.RunSync(d.CloseAsync)));
-                return queueClient;
-            });
+            //_getQueueClient = queue => _queueClients.GetOrAdd(queue, _ =>
+            //{
+            //    var queueClient = new QueueClient(
+            //        connectionString,
+            //        queue,
+            //        receiveMode: ReceiveMode.PeekLock,
+            //        retryPolicy: DefaultRetryStrategy
+            //    );
+            //    _disposables.Push(queueClient.AsDisposable(d => AsyncHelpers.RunSync(d.CloseAsync)));
+            //    return queueClient;
+            //});
 
             _getTopicClient = topic => _topicClients.GetOrAdd(topic, _ =>
             {
@@ -92,6 +95,17 @@ namespace Rebus.AzureServiceBus
                 return topicClient;
             });
 
+            _getMessageSender = queue => _messageSenders.GetOrAdd(queue, _ =>
+            {
+                var messageSender = new MessageSender(
+                    connectionString,
+                    queue,
+                    retryPolicy: DefaultRetryStrategy
+                );
+                _disposables.Push(messageSender.AsDisposable(t => AsyncHelpers.RunSync(t.CloseAsync)));
+                return messageSender;
+            });
+
             _purgeInputQueue = () =>
             {
                 try
@@ -102,20 +116,6 @@ namespace Rebus.AzureServiceBus
                 {
                     throw new ArgumentException($"Could not purge queue '{queueName}'", exception);
                 }
-            };
-
-            busLifetimeEvents.BusStarted += () =>
-            {
-                if (Address == null) return;
-
-                var queueClient = _getQueueClient(Address);
-
-                var options = new MessageHandlerOptions(async exceptionArgs => _log.Warn(exceptionArgs.Exception, "ASB transport received an exception"))
-                {
-                    AutoComplete = false,
-                };
-                
-                queueClient.RegisterMessageHandler(async (message, token) => _receivedMessages.Enqueue(message), options);
             };
         }
 
@@ -636,9 +636,9 @@ namespace Rebus.AzureServiceBus
 
             var normalizedTopic = topic.ToValidAzureServiceBusEntityName();
             var topicDescription = await EnsureTopicExists(normalizedTopic);
-            var inputQueueClient = _getQueueClient(Address);
+            var messageSender = _getMessageSender(Address);
 
-            var inputQueuePath = inputQueueClient.Path;
+            var inputQueuePath = messageSender.Path;
             var topicPath = topicDescription.Path;
             var subscriptionName = GetSubscriptionName();
 
@@ -806,7 +806,7 @@ namespace Rebus.AzureServiceBus
                             {
                                 var list = batch.Select(GetMessage).ToList();
 
-                                await _getQueueClient(destinationQueue).SendAsync(list);
+                                await _getMessageSender(destinationQueue).SendAsync(list);
                             }
                         }
 
@@ -829,25 +829,32 @@ namespace Rebus.AzureServiceBus
             }
         }
 
-        readonly ConcurrentQueue<Message> _receivedMessages = new ConcurrentQueue<Message>();
-
         public async Task<TransportMessage> Receive(ITransactionContext context, CancellationToken cancellationToken)
         {
-            if (!_receivedMessages.TryDequeue(out var message)) return null;
+            var message = await _messageReceiver.ReceiveAsync(TimeSpan.FromSeconds(2));
+
+            if (message == null) return null;
 
             var lockToken = message.SystemProperties.LockToken;
-            var queueClient = _getQueueClient(Address);
 
             context.OnCompleted(async () =>
             {
-                await queueClient.CompleteAsync(lockToken);
+                try
+                {
+                    await _messageReceiver.CompleteAsync(lockToken);
+                }
+                catch (Exception exception)
+                {
+                    throw new RebusApplicationException(exception,
+                        $"Could not complete message with ID {message.MessageId} and lock token {lockToken}");
+                }
             });
 
             context.OnAborted(() =>
             {
                 try
                 {
-                    AsyncHelpers.RunSync(() => queueClient.AbandonAsync(lockToken));
+                    AsyncHelpers.RunSync(() => _messageReceiver.AbandonAsync(lockToken));
                 }
                 catch (Exception exception)
                 {
@@ -856,7 +863,11 @@ namespace Rebus.AzureServiceBus
                 }
             });
 
-            return new TransportMessage(message.UserProperties.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ToString()), message.Body);
+            var userProperties = message.UserProperties;
+            var headers = userProperties.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ToString());
+            var body = message.Body;
+
+            return new TransportMessage(headers, body);
         }
 
         /// <summary>
@@ -874,6 +885,10 @@ namespace Rebus.AzureServiceBus
             {
                 _log.Info("Initializing Azure Service Bus transport with queue {queueName}", Address);
                 CreateQueue(Address);
+
+                _messageReceiver = new MessageReceiver(_connectionString, Address, receiveMode: ReceiveMode.PeekLock);
+                _disposables.Push(_messageReceiver.AsDisposable(m => AsyncHelpers.RunSync(m.CloseAsync)));
+
                 return;
             }
 

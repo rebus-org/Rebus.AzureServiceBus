@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.ServiceBus;
+using Microsoft.Azure.ServiceBus.Core;
 using Microsoft.Azure.ServiceBus.Management;
 using NUnit.Framework;
 using Rebus.AzureServiceBus.Tests.Factories;
@@ -70,6 +71,30 @@ namespace Rebus.AzureServiceBus.Tests
             client.RegisterMessageHandler(async (_, __) => somethingWasReceived.Set(), async _ => somethingWasReceived.Set());
 
             Assert.That(somethingWasReceived.WaitOne(TimeSpan.FromSeconds(1)), Is.False, $"Looks like a message was received from the queue '{queueName}' even though it was purged :o");
+        }
+
+        [Test]
+        public async Task CanSendAndReceiveMessage()
+        {
+            var queueName = TestConfig.GetName("send-receive");
+            await _managementClient.CreateQueueIfNotExistsAsync(queueName);
+
+            var retryPolicy = new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(5), 10);
+            var queueClient = new QueueClient(ConnectionString, queueName, receiveMode: ReceiveMode.PeekLock, retryPolicy: retryPolicy);
+
+            await ManagementExtensions.PurgeQueue(ConnectionString, queueName);
+
+            await queueClient.SendAsync(new Message(Encoding.UTF8.GetBytes("Hej med dig min ven! Det spiller!")));
+
+            var messageReceiver = new MessageReceiver(ConnectionString, queueName, receiveMode: ReceiveMode.PeekLock);
+
+            var message = await messageReceiver.ReceiveAsync(TimeSpan.FromSeconds(2));
+
+            Assert.That(message, Is.Not.Null);
+
+            var text = Encoding.UTF8.GetString(message.Body);
+
+            Assert.That(text, Is.EqualTo("Hej med dig min ven! Det spiller!"));
         }
     }
 }
