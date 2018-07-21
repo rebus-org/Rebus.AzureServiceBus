@@ -27,7 +27,7 @@ namespace Rebus.AzureServiceBus.Tests
         {
             var connectionString = AzureServiceBusTransportFactory.ConnectionString;
 
-            AsyncHelpers.RunSync(() => ManagementExtensions.PurgeQueue(connectionString, QueueName, ignoreNonExistentQueue: true));
+            AsyncHelpers.RunSync(() => ManagementExtensions.PurgeQueue(connectionString, QueueName));
 
             _activator = new BuiltinHandlerActivator();
 
