@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.ServiceBus;
+using Microsoft.Azure.ServiceBus.Core;
 using Microsoft.Azure.ServiceBus.Management;
 #pragma warning disable 1998
 
@@ -35,25 +37,15 @@ namespace Rebus.Internals
 
         public static async Task PurgeQueue(string connectionString, string queuePath, CancellationToken cancellationToken = default(CancellationToken), bool ignoreNonExistentQueue = false)
         {
-            var queueClient = new QueueClient(connectionString, queuePath, receiveMode: ReceiveMode.ReceiveAndDelete);
+            var messageReceiver = new MessageReceiver(connectionString, queuePath, receiveMode: ReceiveMode.ReceiveAndDelete);
 
             try
             {
-                var lastReceiveTime = DateTime.UtcNow.Ticks;
-
-                void UpdateLastReceivedTime() => Interlocked.Exchange(ref lastReceiveTime, DateTime.UtcNow.Ticks);
-
-                async Task MessageHandler(Message message, CancellationToken token) => UpdateLastReceivedTime();
-                async Task ExceptionHandler(ExceptionReceivedEventArgs exception) => UpdateLastReceivedTime();
-
-                queueClient.RegisterMessageHandler(MessageHandler, ExceptionHandler);
-
-                var timeoutTicks = TimeSpan.FromSeconds(1).Ticks;
-
-                // wait until we have a period of one second without any messages
-                while (DateTime.UtcNow.Ticks - Interlocked.Read(ref lastReceiveTime) < timeoutTicks)
+                while (true)
                 {
-                    await Task.Delay(300, cancellationToken);
+                    var messages = await messageReceiver.ReceiveAsync(100, TimeSpan.FromSeconds(2));
+
+                    if (!messages.Any()) break;
                 }
             }
             catch (MessagingEntityNotFoundException) when (ignoreNonExistentQueue)
@@ -62,7 +54,7 @@ namespace Rebus.Internals
             }
             finally
             {
-                await queueClient.CloseAsync();
+                await messageReceiver.CloseAsync();
             }
         }
     }

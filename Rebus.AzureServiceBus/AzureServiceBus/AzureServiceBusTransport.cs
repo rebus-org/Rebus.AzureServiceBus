@@ -63,26 +63,13 @@ namespace Rebus.AzureServiceBus
         /// </summary>
         public AzureServiceBusTransport(string connectionString, string queueName, IRebusLoggerFactory rebusLoggerFactory)
         {
-            if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
 
             Address = queueName?.ToLowerInvariant();
 
-            _connectionString = connectionString;
+            _connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
             _log = rebusLoggerFactory.GetLogger<AzureServiceBusTransport>();
             _managementClient = new ManagementClient(connectionString);
-
-            //_getQueueClient = queue => _queueClients.GetOrAdd(queue, _ =>
-            //{
-            //    var queueClient = new QueueClient(
-            //        connectionString,
-            //        queue,
-            //        receiveMode: ReceiveMode.PeekLock,
-            //        retryPolicy: DefaultRetryStrategy
-            //    );
-            //    _disposables.Push(queueClient.AsDisposable(d => AsyncHelpers.RunSync(d.CloseAsync)));
-            //    return queueClient;
-            //});
 
             _getTopicClient = topic => _topicClients.GetOrAdd(topic, _ =>
             {
@@ -615,15 +602,20 @@ namespace Rebus.AzureServiceBus
         //    }
         //}
 
+        readonly ConcurrentDictionary<string, string[]> _cachedSubscriberAddresses = new ConcurrentDictionary<string, string[]>();
+
         /// <summary>
         /// Gets "subscriber addresses" by getting one single magic "queue name", which is then
         /// interpreted as a publish operation to a topic when the time comes to send to that "queue"
         /// </summary>
         public async Task<string[]> GetSubscriberAddresses(string topic)
         {
-            var normalizedTopic = topic.ToValidAzureServiceBusEntityName();
+            return _cachedSubscriberAddresses.GetOrAdd(topic, _ =>
+            {
+                var normalizedTopic = topic.ToValidAzureServiceBusEntityName();
 
-            return new[] { $"{MagicSubscriptionPrefix}{normalizedTopic}" };
+                return new[] {$"{MagicSubscriptionPrefix}{normalizedTopic}"};
+            });
         }
 
         /// <summary>
@@ -717,17 +709,9 @@ namespace Rebus.AzureServiceBus
             }
         }
 
-        ///// <summary>
-        ///// Always returns true because Azure Service Bus topics and subscriptions are global
-        ///// </summary>
-        //public bool IsCentralized => true;
-
-        ///// <summary>
-        ///// Gets/sets whether to skip creating queues
-        ///// </summary>
-        //public bool DoNotCreateQueuesEnabled { get; set; }
-
-
+        /// <summary>
+        /// Creates a queue with the given address
+        /// </summary>
         public void CreateQueue(string address)
         {
             if (DoNotCreateQueuesEnabled)
@@ -875,9 +859,9 @@ namespace Rebus.AzureServiceBus
         /// </summary>
         public string Address { get; }
 
-        ///// <summary>
-        ///// Initializes the transport by ensuring that the input queue has been created
-        ///// </summary>
+        /// <summary>
+        /// Initializes the transport by ensuring that the input queue has been created
+        /// </summary>
         /// <inheritdoc />
         public void Initialize()
         {
@@ -886,7 +870,13 @@ namespace Rebus.AzureServiceBus
                 _log.Info("Initializing Azure Service Bus transport with queue {queueName}", Address);
                 CreateQueue(Address);
 
-                _messageReceiver = new MessageReceiver(_connectionString, Address, receiveMode: ReceiveMode.PeekLock);
+                _messageReceiver = new MessageReceiver(
+                    _connectionString,
+                    Address,
+                    receiveMode: ReceiveMode.PeekLock,
+                    retryPolicy: DefaultRetryStrategy
+                );
+
                 _disposables.Push(_messageReceiver.AsDisposable(m => AsyncHelpers.RunSync(m.CloseAsync)));
 
                 return;
@@ -904,6 +894,9 @@ namespace Rebus.AzureServiceBus
 
         public bool PartitioningEnabled { get; set; }
 
+        ///// <summary>
+        ///// Gets/sets whether to skip creating queues
+        ///// </summary>
         public bool DoNotCreateQueuesEnabled { get; set; }
 
         public void PurgeInputQueue() => _purgeInputQueue();
