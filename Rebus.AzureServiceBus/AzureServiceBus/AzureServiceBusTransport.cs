@@ -775,7 +775,7 @@ namespace Rebus.AzureServiceBus
 
             message.Label = transportMessage.GetMessageLabel();
 
-            foreach (var kvp in transportMessage.Headers)
+            foreach (var kvp in headers)
             {
                 message.UserProperties[kvp.Key] = kvp.Value;
             }
