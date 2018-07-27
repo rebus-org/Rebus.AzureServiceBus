@@ -139,7 +139,7 @@ namespace Rebus.AzureServiceBus.Tests
             var connectionString = AzureServiceBusTransportFactory.ConnectionString;
 
             //var transport = new AzureServiceBusTransport(connectionString, _queueName, consoleLoggerFactory, asyncTaskFactory);
-            var transport = new AzureServiceBusTransport(connectionString, _queueName, consoleLoggerFactory);
+            var transport = new AzureServiceBusTransport(connectionString, _queueName, consoleLoggerFactory, asyncTaskFactory);
             Using(transport);
             transport.Initialize();
             transport.PurgeInputQueue();

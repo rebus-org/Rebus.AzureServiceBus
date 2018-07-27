@@ -66,7 +66,7 @@ namespace Rebus.AzureServiceBus.Tests.Factories
 
             if (inputQueueAddress == null)
             {
-                var transport = new AzureServiceBusTransport(ConnectionString, inputQueueAddress, consoleLoggerFactory);
+                var transport = new AzureServiceBusTransport(ConnectionString, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory);
 
                 transport.Initialize();
 
@@ -75,7 +75,7 @@ namespace Rebus.AzureServiceBus.Tests.Factories
 
             return _queuesToDelete.GetOrAdd(inputQueueAddress, () =>
             {
-                var transport = new AzureServiceBusTransport(ConnectionString, inputQueueAddress, consoleLoggerFactory);
+                var transport = new AzureServiceBusTransport(ConnectionString, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory);
 
                 transport.PurgeInputQueue();
 

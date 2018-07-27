@@ -45,6 +45,7 @@ namespace Rebus.Internals
                 {
                     var messages = await messageReceiver.ReceiveAsync(100, TimeSpan.FromSeconds(2));
 
+                    if (messages == null) break;
                     if (!messages.Any()) break;
                 }
             }

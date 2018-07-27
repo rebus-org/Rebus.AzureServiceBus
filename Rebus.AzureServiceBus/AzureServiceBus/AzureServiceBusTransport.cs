@@ -8,10 +8,12 @@ using Microsoft.Azure.ServiceBus.Core;
 using Microsoft.Azure.ServiceBus.Management;
 using Rebus.Bus;
 using Rebus.Exceptions;
+using Rebus.Extensions;
 using Rebus.Internals;
 using Rebus.Logging;
 using Rebus.Messages;
 using Rebus.Subscriptions;
+using Rebus.Threading;
 using Rebus.Transport;
 using Message = Microsoft.Azure.ServiceBus.Message;
 // ReSharper disable RedundantArgumentDefaultValue
@@ -24,8 +26,6 @@ namespace Rebus.AzureServiceBus
     /// </summary>
     public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable, ISubscriptionStorage
     {
-        readonly string _connectionString;
-
         /// <summary>
         /// Outgoing messages are stashed in a concurrent queue under this key
         /// </summary>
@@ -52,7 +52,10 @@ namespace Rebus.AzureServiceBus
         readonly ConcurrentDictionary<string, TopicClient> _topicClients = new ConcurrentDictionary<string, TopicClient>();
         readonly Func<string, MessageSender> _getMessageSender;
         readonly Func<string, TopicClient> _getTopicClient;
+        readonly IAsyncTaskFactory _asyncTaskFactory;
         readonly ManagementClient _managementClient;
+        readonly string _connectionString;
+        
         readonly Action _purgeInputQueue;
         readonly ILog _log;
 
@@ -61,16 +64,17 @@ namespace Rebus.AzureServiceBus
         /// <summary>
         /// Constructs the transport, connecting to the service bus pointed to by the connection string.
         /// </summary>
-        public AzureServiceBusTransport(string connectionString, string queueName, IRebusLoggerFactory rebusLoggerFactory)
+        public AzureServiceBusTransport(string connectionString, string queueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory)
         {
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
 
             Address = queueName?.ToLowerInvariant();
 
             _connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
+            _asyncTaskFactory = asyncTaskFactory ?? throw new ArgumentNullException(nameof(asyncTaskFactory));
             _log = rebusLoggerFactory.GetLogger<AzureServiceBusTransport>();
             _managementClient = new ManagementClient(connectionString);
-
+            
             _getTopicClient = topic => _topicClients.GetOrAdd(topic, _ =>
             {
                 var topicClient = new TopicClient(
@@ -452,20 +456,6 @@ namespace Rebus.AzureServiceBus
         //    return renewalTask;
         //}
 
-        //async Task RenewPeekLock(string messageId, BrokeredMessage brokeredMessage)
-        //{
-        //    _log.Info("Renewing peek lock for message with ID {0}", messageId);
-
-        //    try
-        //    {
-        //        await brokeredMessage.RenewLockAsync().ConfigureAwait(false);
-        //    }
-        //    catch (MessageLockLostException)
-        //    {
-        //        // if we get this, it is because the message has been handled
-        //    }
-        //}
-
         //class FakeDisposable : IDisposable
         //{
         //    public void Dispose()
@@ -603,6 +593,8 @@ namespace Rebus.AzureServiceBus
         //}
 
         readonly ConcurrentDictionary<string, string[]> _cachedSubscriberAddresses = new ConcurrentDictionary<string, string[]>();
+        bool _prefetchingEnabled;
+        int _prefetchCount;
 
         /// <summary>
         /// Gets "subscriber addresses" by getting one single magic "queue name", which is then
@@ -749,6 +741,39 @@ namespace Rebus.AzureServiceBus
         {
             var transportMessage = outgoingMessage.TransportMessage;
             var message = new Message(transportMessage.Body);
+            var headers = transportMessage.Headers.Clone();
+
+            if (headers.TryGetValue(Headers.TimeToBeReceived, out var timeToBeReceivedStr))
+            {
+                timeToBeReceivedStr = headers[Headers.TimeToBeReceived];
+                var timeToBeReceived = TimeSpan.Parse(timeToBeReceivedStr);
+                message.TimeToLive = timeToBeReceived;
+                headers.Remove(Headers.TimeToBeReceived);
+            }
+
+            if (headers.TryGetValue(Headers.DeferredUntil, out var deferUntilTime))
+            {
+                var deferUntilDateTimeOffset = deferUntilTime.ToDateTimeOffset();
+                message.ScheduledEnqueueTimeUtc = deferUntilDateTimeOffset.UtcDateTime;
+                headers.Remove(Headers.DeferredUntil);
+            }
+
+            if (headers.TryGetValue(Headers.ContentType, out var contentType))
+            {
+                message.ContentType = contentType;
+            }
+
+            if (headers.TryGetValue(Headers.CorrelationId, out var correlationId))
+            {
+                message.CorrelationId = correlationId;
+            }
+
+            if (headers.TryGetValue(Headers.MessageId, out var messageId))
+            {
+                message.MessageId = messageId;
+            }
+
+            message.Label = transportMessage.GetMessageLabel();
 
             foreach (var kvp in transportMessage.Headers)
             {
@@ -813,6 +838,9 @@ namespace Rebus.AzureServiceBus
             }
         }
 
+        /// <summary>
+        /// Receives the next message from the input queue. Returns null if no message was available
+        /// </summary>
         public async Task<TransportMessage> Receive(ITransactionContext context, CancellationToken cancellationToken)
         {
             var message = await _messageReceiver.ReceiveAsync(TimeSpan.FromSeconds(2));
@@ -847,11 +875,44 @@ namespace Rebus.AzureServiceBus
                 }
             });
 
+            var messageId = message.MessageId;
             var userProperties = message.UserProperties;
             var headers = userProperties.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ToString());
             var body = message.Body;
 
+            if (AutomaticallyRenewPeekLock && !_prefetchingEnabled)
+            {
+                var now = DateTime.UtcNow;
+                var leaseDuration = message.SystemProperties.LockedUntilUtc - now;
+                var lockRenewalInterval = TimeSpan.FromMinutes(0.5 * leaseDuration.TotalMinutes);
+
+                var renewalTask = _asyncTaskFactory
+                    .Create($"RenewPeekLock-{messageId}",
+                        async () =>
+                        {
+                            await RenewPeekLock(messageId, message).ConfigureAwait(false);
+                        },
+                        intervalSeconds: (int)lockRenewalInterval.TotalSeconds,
+                        prettyInsignificant: true);
+
+                context.OnCommitted(async () => renewalTask.Dispose());
+            }
+
             return new TransportMessage(headers, body);
+        }
+
+        async Task RenewPeekLock(string messageId, Message message)
+        {
+            _log.Info("Renewing peek lock for message with ID {0}", messageId);
+
+            try
+            {
+                await _messageReceiver.RenewLockAsync(message).ConfigureAwait(false);
+            }
+            catch (MessageLockLostException)
+            {
+                // if we get this, it is because the message has been handled
+            }
         }
 
         /// <summary>
@@ -890,19 +951,39 @@ namespace Rebus.AzureServiceBus
         /// </summary>
         public bool IsCentralized => true;
 
+        /// <summary>
+        /// Enables automatic peek lock renewal - only recommended if you truly need to handle messages for a very long time
+        /// </summary>
         public bool AutomaticallyRenewPeekLock { get; set; }
 
+        /// <summary>
+        /// Gets/sets whether partitioning should be enabled on new queues. Only takes effect for queues created
+        /// after the property has been enabled
+        /// </summary>
         public bool PartitioningEnabled { get; set; }
 
-        ///// <summary>
-        ///// Gets/sets whether to skip creating queues
-        ///// </summary>
+        /// <summary>
+        /// Gets/sets whether to skip creating queues
+        /// </summary>
         public bool DoNotCreateQueuesEnabled { get; set; }
 
+        /// <summary>
+        /// Purges the input queue by receiving all messages as quickly as possible
+        /// </summary>
         public void PurgeInputQueue() => _purgeInputQueue();
 
+        /// <summary>
+        /// Configures the transport to prefetch the specified number of messages into an in-mem queue for processing, disabling automatic peek lock renewal
+        /// </summary>
         public void PrefetchMessages(int prefetchCount)
         {
+            if (prefetchCount < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(prefetchCount), prefetchCount, "Must prefetch zero or more messages");
+            }
+
+            _prefetchingEnabled = prefetchCount > 0;
+            _prefetchCount = prefetchCount;
         }
 
         /// <summary>
