@@ -96,6 +96,7 @@ namespace Rebus.AzureServiceBus.Tests
             var stopwatch = Stopwatch.StartNew();
 
             Configure.With(activator)
+                .Logging(l => l.Console(LogLevel.Info))
                 .Transport(t =>
                 {
                     t.UseAzureServiceBus(StandardAzureServiceBusTransportFactory.ConnectionString, _queueName)
