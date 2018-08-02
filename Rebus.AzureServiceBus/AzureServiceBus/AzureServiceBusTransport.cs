@@ -86,7 +86,7 @@ namespace Rebus.AzureServiceBus
                     topic,
                     retryPolicy: DefaultRetryStrategy
                 );
-                _disposables.Push(topicClient.AsDisposable(t => AsyncHelpers.RunSync(t.CloseAsync)));
+                _disposables.Push(topicClient.AsDisposable(t => AsyncHelpers.RunSync(async () => await t.CloseAsync().ConfigureAwait(false))));
                 return topicClient;
             });
 
@@ -97,7 +97,7 @@ namespace Rebus.AzureServiceBus
                     queue,
                     retryPolicy: DefaultRetryStrategy
                 );
-                _disposables.Push(messageSender.AsDisposable(t => AsyncHelpers.RunSync(t.CloseAsync)));
+                _disposables.Push(messageSender.AsDisposable(t => AsyncHelpers.RunSync(async () => await t.CloseAsync().ConfigureAwait(false))));
                 return messageSender;
             });
 
@@ -105,7 +105,7 @@ namespace Rebus.AzureServiceBus
             {
                 try
                 {
-                    AsyncHelpers.RunSync(() => ManagementExtensions.PurgeQueue(connectionString, queueName));
+                    AsyncHelpers.RunSync(async () => await ManagementExtensions.PurgeQueue(connectionString, queueName).ConfigureAwait(false));
                 }
                 catch (Exception exception)
                 {
@@ -967,7 +967,8 @@ namespace Rebus.AzureServiceBus
                     _connectionString,
                     Address,
                     receiveMode: ReceiveMode.PeekLock,
-                    retryPolicy: DefaultRetryStrategy
+                    retryPolicy: DefaultRetryStrategy,
+                    prefetchCount: _prefetchCount
                 );
 
                 _disposables.Push(_messageReceiver.AsDisposable(m => AsyncHelpers.RunSync(async () => await m.CloseAsync().ConfigureAwait(false))));

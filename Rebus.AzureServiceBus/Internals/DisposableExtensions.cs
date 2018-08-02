@@ -1,5 +1,4 @@
 ﻿using System;
-using System.ComponentModel;
 
 namespace Rebus.Internals
 {
@@ -10,7 +9,7 @@ namespace Rebus.Internals
         class Disposable : IDisposable
         {
             readonly Action _action;
-            public Disposable(Action action) => _action = action;
+            public Disposable(Action action) => _action = action ?? throw new ArgumentNullException(nameof(action));
             public void Dispose() => _action();
         }
     }
