@@ -5,9 +5,7 @@ using FluentAssertions;
 using Microsoft.Azure.ServiceBus;
 using NUnit.Framework;
 using Rebus.Activation;
-using Rebus.AzureServiceBus.Tests.Extensions;
 using Rebus.AzureServiceBus.Tests.Factories;
-using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Logging;
 using Rebus.Tests.Contracts;
@@ -33,17 +31,16 @@ namespace Rebus.AzureServiceBus.Tests
         [Test]
         [TestCase(5)]
         [TestCase(10)]
+        [Ignore("Don't think this is relevant anymore, as it doesn't seem like the new client supports specifying a receive timeout in the connection string")]
         public async Task DoesntIgnoreDefinedTimeoutWhenReceiving(int operationTimeoutInSeconds)
         {
-
             var operationTimeout = TimeSpan.FromSeconds(operationTimeoutInSeconds);
 
             var connString = AzureServiceBusTransportFactory.ConnectionString;
             var builder = new ServiceBusConnectionStringBuilder(connString)
             {
-            //    OperationTimeout = operationTimeout
+            //    OperationTimeout = operationTimeout,
             };
-            throw new NotImplementedException("Figure out how to do this");
 
             var newConnString = builder.ToString();
 
@@ -51,6 +48,8 @@ namespace Rebus.AzureServiceBus.Tests
             var transport = new AzureServiceBusTransport(newConnString, QueueName, consoleLoggerFactory, new TplAsyncTaskFactory(consoleLoggerFactory));
 
             Using(transport);
+
+            transport.Initialize();
 
             transport.PurgeInputQueue();
             //Create the queue for the receiver since it cannot create it self beacuse of lacking rights on the namespace

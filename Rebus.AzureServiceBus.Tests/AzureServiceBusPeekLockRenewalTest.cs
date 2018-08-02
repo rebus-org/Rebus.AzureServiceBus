@@ -1,10 +1,8 @@
 ﻿using System;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Activation;
-using Rebus.AzureServiceBus.Tests.Extensions;
 using Rebus.AzureServiceBus.Tests.Factories;
 using Rebus.Bus;
 using Rebus.Config;
@@ -33,11 +31,10 @@ namespace Rebus.AzureServiceBus.Tests
         protected override void SetUp()
         {
             _transport = new AzureServiceBusTransport(ConnectionString, QueueName, _consoleLoggerFactory, new TplAsyncTaskFactory(_consoleLoggerFactory));
-
-            Using(_transport);
-
+            
+            Using(_transport); 
+            
             _transport.PurgeInputQueue();
-
             _transport.Initialize();
 
             _activator = new BuiltinHandlerActivator();
@@ -58,6 +55,8 @@ namespace Rebus.AzureServiceBus.Tests
         [Test, Ignore("Can be used to check silencing behavior when receive errors occur")]
         public void ReceiveExceptions()
         {
+            Using(_transport);
+
             Thread.Sleep(TimeSpan.FromMinutes(10));
         }
 
@@ -84,7 +83,7 @@ namespace Rebus.AzureServiceBus.Tests
             gotMessage.WaitOrDie(TimeSpan.FromMinutes(6.5));
 
             // shut down bus
-            CleanUpDisposables();
+            _bus.Dispose();
 
             // see if queue is empty
             using (var scope = new RebusTransactionScope())

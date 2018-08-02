@@ -55,7 +55,7 @@ namespace Rebus.AzureServiceBus
         readonly IAsyncTaskFactory _asyncTaskFactory;
         readonly ManagementClient _managementClient;
         readonly string _connectionString;
-        
+
         readonly Action _purgeInputQueue;
         readonly ILog _log;
 
@@ -74,7 +74,11 @@ namespace Rebus.AzureServiceBus
             _asyncTaskFactory = asyncTaskFactory ?? throw new ArgumentNullException(nameof(asyncTaskFactory));
             _log = rebusLoggerFactory.GetLogger<AzureServiceBusTransport>();
             _managementClient = new ManagementClient(connectionString);
-            
+
+            _receiveTimeout = _connectionString.Contains("OperationTimeout")
+                ? default(TimeSpan?)
+                : TimeSpan.FromSeconds(5);
+
             _getTopicClient = topic => _topicClients.GetOrAdd(topic, _ =>
             {
                 var topicClient = new TopicClient(
@@ -141,7 +145,7 @@ namespace Rebus.AzureServiceBus
         //readonly Ignorant _ignorant = new Ignorant();
 
         //readonly ConcurrentQueue<BrokeredMessage> _prefetchQueue = new ConcurrentQueue<BrokeredMessage>();
-        //readonly TimeSpan? _receiveTimeout;
+        readonly TimeSpan? _receiveTimeout;
 
         //bool _prefetchingEnabled;
         //int _numberOfMessagesToPrefetch;
@@ -606,7 +610,7 @@ namespace Rebus.AzureServiceBus
             {
                 var normalizedTopic = topic.ToValidAzureServiceBusEntityName();
 
-                return new[] {$"{MagicSubscriptionPrefix}{normalizedTopic}"};
+                return new[] { $"{MagicSubscriptionPrefix}{normalizedTopic}" };
             });
         }
 
@@ -806,7 +810,14 @@ namespace Rebus.AzureServiceBus
                             {
                                 var list = batch.Select(GetMessage).ToList();
 
-                                await _getTopicClient(topicName).SendAsync(list);
+                                try
+                                {
+                                    await _getTopicClient(topicName).SendAsync(list);
+                                }
+                                catch (Exception exception)
+                                {
+                                    throw new RebusApplicationException(exception, $"Could not publish to topic '{topicName}'");
+                                }
                             }
                         }
                         else
@@ -815,7 +826,14 @@ namespace Rebus.AzureServiceBus
                             {
                                 var list = batch.Select(GetMessage).ToList();
 
-                                await _getMessageSender(destinationQueue).SendAsync(list);
+                                try
+                                {
+                                    await _getMessageSender(destinationQueue).SendAsync(list);
+                                }
+                                catch (Exception exception)
+                                {
+                                    throw new RebusApplicationException(exception, $"Could not send to queue '{destinationQueue}'");
+                                }
                             }
                         }
 
@@ -843,7 +861,7 @@ namespace Rebus.AzureServiceBus
         /// </summary>
         public async Task<TransportMessage> Receive(ITransactionContext context, CancellationToken cancellationToken)
         {
-            var message = await _messageReceiver.ReceiveAsync(TimeSpan.FromSeconds(2));
+            var message = await ReceiveInternal();
 
             if (message == null) return null;
 
@@ -899,6 +917,20 @@ namespace Rebus.AzureServiceBus
             }
 
             return new TransportMessage(headers, body);
+        }
+
+        async Task<Message> ReceiveInternal()
+        {
+            try
+            {
+                return _receiveTimeout.HasValue
+                    ? await _messageReceiver.ReceiveAsync(_receiveTimeout.Value)
+                    : await _messageReceiver.ReceiveAsync();
+            }
+            catch (MessagingEntityNotFoundException exception)
+            {
+                throw new RebusApplicationException(exception, $"Could not receive next message from queue '{Address}'");
+            }
         }
 
         async Task RenewPeekLock(string messageId, Message message)

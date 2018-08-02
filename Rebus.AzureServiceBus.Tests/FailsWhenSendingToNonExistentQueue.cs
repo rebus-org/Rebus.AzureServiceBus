@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Linq;
+using Microsoft.Azure.ServiceBus;
 using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.AzureServiceBus.Tests.Factories;
 using Rebus.Config;
+using Rebus.Exceptions;
 using Rebus.Tests;
 using Rebus.Tests.Contracts;
 
@@ -25,37 +27,20 @@ namespace Rebus.AzureServiceBus.Tests
                 .Transport(t => t.UseAzureServiceBus(ConnectionString, "bimmelim"))
                 .Start();
 
-            var exception = Assert.Throws<AggregateException>(() =>
+            var exception = Assert.ThrowsAsync<RebusApplicationException>(async () =>
             {
-                activator.Bus.Advanced.Routing.Send("yunoexist", "hej med dig min ven!").Wait();
+                await activator.Bus.Advanced.Routing.Send("yunoexist", "hej med dig min ven!");
             });
 
-            throw new NotImplementedException("Figure out how to do this");
+            Console.WriteLine(exception);
 
-            //var notFoundException = exception.InnerExceptions
-            //    .OfType<MessagingException>()
-            //    .Single();
+            var notFoundException = (MessagingEntityNotFoundException) exception.InnerException;
 
-            //Console.WriteLine(notFoundException);
+            Console.WriteLine(notFoundException);
 
-            //var bimse = notFoundException.ToString();
+            var bimse = notFoundException.ToString();
 
 
-        }
-
-        [Test]
-        public void ExceptionsWithOverriddenToString()
-        {
-            throw new NotImplementedException("Figure out how to do this");
-
-//            var typesWithOverriddenToStringMethod = typeof(MessagingException).Assembly.GetTypes()
-//                .Where(typeof (MessagingException).IsAssignableFrom)
-//                .Where(exceptionType => exceptionType.GetMethod("ToString", new Type[0]).DeclaringType == exceptionType)
-//                .ToList();
-
-//            Console.WriteLine($@"Here they are:
-
-//{string.Join(Environment.NewLine, typesWithOverriddenToStringMethod)}");
         }
     }
 }

@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Threading.Tasks;
+using Microsoft.Azure.ServiceBus.Management;
 using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.AzureServiceBus.Tests.Factories;
@@ -12,28 +14,26 @@ namespace Rebus.AzureServiceBus.Tests
     public class NotCreatingQueueTest : FixtureBase
     {
         [Test]
-        public void ShouldNotCreateInputQueueWhenConfiguredNotTo()
+        public async Task ShouldNotCreateInputQueueWhenConfiguredNotTo()
         {
-            throw new NotImplementedException("Figure out how to do this");
+            var connectionString = AzureServiceBusTransportFactory.ConnectionString;
+            var managementClient = new ManagementClient(connectionString);
+            var queueName = Guid.NewGuid().ToString("N");
 
-            //var connectionString = AzureServiceBusTransportFactory.ConnectionString;
-            //var manager = NamespaceManager.CreateFromConnectionString(connectionString);
-            //var queueName = Guid.NewGuid().ToString("N");
+            Assert.IsFalse(await managementClient.QueueExistsAsync(queueName));
 
-            //Assert.IsFalse(manager.QueueExists(queueName));
+            var activator = Using(new BuiltinHandlerActivator());
 
-            //var activator = Using(new BuiltinHandlerActivator());
+            Configure.With(activator)
+                .Logging(l => l.ColoredConsole())
+                .Transport(t =>
+                {
+                    t.UseAzureServiceBus(connectionString, queueName)
+                        .DoNotCreateQueues();
+                })
+                .Start();
 
-            //Configure.With(activator)
-            //    .Logging(l => l.ColoredConsole())
-            //    .Transport(t =>
-            //    {
-            //        t.UseAzureServiceBus(connectionString, queueName)
-            //            .DoNotCreateQueues();
-            //    })
-            //    .Start();
-
-            //Assert.IsFalse(manager.QueueExists(queueName));
+            Assert.IsFalse(await managementClient.QueueExistsAsync(queueName));
         }
     }
 }
