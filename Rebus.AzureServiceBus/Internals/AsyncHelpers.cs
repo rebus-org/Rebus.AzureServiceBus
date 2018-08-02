@@ -11,7 +11,7 @@ namespace Rebus.Internals
         public static TResult ReturnSync<TResult>(Func<Task<TResult>> task)
         {
             var result = default(TResult);
-            RunSync(async () => result = await task());
+            RunSync(async () => result = await task().ConfigureAwait(false));
             return result;
         }
 
@@ -50,8 +50,7 @@ namespace Rebus.Internals
 
             public CustomSynchronizationContext(Func<Task> task)
             {
-                if (task == null) throw new ArgumentNullException(nameof(task), "Please remember to pass a Task to be executed");
-                _task = task;
+                _task = task ?? throw new ArgumentNullException(nameof(task), "Please remember to pass a Task to be executed");
             }
 
             public override void Post(SendOrPostCallback function, object state)

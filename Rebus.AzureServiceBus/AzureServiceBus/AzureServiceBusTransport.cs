@@ -623,7 +623,7 @@ namespace Rebus.AzureServiceBus
             VerifyIsOwnInputQueueAddress(subscriberAddress);
 
             var normalizedTopic = topic.ToValidAzureServiceBusEntityName();
-            var topicDescription = await EnsureTopicExists(normalizedTopic);
+            var topicDescription = await EnsureTopicExists(normalizedTopic).ConfigureAwait(false);
             var messageSender = _getMessageSender(Address);
 
             var inputQueuePath = messageSender.Path;
@@ -634,7 +634,7 @@ namespace Rebus.AzureServiceBus
 
             subscription.ForwardTo = inputQueuePath;
 
-            await _managementClient.UpdateSubscriptionAsync(subscription);
+            await _managementClient.UpdateSubscriptionAsync(subscription).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -645,7 +645,7 @@ namespace Rebus.AzureServiceBus
             VerifyIsOwnInputQueueAddress(subscriberAddress);
 
             var normalizedTopic = topic.ToValidAzureServiceBusEntityName();
-            var topicDescription = await EnsureTopicExists(normalizedTopic);
+            var topicDescription = await EnsureTopicExists(normalizedTopic).ConfigureAwait(false);
             var topicPath = topicDescription.Path;
             var subscriptionName = GetSubscriptionName();
 
@@ -663,11 +663,11 @@ namespace Rebus.AzureServiceBus
         {
             try
             {
-                return await _managementClient.CreateSubscriptionAsync(topicPath, subscriptionName);
+                return await _managementClient.CreateSubscriptionAsync(topicPath, subscriptionName).ConfigureAwait(false);
             }
             catch (MessagingEntityAlreadyExistsException)
             {
-                return await _managementClient.GetSubscriptionAsync(topicPath, subscriptionName);
+                return await _managementClient.GetSubscriptionAsync(topicPath, subscriptionName).ConfigureAwait(false);
             }
         }
 
@@ -693,11 +693,11 @@ namespace Rebus.AzureServiceBus
         {
             try
             {
-                return await _managementClient.CreateTopicAsync(normalizedTopic);
+                return await _managementClient.CreateTopicAsync(normalizedTopic).ConfigureAwait(false);
             }
             catch (MessagingEntityAlreadyExistsException)
             {
-                return await _managementClient.GetTopicAsync(normalizedTopic);
+                return await _managementClient.GetTopicAsync(normalizedTopic).ConfigureAwait(false);
             }
             catch (Exception exception)
             {
@@ -716,13 +716,13 @@ namespace Rebus.AzureServiceBus
                 return;
             }
 
-            if (AsyncHelpers.ReturnSync(() => _managementClient.QueueExistsAsync(address))) return;
+            if (AsyncHelpers.ReturnSync(async () => await _managementClient.QueueExistsAsync(address).ConfigureAwait(false))) return;
 
             try
             {
                 _log.Info("Creating ASB queue {queueName}", address);
 
-                AsyncHelpers.RunSync(() => _managementClient.CreateQueueIfNotExistsAsync(address));
+                AsyncHelpers.RunSync(async () => await _managementClient.CreateQueueIfNotExistsAsync(address).ConfigureAwait(false));
             }
             catch (Exception exception)
             {
@@ -812,7 +812,7 @@ namespace Rebus.AzureServiceBus
 
                                 try
                                 {
-                                    await _getTopicClient(topicName).SendAsync(list);
+                                    await _getTopicClient(topicName).SendAsync(list).ConfigureAwait(false);
                                 }
                                 catch (Exception exception)
                                 {
@@ -828,7 +828,7 @@ namespace Rebus.AzureServiceBus
 
                                 try
                                 {
-                                    await _getMessageSender(destinationQueue).SendAsync(list);
+                                    await _getMessageSender(destinationQueue).SendAsync(list).ConfigureAwait(false);
                                 }
                                 catch (Exception exception)
                                 {
@@ -837,7 +837,7 @@ namespace Rebus.AzureServiceBus
                             }
                         }
 
-                    }));
+                    })).ConfigureAwait(false);
                 });
 
                 return messagesToSend;
@@ -861,17 +861,36 @@ namespace Rebus.AzureServiceBus
         /// </summary>
         public async Task<TransportMessage> Receive(ITransactionContext context, CancellationToken cancellationToken)
         {
-            var message = await ReceiveInternal();
+            var message = await ReceiveInternal().ConfigureAwait(false);
 
             if (message == null) return null;
 
             var lockToken = message.SystemProperties.LockToken;
+            var messageId = message.MessageId;
+
+            if (AutomaticallyRenewPeekLock && !_prefetchingEnabled)
+            {
+                var now = DateTime.UtcNow;
+                var leaseDuration = message.SystemProperties.LockedUntilUtc - now;
+                var lockRenewalInterval = TimeSpan.FromMinutes(0.5 * leaseDuration.TotalMinutes);
+
+                var renewalTask = _asyncTaskFactory
+                    .Create($"RenewPeekLock-{messageId}",
+                        async () =>
+                        {
+                            await RenewPeekLock(messageId, lockToken).ConfigureAwait(false);
+                        },
+                        intervalSeconds: (int)lockRenewalInterval.TotalSeconds,
+                        prettyInsignificant: true);
+                
+                context.OnCommitted(async () => renewalTask.Dispose());
+            }
 
             context.OnCompleted(async () =>
             {
                 try
                 {
-                    await _messageReceiver.CompleteAsync(lockToken);
+                    await _messageReceiver.CompleteAsync(lockToken).ConfigureAwait(false);
                 }
                 catch (Exception exception)
                 {
@@ -884,7 +903,7 @@ namespace Rebus.AzureServiceBus
             {
                 try
                 {
-                    AsyncHelpers.RunSync(() => _messageReceiver.AbandonAsync(lockToken));
+                    AsyncHelpers.RunSync(async () => await _messageReceiver.AbandonAsync(lockToken).ConfigureAwait(false));
                 }
                 catch (Exception exception)
                 {
@@ -893,28 +912,9 @@ namespace Rebus.AzureServiceBus
                 }
             });
 
-            var messageId = message.MessageId;
             var userProperties = message.UserProperties;
             var headers = userProperties.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ToString());
             var body = message.Body;
-
-            if (AutomaticallyRenewPeekLock && !_prefetchingEnabled)
-            {
-                var now = DateTime.UtcNow;
-                var leaseDuration = message.SystemProperties.LockedUntilUtc - now;
-                var lockRenewalInterval = TimeSpan.FromMinutes(0.5 * leaseDuration.TotalMinutes);
-
-                var renewalTask = _asyncTaskFactory
-                    .Create($"RenewPeekLock-{messageId}",
-                        async () =>
-                        {
-                            await RenewPeekLock(messageId, message).ConfigureAwait(false);
-                        },
-                        intervalSeconds: (int)lockRenewalInterval.TotalSeconds,
-                        prettyInsignificant: true);
-
-                context.OnCommitted(async () => renewalTask.Dispose());
-            }
 
             return new TransportMessage(headers, body);
         }
@@ -924,8 +924,8 @@ namespace Rebus.AzureServiceBus
             try
             {
                 return _receiveTimeout.HasValue
-                    ? await _messageReceiver.ReceiveAsync(_receiveTimeout.Value)
-                    : await _messageReceiver.ReceiveAsync();
+                    ? await _messageReceiver.ReceiveAsync(_receiveTimeout.Value).ConfigureAwait(false)
+                    : await _messageReceiver.ReceiveAsync().ConfigureAwait(false);
             }
             catch (MessagingEntityNotFoundException exception)
             {
@@ -933,13 +933,13 @@ namespace Rebus.AzureServiceBus
             }
         }
 
-        async Task RenewPeekLock(string messageId, Message message)
+        async Task RenewPeekLock(string messageId, string lockToken)
         {
-            _log.Info("Renewing peek lock for message with ID {0}", messageId);
+            _log.Info("Renewing peek lock for message with ID {messageId}", messageId);
 
             try
             {
-                await _messageReceiver.RenewLockAsync(message).ConfigureAwait(false);
+                await _messageReceiver.RenewLockAsync(lockToken).ConfigureAwait(false);
             }
             catch (MessageLockLostException)
             {
@@ -970,7 +970,7 @@ namespace Rebus.AzureServiceBus
                     retryPolicy: DefaultRetryStrategy
                 );
 
-                _disposables.Push(_messageReceiver.AsDisposable(m => AsyncHelpers.RunSync(m.CloseAsync)));
+                _disposables.Push(_messageReceiver.AsDisposable(m => AsyncHelpers.RunSync(async () => await m.CloseAsync().ConfigureAwait(false))));
 
                 return;
             }

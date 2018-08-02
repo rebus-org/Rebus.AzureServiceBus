@@ -40,8 +40,7 @@ namespace Rebus.AzureServiceBus.Tests
             _activator = new BuiltinHandlerActivator();
 
             _bus = Configure.With(_activator)
-                .Transport(t => t.UseAzureServiceBus(ConnectionString, QueueName)
-                .AutomaticallyRenewPeekLock())
+                .Transport(t => t.UseAzureServiceBus(ConnectionString, QueueName).AutomaticallyRenewPeekLock())
                 .Options(o =>
                 {
                     o.SetNumberOfWorkers(1);
@@ -90,13 +89,13 @@ namespace Rebus.AzureServiceBus.Tests
             {
                 var message = await _transport.Receive(scope.TransactionContext, new CancellationTokenSource().Token);
 
+                await scope.CompleteAsync();
+
                 if (message != null)
                 {
                     throw new AssertionException(
                         $"Did not expect to receive a message - got one with ID {message.Headers.GetValue(Headers.MessageId)}");    
                 }
-
-                await scope.CompleteAsync();
             }
         }
     }

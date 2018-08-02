@@ -15,7 +15,7 @@ namespace Rebus.Internals
         {
             try
             {
-                await client.DeleteQueueAsync(queuePath, cancellationToken);
+                await client.DeleteQueueAsync(queuePath, cancellationToken).ConfigureAwait(false);
             }
             catch (MessagingEntityNotFoundException)
             {
@@ -27,7 +27,7 @@ namespace Rebus.Internals
         {
             try
             {
-                await client.CreateQueueAsync(queuePath, cancellationToken);
+                await client.CreateQueueAsync(queuePath, cancellationToken).ConfigureAwait(false);
             }
             catch (MessagingEntityAlreadyExistsException)
             {
@@ -43,7 +43,7 @@ namespace Rebus.Internals
             {
                 while (true)
                 {
-                    var messages = await messageReceiver.ReceiveAsync(100, TimeSpan.FromSeconds(2));
+                    var messages = await messageReceiver.ReceiveAsync(100, TimeSpan.FromSeconds(2)).ConfigureAwait(false);
 
                     if (messages == null) break;
                     if (!messages.Any()) break;
@@ -55,7 +55,7 @@ namespace Rebus.Internals
             }
             finally
             {
-                await messageReceiver.CloseAsync();
+                await messageReceiver.CloseAsync().ConfigureAwait(false);
             }
         }
     }
