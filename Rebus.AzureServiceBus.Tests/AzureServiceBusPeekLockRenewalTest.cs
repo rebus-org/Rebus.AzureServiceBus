@@ -31,11 +31,11 @@ namespace Rebus.AzureServiceBus.Tests
         protected override void SetUp()
         {
             _transport = new AzureServiceBusTransport(ConnectionString, QueueName, _consoleLoggerFactory, new TplAsyncTaskFactory(_consoleLoggerFactory));
-            
-            Using(_transport); 
-            
-            _transport.PurgeInputQueue();
+
+            Using(_transport);
+
             _transport.Initialize();
+            _transport.PurgeInputQueue();
 
             _activator = new BuiltinHandlerActivator();
 
@@ -64,9 +64,9 @@ namespace Rebus.AzureServiceBus.Tests
         {
             var gotMessage = new ManualResetEvent(false);
 
-            _activator.Handle<string>(async str =>
+            _activator.Handle<string>(async (bus, context, message) =>
             {
-                Console.WriteLine("waiting 6 minutes....");
+                Console.WriteLine($"Got message with ID {context.Headers.GetValue(Headers.MessageId)} - waiting 6 minutes....");
 
                 // longer than the longest asb peek lock in the world...
                 //await Task.Delay(TimeSpan.FromSeconds(3));
@@ -87,14 +87,14 @@ namespace Rebus.AzureServiceBus.Tests
             // see if queue is empty
             using (var scope = new RebusTransactionScope())
             {
-                var message = await _transport.Receive(scope.TransactionContext, new CancellationTokenSource().Token);
+                var message = await _transport.Receive(scope.TransactionContext, CancellationToken.None);
 
                 await scope.CompleteAsync();
 
                 if (message != null)
                 {
                     throw new AssertionException(
-                        $"Did not expect to receive a message - got one with ID {message.Headers.GetValue(Headers.MessageId)}");    
+                        $"Did not expect to receive a message - got one with ID {message.Headers.GetValue(Headers.MessageId)}");
                 }
             }
         }

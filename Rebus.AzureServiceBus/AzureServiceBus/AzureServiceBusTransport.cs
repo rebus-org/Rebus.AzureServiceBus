@@ -682,18 +682,21 @@ namespace Rebus.AzureServiceBus
                 return;
             }
 
-            if (AsyncHelpers.ReturnSync(async () => await _managementClient.QueueExistsAsync(address).ConfigureAwait(false))) return;
-
-            try
+            AsyncHelpers.RunSync(async () =>
             {
-                _log.Info("Creating ASB queue {queueName}", address);
+                if (await _managementClient.QueueExistsAsync(address).ConfigureAwait(false)) return;
 
-                AsyncHelpers.RunSync(async () => await _managementClient.CreateQueueIfNotExistsAsync(address).ConfigureAwait(false));
-            }
-            catch (Exception exception)
-            {
-                throw new ArgumentException($"Could not create ASB queue '{address}'", exception);
-            }
+                try
+                {
+                    _log.Info("Creating ASB queue {queueName}", address);
+
+                    await _managementClient.CreateQueueIfNotExistsAsync(address).ConfigureAwait(false);
+                }
+                catch (Exception exception)
+                {
+                    throw new ArgumentException($"Could not create ASB queue '{address}'", exception);
+                }
+            });
         }
 
         /// <inheritdoc />
@@ -819,6 +822,11 @@ namespace Rebus.AzureServiceBus
 
             if (message == null) return null;
 
+            if (!message.SystemProperties.IsLockTokenSet)
+            {
+                throw new RebusApplicationException($"OMG that's weird - message with ID {message.MessageId} does not have a lock token!");
+            }
+
             var lockToken = message.SystemProperties.LockToken;
             var messageId = message.MessageId;
 
@@ -826,7 +834,7 @@ namespace Rebus.AzureServiceBus
             {
                 var now = DateTime.UtcNow;
                 var leaseDuration = message.SystemProperties.LockedUntilUtc - now;
-                var lockRenewalInterval = TimeSpan.FromMinutes(0.5 * leaseDuration.TotalMinutes);
+                var lockRenewalInterval = TimeSpan.FromMinutes(0.7 * leaseDuration.TotalMinutes);
 
                 var renewalTask = _asyncTaskFactory
                     .Create($"RenewPeekLock-{messageId}",
@@ -838,6 +846,8 @@ namespace Rebus.AzureServiceBus
                         prettyInsignificant: true);
                 
                 context.OnCommitted(async () => renewalTask.Dispose());
+
+                renewalTask.Start();
             }
 
             context.OnCompleted(async () =>
@@ -895,9 +905,10 @@ namespace Rebus.AzureServiceBus
             {
                 await _messageReceiver.RenewLockAsync(lockToken).ConfigureAwait(false);
             }
-            catch (MessageLockLostException)
+            catch (MessageLockLostException exception)
             {
-                // if we get this, it is because the message has been handled
+                // if we get this, it is probably because the message has been handled
+                _log.Error(exception, "Could not renew lock for message with ID {messageId} and lock token {lockToken}", messageId, lockToken);
             }
         }
 
@@ -915,6 +926,7 @@ namespace Rebus.AzureServiceBus
             if (Address != null)
             {
                 _log.Info("Initializing Azure Service Bus transport with queue {queueName}", Address);
+                
                 CreateQueue(Address);
 
                 _messageReceiver = new MessageReceiver(
