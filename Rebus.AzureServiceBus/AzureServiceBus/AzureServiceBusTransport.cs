@@ -17,6 +17,9 @@ using Rebus.Threading;
 using Rebus.Transport;
 using Message = Microsoft.Azure.ServiceBus.Message;
 // ReSharper disable RedundantArgumentDefaultValue
+// ReSharper disable ArgumentsStyleNamedExpression
+// ReSharper disable ArgumentsStyleOther
+// ReSharper disable ArgumentsStyleLiteral
 #pragma warning disable 1998
 
 namespace Rebus.AzureServiceBus
@@ -50,13 +53,10 @@ namespace Rebus.AzureServiceBus
         readonly ConcurrentStack<IDisposable> _disposables = new ConcurrentStack<IDisposable>();
         readonly ConcurrentDictionary<string, MessageSender> _messageSenders = new ConcurrentDictionary<string, MessageSender>();
         readonly ConcurrentDictionary<string, TopicClient> _topicClients = new ConcurrentDictionary<string, TopicClient>();
-        readonly Func<string, MessageSender> _getMessageSender;
-        readonly Func<string, TopicClient> _getTopicClient;
         readonly IAsyncTaskFactory _asyncTaskFactory;
         readonly ManagementClient _managementClient;
         readonly string _connectionString;
 
-        readonly Action _purgeInputQueue;
         readonly ILog _log;
 
         MessageReceiver _messageReceiver;
@@ -78,40 +78,6 @@ namespace Rebus.AzureServiceBus
             _receiveTimeout = _connectionString.Contains("OperationTimeout")
                 ? default(TimeSpan?)
                 : TimeSpan.FromSeconds(5);
-
-            _getTopicClient = topic => _topicClients.GetOrAdd(topic, _ =>
-            {
-                var topicClient = new TopicClient(
-                    connectionString,
-                    topic,
-                    retryPolicy: DefaultRetryStrategy
-                );
-                _disposables.Push(topicClient.AsDisposable(t => AsyncHelpers.RunSync(async () => await t.CloseAsync().ConfigureAwait(false))));
-                return topicClient;
-            });
-
-            _getMessageSender = queue => _messageSenders.GetOrAdd(queue, _ =>
-            {
-                var messageSender = new MessageSender(
-                    connectionString,
-                    queue,
-                    retryPolicy: DefaultRetryStrategy
-                );
-                _disposables.Push(messageSender.AsDisposable(t => AsyncHelpers.RunSync(async () => await t.CloseAsync().ConfigureAwait(false))));
-                return messageSender;
-            });
-
-            _purgeInputQueue = () =>
-            {
-                try
-                {
-                    AsyncHelpers.RunSync(async () => await ManagementExtensions.PurgeQueue(connectionString, queueName).ConfigureAwait(false));
-                }
-                catch (Exception exception)
-                {
-                    throw new ArgumentException($"Could not purge queue '{queueName}'", exception);
-                }
-            };
         }
 
         //static readonly TimeSpan[] RetryWaitTimes =
@@ -624,7 +590,7 @@ namespace Rebus.AzureServiceBus
 
             var normalizedTopic = topic.ToValidAzureServiceBusEntityName();
             var topicDescription = await EnsureTopicExists(normalizedTopic).ConfigureAwait(false);
-            var messageSender = _getMessageSender(Address);
+            var messageSender = GetMessageSender(Address);
 
             var inputQueuePath = messageSender.Path;
             var topicPath = topicDescription.Path;
@@ -812,7 +778,7 @@ namespace Rebus.AzureServiceBus
 
                                 try
                                 {
-                                    await _getTopicClient(topicName).SendAsync(list).ConfigureAwait(false);
+                                    await GetTopicClient(topicName).SendAsync(list).ConfigureAwait(false);
                                 }
                                 catch (Exception exception)
                                 {
@@ -828,7 +794,7 @@ namespace Rebus.AzureServiceBus
 
                                 try
                                 {
-                                    await _getMessageSender(destinationQueue).SendAsync(list).ConfigureAwait(false);
+                                    await GetMessageSender(destinationQueue).SendAsync(list).ConfigureAwait(false);
                                 }
                                 catch (Exception exception)
                                 {
@@ -842,18 +808,6 @@ namespace Rebus.AzureServiceBus
 
                 return messagesToSend;
             });
-        }
-
-        class OutgoingMessage
-        {
-            public string DestinationAddress { get; }
-            public TransportMessage TransportMessage { get; }
-
-            public OutgoingMessage(string destinationAddress, TransportMessage transportMessage)
-            {
-                DestinationAddress = destinationAddress;
-                TransportMessage = transportMessage;
-            }
         }
 
         /// <summary>
@@ -1003,7 +957,17 @@ namespace Rebus.AzureServiceBus
         /// <summary>
         /// Purges the input queue by receiving all messages as quickly as possible
         /// </summary>
-        public void PurgeInputQueue() => _purgeInputQueue();
+        public void PurgeInputQueue()
+        {
+            var queueName = Address;
+
+            if (string.IsNullOrWhiteSpace(queueName))
+            {
+                throw new InvalidOperationException("Cannot 'purge input queue' because there's no input queue name – it's most likely because this is a one-way client, and hence there is no input queue");
+            }
+
+            PurgeQueue(queueName);
+        }
 
         /// <summary>
         /// Configures the transport to prefetch the specified number of messages into an in-mem queue for processing, disabling automatic peek lock renewal
@@ -1028,6 +992,59 @@ namespace Rebus.AzureServiceBus
             {
                 disposable.Dispose();
             }
+        }
+
+        void PurgeQueue(string queueName)
+        {
+            try
+            {
+                AsyncHelpers.RunSync(async () =>
+                    await ManagementExtensions.PurgeQueue(_connectionString, queueName).ConfigureAwait(false));
+            }
+            catch (Exception exception)
+            {
+                throw new ArgumentException($"Could not purge queue '{queueName}'", exception);
+            }
+        }
+
+        IMessageSender GetMessageSender(string queue)
+        {
+            return _messageSenders.GetOrAdd(queue, _ =>
+            {
+                var messageSender = new MessageSender(
+                    _connectionString,
+                    queue,
+                    retryPolicy: DefaultRetryStrategy
+                );
+                _disposables.Push(messageSender.AsDisposable(t => AsyncHelpers.RunSync(async () => await t.CloseAsync().ConfigureAwait(false))));
+                return messageSender;
+            });
+        }
+
+        ITopicClient GetTopicClient(string topic)
+        {
+            return _topicClients.GetOrAdd(topic, _ =>
+            {
+                var topicClient = new TopicClient(
+                    _connectionString,
+                    topic,
+                    retryPolicy: DefaultRetryStrategy
+                );
+                _disposables.Push(topicClient.AsDisposable(t => AsyncHelpers.RunSync(async () => await t.CloseAsync().ConfigureAwait(false))));
+                return topicClient;
+            });
+        }
+    }
+
+    class OutgoingMessage
+    {
+        public string DestinationAddress { get; }
+        public TransportMessage TransportMessage { get; }
+
+        public OutgoingMessage(string destinationAddress, TransportMessage transportMessage)
+        {
+            DestinationAddress = destinationAddress;
+            TransportMessage = transportMessage;
         }
     }
 }

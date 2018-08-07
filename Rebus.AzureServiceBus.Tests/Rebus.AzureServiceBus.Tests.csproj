@@ -47,7 +47,7 @@
     <Reference Include="System.Configuration" />
   </ItemGroup>
   <ItemGroup>
-    <None Update="asb_connectionstring.txt">
+    <None Update="asb_connection_string.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="asb_connection_string.txt">
