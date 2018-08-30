@@ -434,9 +434,12 @@ namespace Rebus.AzureServiceBus
         /// </summary>
         public async Task<TransportMessage> Receive(ITransactionContext context, CancellationToken cancellationToken)
         {
-            var message = await ReceiveInternal().ConfigureAwait(false);
+            var receivedMessage = await ReceiveInternal().ConfigureAwait(false);
 
-            if (message == null) return null;
+            if (receivedMessage == null) return null;
+
+            var message = receivedMessage.Message;
+            var messageReceiver = receivedMessage.MessageReceiver;
 
             if (!message.SystemProperties.IsLockTokenSet)
             {
@@ -454,10 +457,7 @@ namespace Rebus.AzureServiceBus
 
                 var renewalTask = _asyncTaskFactory
                     .Create($"RenewPeekLock-{messageId}",
-                        async () =>
-                        {
-                            await RenewPeekLock(messageId, lockToken).ConfigureAwait(false);
-                        },
+                        () => RenewPeekLock(messageReceiver, messageId, lockToken),
                         intervalSeconds: (int)lockRenewalInterval.TotalSeconds,
                         prettyInsignificant: true);
 
@@ -470,7 +470,7 @@ namespace Rebus.AzureServiceBus
             {
                 try
                 {
-                    await _messageReceiver.CompleteAsync(lockToken).ConfigureAwait(false);
+                    await messageReceiver.CompleteAsync(lockToken).ConfigureAwait(false);
                 }
                 catch (Exception exception)
                 {
@@ -483,7 +483,7 @@ namespace Rebus.AzureServiceBus
             {
                 try
                 {
-                    AsyncHelpers.RunSync(async () => await _messageReceiver.AbandonAsync(lockToken).ConfigureAwait(false));
+                    AsyncHelpers.RunSync(async () => await messageReceiver.AbandonAsync(lockToken).ConfigureAwait(false));
                 }
                 catch (Exception exception)
                 {
@@ -499,13 +499,19 @@ namespace Rebus.AzureServiceBus
             return new TransportMessage(headers, body);
         }
 
-        async Task<Message> ReceiveInternal()
+        async Task<ReceivedMessage> ReceiveInternal()
         {
             try
             {
-                return _receiveTimeout.HasValue
-                    ? await _messageReceiver.ReceiveAsync(_receiveTimeout.Value).ConfigureAwait(false)
-                    : await _messageReceiver.ReceiveAsync().ConfigureAwait(false);
+                var messageReceiver = _messageReceiver;
+
+                var message = _receiveTimeout.HasValue
+                    ? await messageReceiver.ReceiveAsync(_receiveTimeout.Value).ConfigureAwait(false)
+                    : await messageReceiver.ReceiveAsync().ConfigureAwait(false);
+
+                return message == null
+                    ? null
+                    : new ReceivedMessage(message, messageReceiver);
             }
             catch (MessagingEntityNotFoundException exception)
             {
@@ -513,13 +519,13 @@ namespace Rebus.AzureServiceBus
             }
         }
 
-        async Task RenewPeekLock(string messageId, string lockToken)
+        async Task RenewPeekLock(IMessageReceiver messageReceiver, string messageId, string lockToken)
         {
             _log.Info("Renewing peek lock for message with ID {messageId}", messageId);
 
             try
             {
-                await _messageReceiver.RenewLockAsync(lockToken).ConfigureAwait(false);
+                await messageReceiver.RenewLockAsync(lockToken).ConfigureAwait(false);
             }
             catch (MessageLockLostException exception)
             {
