@@ -35,9 +35,9 @@ namespace Rebus.AzureServiceBus
         const string OutgoingMessagesKey = "new-azure-service-bus-transport";
 
         /// <summary>
-        /// Subscriber "addresses" are prefixed with this bad boy so we can recognize it and publish to a topic client instead
+        /// Subscriber "addresses" are prefixed with this bad boy so we can recognize them and publish to a topic client instead
         /// </summary>
-        const string MagicSubscriptionPrefix = "###subscription###";
+        const string MagicSubscriptionPrefix = "Topic: ";
 
         /// <summary>
         /// Defines the maximum number of outgoing messages to batch together when sending/publishing
