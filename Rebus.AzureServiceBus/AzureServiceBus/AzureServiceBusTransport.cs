@@ -37,10 +37,10 @@ namespace Rebus.AzureServiceBus
         /// <summary>
         /// Subscriber "addresses" are prefixed with this bad boy so we can recognize it and publish to a topic client instead
         /// </summary>
-        const string MagicSubscriptionPrefix = "subscription/";
+        const string MagicSubscriptionPrefix = "###subscription###";
 
         /// <summary>
-        /// Defines the maxiumum number of outgoing messages to batch together when sending/publishing
+        /// Defines the maximum number of outgoing messages to batch together when sending/publishing
         /// </summary>
         const int DefaultOutgoingBatchSize = 50;
 
@@ -69,6 +69,14 @@ namespace Rebus.AzureServiceBus
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
 
             Address = queueName?.ToLowerInvariant();
+
+            if (Address != null)
+            {
+                if (Address.StartsWith(MagicSubscriptionPrefix))
+                {
+                    throw new ArgumentException($"Sorry, but the queue name '{queueName}' cannot be used because it conflicts with Rebus' internally used 'magic subscription prefix': '{MagicSubscriptionPrefix}'. ");
+                }
+            }
 
             _connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
             _asyncTaskFactory = asyncTaskFactory ?? throw new ArgumentNullException(nameof(asyncTaskFactory));
