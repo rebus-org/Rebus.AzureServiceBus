@@ -1,6 +1,4 @@
-﻿using System.Configuration;
-using Rebus.AzureServiceBus;
-using Rebus.Bus;
+﻿using Rebus.AzureServiceBus;
 using Rebus.Logging;
 using Rebus.Pipeline;
 using Rebus.Pipeline.Receive;
@@ -80,6 +78,8 @@ namespace Rebus.Config
                     transport.AutomaticallyRenewPeekLock = settings.AutomaticPeekLockRenewalEnabled;
                     transport.PartitioningEnabled = settings.PartitioningEnabled;
                     transport.DoNotCreateQueuesEnabled = settings.DoNotCreateQueuesEnabled;
+                    transport.MessageTimeToLive = settings.MessageTimeToLive;
+                    transport.MessagePeekLockDuration = settings.MessagePeekLockDuration;
                     
                     return transport;
                 });
