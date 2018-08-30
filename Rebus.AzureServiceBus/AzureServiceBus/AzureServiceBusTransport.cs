@@ -38,7 +38,7 @@ namespace Rebus.AzureServiceBus
         /// <summary>
         /// Subscriber "addresses" are prefixed with this bad boy so we can recognize them and publish to a topic client instead
         /// </summary>
-        const string MagicSubscriptionPrefix = "Topic: ";
+        const string MagicSubscriptionPrefix = "***Topic***: ";
 
         /// <summary>
         /// Defines the maximum number of outgoing messages to batch together when sending/publishing

@@ -1,14 +1,11 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.ServiceBus.Management;
 using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.AzureServiceBus.Tests.Factories;
 using Rebus.Config;
-using Rebus.Exceptions;
 using Rebus.Injection;
-using Rebus.Tests;
 using Rebus.Tests.Contracts;
 
 namespace Rebus.AzureServiceBus.Tests

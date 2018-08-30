@@ -12,8 +12,8 @@ namespace Rebus.Config
         internal int NumberOfMessagesToPrefetch { get; set; }
         internal bool PartitioningEnabled { get; set; }
         internal bool DoNotCreateQueuesEnabled { get; set; }
-        internal TimeSpan? MessageTimeToLive { get; set; }
         internal bool AutomaticPeekLockRenewalEnabled { get; set; }
+        internal TimeSpan? MessageTimeToLive { get; set; }
         internal TimeSpan? MessagePeekLockDuration { get; set; }
 
         /// <summary>
@@ -27,10 +27,15 @@ namespace Rebus.Config
         }
 
         /// <summary>
-        /// Configures the message TTL for received messages. 
+        /// Configures the default TTL on the input queue. This is the longest messages get to stay in the input queue.
+        /// If a shorter TTL is set on the message when sending it, that TTL is used instead.
         /// </summary>
-        public AzureServiceBusTransportSettings SetMessageTimeToLive(TimeSpan messageTimeToLive)
+        public AzureServiceBusTransportSettings SetDefaultMessageTimeToLive(TimeSpan messageTimeToLive)
         {
+            if (messageTimeToLive < TimeSpan.FromSeconds(1))
+            {
+                throw new ArgumentException($"Default message TTL {messageTimeToLive} cannot be used - it must be at least one second");
+            }
             MessageTimeToLive = messageTimeToLive;
             return this;
         }
@@ -40,11 +45,10 @@ namespace Rebus.Config
         /// </summary>
         public AzureServiceBusTransportSettings SetMessagePeekLockDuration(TimeSpan messagePeekLockDuration)
         {
-            if (messagePeekLockDuration < TimeSpan.FromSeconds(30) || messagePeekLockDuration > TimeSpan.FromMinutes(5))
+            if (messagePeekLockDuration < TimeSpan.FromSeconds(5) || messagePeekLockDuration > TimeSpan.FromMinutes(5))
             {
-                throw new RebusConfigurationException($"Message peek lock duration {messagePeekLockDuration} cannot be used - it must be at least 30 seconds and at most 5 minutes");
+                throw new ArgumentException($"Message peek lock duration {messagePeekLockDuration} cannot be used - it must be at least 5 seconds and at most 5 minutes");
             }
-
             MessagePeekLockDuration = messagePeekLockDuration;
             return this;
         }
