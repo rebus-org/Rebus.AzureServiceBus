@@ -245,17 +245,12 @@ namespace Rebus.AzureServiceBus
 
                     await _managementClient.CreateQueueAsync(queueDescription).ConfigureAwait(false);
                 }
+                catch (MessagingEntityAlreadyExistsException)
+                {
+                    // it's alright man
+                }
                 catch (Exception exception)
                 {
-                    try
-                    {
-                        // if the queue exists now, it's fine
-                        if (await _managementClient.QueueExistsAsync(address).ConfigureAwait(false)) return;
-                    }
-                    catch
-                    {
-                    }
-
                     throw new ArgumentException($"Could not create Azure Service Bus queue '{address}'", exception);
                 }
             });
@@ -514,7 +509,7 @@ namespace Rebus.AzureServiceBus
             }
             catch (MessagingEntityNotFoundException exception)
             {
-                throw new RebusApplicationException(exception, $"Could not receive next message from queue '{Address}'");
+                throw new RebusApplicationException(exception, $"Could not receive next message from Azure Service Bus queue '{Address}'");
             }
         }
 
