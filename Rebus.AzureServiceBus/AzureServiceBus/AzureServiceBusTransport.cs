@@ -213,14 +213,25 @@ namespace Rebus.AzureServiceBus
                     // must be set when the queue is first created
                     queueDescription.EnablePartitioning = PartitioningEnabled;
 
-                    if (MessagePeekLockDuration.HasValue)
+                    if (LockDuration.HasValue)
                     {
-                        queueDescription.LockDuration = MessagePeekLockDuration.Value;
+                        queueDescription.LockDuration = LockDuration.Value;
                     }
 
-                    if (MessageTimeToLive.HasValue)
+                    if (DefaultMessageTimeToLive.HasValue)
                     {
-                        queueDescription.DefaultMessageTimeToLive = MessageTimeToLive.Value;
+                        queueDescription.DefaultMessageTimeToLive = DefaultMessageTimeToLive.Value;
+                    }
+
+                    if (DuplicateDetectionHistoryTimeWindow.HasValue)
+                    {
+                        queueDescription.RequiresDuplicateDetection = true;
+                        queueDescription.DuplicateDetectionHistoryTimeWindow = DuplicateDetectionHistoryTimeWindow.Value;
+                    }
+
+                    if (AutoDeleteOnIdle.HasValue)
+                    {
+                        queueDescription.AutoDeleteOnIdle = AutoDeleteOnIdle.Value;
                     }
                 }
 
@@ -268,25 +279,55 @@ namespace Rebus.AzureServiceBus
                         address, queueDescription.EnablePartitioning, PartitioningEnabled);
                 }
 
-                var updates = new List<string>();
-
-                if (MessageTimeToLive.HasValue)
+                if (DuplicateDetectionHistoryTimeWindow.HasValue)
                 {
-                    var messageTimeToLive = MessageTimeToLive.Value;
-                    if (queueDescription.DefaultMessageTimeToLive != messageTimeToLive)
+                    var duplicateDetectionHistoryTimeWindow = DuplicateDetectionHistoryTimeWindow.Value;
+
+                    if (!queueDescription.RequiresDuplicateDetection ||
+                        queueDescription.DuplicateDetectionHistoryTimeWindow != duplicateDetectionHistoryTimeWindow)
                     {
-                        queueDescription.DefaultMessageTimeToLive = messageTimeToLive;
-                        updates.Add($"DefaultMessageTimeToLive = {messageTimeToLive}");
+                        _log.Warn("The queue {queueName} has RequiresDuplicateDetection={requiresDuplicateDetection}, but the transport has DuplicateDetectionHistoryTimeWindow={duplicateDetectionHistoryTimeWindow}. As this setting cannot be changed after the queue is created, please either make sure the Rebus transport settings are consistent with the queue settings, or delete the queue and let Rebus create it again with the new settings.",
+                            address, queueDescription.RequiresDuplicateDetection, PartitioningEnabled);
+                    }
+                }
+                else
+                {
+                    if (queueDescription.RequiresDuplicateDetection)
+                    {
+                        _log.Warn("The queue {queueName} has RequiresDuplicateDetection={requiresDuplicateDetection}, but the transport has DuplicateDetectionHistoryTimeWindow={duplicateDetectionHistoryTimeWindow}. As this setting cannot be changed after the queue is created, please either make sure the Rebus transport settings are consistent with the queue settings, or delete the queue and let Rebus create it again with the new settings.",
+                            address, queueDescription.RequiresDuplicateDetection, PartitioningEnabled);
                     }
                 }
 
-                if (MessagePeekLockDuration.HasValue)
+                var updates = new List<string>();
+
+                if (DefaultMessageTimeToLive.HasValue)
                 {
-                    var messagePeekLockDuration = MessagePeekLockDuration.Value;
-                    if (queueDescription.LockDuration != messagePeekLockDuration)
+                    var defaultMessageTimeToLive = DefaultMessageTimeToLive.Value;
+                    if (queueDescription.DefaultMessageTimeToLive != defaultMessageTimeToLive)
                     {
-                        queueDescription.LockDuration = messagePeekLockDuration;
-                        updates.Add($"LockDuration = {MessagePeekLockDuration}");
+                        queueDescription.DefaultMessageTimeToLive = defaultMessageTimeToLive;
+                        updates.Add($"DefaultMessageTimeToLive = {defaultMessageTimeToLive}");
+                    }
+                }
+
+                if (LockDuration.HasValue)
+                {
+                    var lockDuration = LockDuration.Value;
+                    if (queueDescription.LockDuration != lockDuration)
+                    {
+                        queueDescription.LockDuration = lockDuration;
+                        updates.Add($"LockDuration = {lockDuration}");
+                    }
+                }
+
+                if (AutoDeleteOnIdle.HasValue)
+                {
+                    var autoDeleteOnIdle = AutoDeleteOnIdle.Value;
+                    if (queueDescription.AutoDeleteOnIdle != autoDeleteOnIdle)
+                    {
+                        queueDescription.AutoDeleteOnIdle = autoDeleteOnIdle;
+                        updates.Add($"AutoDeleteOnIdle = {autoDeleteOnIdle}");
                     }
                 }
 
@@ -593,12 +634,22 @@ namespace Rebus.AzureServiceBus
         /// <summary>
         /// Gets/sets the default message TTL. Must be set before calling <see cref="Initialize"/>, because that is the time when the queue is (re)configured
         /// </summary>
-        public TimeSpan? MessageTimeToLive { get; set; }
+        public TimeSpan? DefaultMessageTimeToLive { get; set; }
 
         /// <summary>
         /// Gets/sets message peek lock duration
         /// </summary>
-        public TimeSpan? MessagePeekLockDuration { get; set; }
+        public TimeSpan? LockDuration { get; set; }
+
+        /// <summary>
+        /// Gets/sets auto-delete-on-idle duration
+        /// </summary>
+        public TimeSpan? AutoDeleteOnIdle { get; set; }
+
+        /// <summary>
+        /// Gets/sets the duplicate detection window
+        /// </summary>
+        public TimeSpan? DuplicateDetectionHistoryTimeWindow { get; set; }
 
         /// <summary>
         /// Purges the input queue by receiving all messages as quickly as possible

@@ -13,16 +13,46 @@ namespace Rebus.Config
         internal bool PartitioningEnabled { get; set; }
         internal bool DoNotCreateQueuesEnabled { get; set; }
         internal bool AutomaticPeekLockRenewalEnabled { get; set; }
-        internal TimeSpan? MessageTimeToLive { get; set; }
-        internal TimeSpan? MessagePeekLockDuration { get; set; }
+        internal TimeSpan? DefaultMessageTimeToLive { get; set; }
+        internal TimeSpan? LockDuration { get; set; }
+        internal TimeSpan? AutoDeleteOnIdle { get; set; }
+        internal TimeSpan? DuplicateDetectionHistoryTimeWindow { get; set; }
 
         /// <summary>
-        /// Enables partitioning whereby Azure Service Bus will be able to distribute messages between message stores
-        /// and this way increase throughput. Enabling partitioning only has an effect on newly created queues.
+        /// Enables partitioning whereby Azure Service Bus will be able to distribute messages between message stores and this way increase throughput.
+        /// Partitioning cannot be enabled after a queue is created, so it must be enabled before Rebus creates the input queue.
         /// </summary>
         public AzureServiceBusTransportSettings EnablePartitioning()
         {
             PartitioningEnabled = true;
+            return this;
+        }
+
+        /// <summary>
+        /// Configures the duplicate detection history window on the input queue. Please note that this setting cannot be changed after the queue is created,
+        /// so it must be configured before Rebus creates the input queue the first time. The value must be at least 20 seconds and at most 1 day.
+        /// </summary>
+        public AzureServiceBusTransportSettings SetDuplicateDetectionHistoryTimeWindow(TimeSpan duplicateDetectionHistoryTimeWindow)
+        {
+            if (duplicateDetectionHistoryTimeWindow < TimeSpan.FromSeconds(20) || duplicateDetectionHistoryTimeWindow > TimeSpan.FromDays(1))
+            {
+                throw new ArgumentException($"The duplicate detection history time window {duplicateDetectionHistoryTimeWindow} cannot be used - it must be at least 20 seconds and at most 1 day");
+            }
+            DuplicateDetectionHistoryTimeWindow = duplicateDetectionHistoryTimeWindow;
+            return this;
+        }
+
+        /// <summary>
+        /// Configures the auto-delete-on-idle duration of the input queue. This will make Azure Service Bus automatically delete
+        /// the queue when the time has elapsed without any activity.
+        /// </summary>
+        public AzureServiceBusTransportSettings SetAutoDeleteOnIdle(TimeSpan autoDeleteOnIdleDuration)
+        {
+            if (autoDeleteOnIdleDuration < TimeSpan.FromMinutes(5))
+            {
+                throw new ArgumentException($"Auto-delete-on-idle duration {autoDeleteOnIdleDuration} cannot be used - it must be at least five minutes");
+            }
+            AutoDeleteOnIdle = autoDeleteOnIdleDuration;
             return this;
         }
 
@@ -36,7 +66,7 @@ namespace Rebus.Config
             {
                 throw new ArgumentException($"Default message TTL {messageTimeToLive} cannot be used - it must be at least one second");
             }
-            MessageTimeToLive = messageTimeToLive;
+            DefaultMessageTimeToLive = messageTimeToLive;
             return this;
         }
 
@@ -49,7 +79,7 @@ namespace Rebus.Config
             {
                 throw new ArgumentException($"Message peek lock duration {messagePeekLockDuration} cannot be used - it must be at least 5 seconds and at most 5 minutes");
             }
-            MessagePeekLockDuration = messagePeekLockDuration;
+            LockDuration = messagePeekLockDuration;
             return this;
         }
 

@@ -30,38 +30,69 @@ namespace Rebus.AzureServiceBus.Tests
         }
 
         [Test]
-        public async Task CanDoIt()
+        public async Task CanConfigureDuplicateDetection()
         {
-            void InitializeBusWith(TimeSpan peekLockDuration, TimeSpan defaultMessageTtl)
+            var duration = TimeSpan.FromHours(2);
+
+            Configure.With(Using(new BuiltinHandlerActivator()))
+                .Transport(t =>
+                {
+                    t.UseAzureServiceBus(AzureServiceBusTransportFactory.ConnectionString, _queueName)
+                        .SetDuplicateDetectionHistoryTimeWindow(duration);
+                })
+                .Start();
+
+            CleanUpDisposables();
+
+            var queueDescription = await _managementClient.GetQueueAsync(_queueName);
+
+            Assert.That(queueDescription.RequiresDuplicateDetection, Is.True);
+            Assert.That(queueDescription.DuplicateDetectionHistoryTimeWindow, Is.EqualTo(duration));
+        }
+
+        [Test]
+        public async Task CanChangeTheseSettingsAfterTheFact()
+        {
+            void InitializeBusWith(TimeSpan peekLockDuration, TimeSpan defaultMessageTtl, TimeSpan autoDeleteOnIdle)
             {
                 Configure.With(Using(new BuiltinHandlerActivator()))
                     .Transport(t =>
                     {
                         t.UseAzureServiceBus(AzureServiceBusTransportFactory.ConnectionString, _queueName)
                             .SetMessagePeekLockDuration(peekLockDuration)
-                            .SetDefaultMessageTimeToLive(defaultMessageTtl);
+                            .SetDefaultMessageTimeToLive(defaultMessageTtl)
+                            .SetAutoDeleteOnIdle(autoDeleteOnIdle);
                     })
                     .Start();
             }
 
             InitializeBusWith(
                 peekLockDuration: TimeSpan.FromMinutes(2),
-                defaultMessageTtl: TimeSpan.FromDays(5)
+                defaultMessageTtl: TimeSpan.FromDays(5),
+                autoDeleteOnIdle: TimeSpan.FromHours(1)
             );
 
             CleanUpDisposables();
+
+            // wait a while because some of the settings seem to be updating slowly
+            await Task.Delay(TimeSpan.FromSeconds(5));
 
             InitializeBusWith(
                 peekLockDuration: TimeSpan.FromMinutes(1),
-                defaultMessageTtl: TimeSpan.FromDays(1)
+                defaultMessageTtl: TimeSpan.FromDays(1),
+                autoDeleteOnIdle: TimeSpan.FromHours(5)
             );
 
             CleanUpDisposables();
+
+            // wait a while because some of the settings seem to be updating slowly
+            await Task.Delay(TimeSpan.FromSeconds(5));
 
             var queueDescription = await _managementClient.GetQueueAsync(_queueName);
 
             Assert.That(queueDescription.DefaultMessageTimeToLive, Is.EqualTo(TimeSpan.FromDays(1)));
             Assert.That(queueDescription.LockDuration, Is.EqualTo(TimeSpan.FromMinutes(1)));
+            Assert.That(queueDescription.AutoDeleteOnIdle, Is.EqualTo(TimeSpan.FromHours(5)));
         }
     }
 }
