@@ -5,7 +5,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Rebus</RootNamespace>
     <AssemblyName>Rebus.AzureServiceBus</AssemblyName>
-    <TargetFrameworks>net452;net461</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <Authors>mookid8000</Authors>
     <PackageLicenseUrl>https://raw.githubusercontent.com/rebus-org/Rebus/master/LICENSE.md</PackageLicenseUrl>
@@ -39,7 +39,7 @@
   <PropertyGroup Condition=" '$(TargetFramework)' == 'net452' ">
     <DefineConstants>NET452</DefineConstants>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(TargetFramework)' == 'net461' ">
+  <PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
     <DefineConstants>NETSTANDARD2_0</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
@@ -47,14 +47,8 @@
     <None Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Rebus" Version="4.0.0" />
-    <PackageReference Include="WindowsAzure.ServiceBus" Version="4.1.6" />
-  </ItemGroup>
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net452' ">
-    <Reference Include="System.Configuration" />
-  </ItemGroup>
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net461' ">
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.4.0" />
+    <PackageReference Include="Microsoft.Azure.ServiceBus" Version="3.1.0" />
+    <PackageReference Include="Rebus" Version="5.0.0-b14" />
   </ItemGroup>
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
     <Exec Command="$(ProjectDir)..\scripts\patch_assemblyinfo.cmd $(ProjectDir)" />

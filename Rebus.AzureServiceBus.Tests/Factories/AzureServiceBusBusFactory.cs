@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Azure.ServiceBus;
 using Rebus.Activation;
+using Rebus.AzureServiceBus.Tests.Extensions;
 using Rebus.Bus;
 using Rebus.Config;
+using Rebus.Internals;
 using Rebus.Logging;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Transports;
@@ -26,7 +29,7 @@ namespace Rebus.AzureServiceBus.Tests.Factories
             PurgeQueue(queueName);
 
             var bus = Configure.With(builtinHandlerActivator)
-                .Transport(t => t.UseAzureServiceBus(StandardAzureServiceBusTransportFactory.ConnectionString, queueName))
+                .Transport(t => t.UseAzureServiceBus(AzureServiceBusTransportFactory.ConnectionString, queueName))
                 .Options(o =>
                 {
                     o.SetNumberOfWorkers(10);
@@ -41,12 +44,17 @@ namespace Rebus.AzureServiceBus.Tests.Factories
 
         static void PurgeQueue(string queueName)
         {
-            var consoleLoggerFactory = new ConsoleLoggerFactory(false);
-            var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
-            var connectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
-            var busLifetimeEvents = new BusLifetimeEvents();
-            new AzureServiceBusTransport(connectionString, queueName, consoleLoggerFactory, asyncTaskFactory)
-                .PurgeInputQueue();
+            AsyncHelpers.RunSync(async () =>
+            {
+                try
+                {
+                    await ManagementExtensions.PurgeQueue(AzureServiceBusTransportFactory.ConnectionString, queueName);
+                }
+                catch (MessagingEntityNotFoundException)
+                {
+                    // chill out man
+                }
+            });
         }
 
         public void Cleanup()

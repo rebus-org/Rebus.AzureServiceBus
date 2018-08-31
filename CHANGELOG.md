@@ -39,6 +39,11 @@
 * Remove ability to run on the "Basic" tier because it makes the world simpler, and you should at least be using "Standard" anyway
 * Add ability to set actual message ID on the `BrokeredMessage` by using Rebus' message ID as the value
 
+## 6.0.0-rc1
+
+* Update to Microsoft's new driver and thus gain .NET Core support - finally!
+* Add ability configure (and re-configure if possible) these queue settings: partitioning, peek lock duration, default message TTL
+
 
 [lezzi]: https://github.com/lezzi
 [Meyce]: https://github.com/Meyce

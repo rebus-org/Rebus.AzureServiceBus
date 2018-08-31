@@ -5,7 +5,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Rebus.AzureServiceBus.Tests</RootNamespace>
     <AssemblyName>Rebus.AzureServiceBus.Tests</AssemblyName>
-    <TargetFrameworks>net452</TargetFrameworks>
+    <TargetFramework>net462</TargetFramework>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -24,7 +24,8 @@
     <DefineConstants>RELEASE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(TargetFramework)' == 'net452' ">
     <DefineConstants>NET452</DefineConstants>
@@ -33,16 +34,20 @@
     <DefineConstants>NETSTANDARD1_6</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\Rebus.AzureServiceBus\Internals\AsyncHelpers.cs" Link="Extensions\AsyncHelpers.cs" />
+    <Compile Include="..\Rebus.AzureServiceBus\Internals\ManagementExtensions.cs" Link="Extensions\ManagementExtensions.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Rebus.AzureServiceBus\Rebus.AzureServiceBus.csproj" />
-    <PackageReference Include="nunit" Version="3.7.1" />
-    <PackageReference Include="rebus" Version="4.0.0" />
-    <PackageReference Include="rebus.tests.contracts" Version="4.0.0" />
+    <PackageReference Include="Microsoft.Azure.ServiceBus" Version="3.1.0" />
+    <PackageReference Include="rebus" Version="5.0.0-b14" />
+    <PackageReference Include="rebus.tests.contracts" Version="4.2.1" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System.Configuration" />
   </ItemGroup>
   <ItemGroup>
-    <None Update="asb_connectionstring.txt">
+    <None Update="asb_connection_string.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="asb_connection_string.txt">

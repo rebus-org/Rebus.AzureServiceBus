@@ -1,5 +1,4 @@
-﻿using System.Configuration;
-using Rebus.AzureServiceBus;
+﻿using Rebus.AzureServiceBus;
 using Rebus.Logging;
 using Rebus.Pipeline;
 using Rebus.Pipeline.Receive;
@@ -77,9 +76,11 @@ namespace Rebus.Config
                     }
 
                     transport.AutomaticallyRenewPeekLock = settings.AutomaticPeekLockRenewalEnabled;
-
                     transport.PartitioningEnabled = settings.PartitioningEnabled;
                     transport.DoNotCreateQueuesEnabled = settings.DoNotCreateQueuesEnabled;
+                    transport.MessageTimeToLive = settings.MessageTimeToLive;
+                    transport.MessagePeekLockDuration = settings.MessagePeekLockDuration;
+                    
                     return transport;
                 });
 
@@ -105,11 +106,9 @@ namespace Rebus.Config
                 .Register(c => new DisabledTimeoutManager(), description: AsbTimeoutManagerText);
         }
 
-        static string GetConnectionString(string connectionStringNameOrConnectionString)
+        static string GetConnectionString(string connectionString)
         {
-            var connectionStringSettings = ConfigurationManager.ConnectionStrings[connectionStringNameOrConnectionString];
-
-            return connectionStringSettings?.ConnectionString ?? connectionStringNameOrConnectionString;
+            return connectionString;
         }
     }
 }

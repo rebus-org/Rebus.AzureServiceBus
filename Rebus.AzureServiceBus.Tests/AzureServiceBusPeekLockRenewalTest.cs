@@ -19,7 +19,7 @@ namespace Rebus.AzureServiceBus.Tests
     [TestFixture, Category(TestCategory.Azure)]
     public class AzureServiceBusPeekLockRenewalTest : FixtureBase
     {
-        static readonly string ConnectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
+        static readonly string ConnectionString = AzureServiceBusTransportFactory.ConnectionString;
         static readonly string QueueName = TestConfig.GetName("input");
 
         readonly ConsoleLoggerFactory _consoleLoggerFactory = new ConsoleLoggerFactory(false);
@@ -34,13 +34,13 @@ namespace Rebus.AzureServiceBus.Tests
 
             Using(_transport);
 
+            _transport.Initialize();
             _transport.PurgeInputQueue();
 
             _activator = new BuiltinHandlerActivator();
 
             _bus = Configure.With(_activator)
-                .Transport(t => t.UseAzureServiceBus(ConnectionString, QueueName)
-                .AutomaticallyRenewPeekLock())
+                .Transport(t => t.UseAzureServiceBus(ConnectionString, QueueName).AutomaticallyRenewPeekLock())
                 .Options(o =>
                 {
                     o.SetNumberOfWorkers(1);
@@ -54,6 +54,8 @@ namespace Rebus.AzureServiceBus.Tests
         [Test, Ignore("Can be used to check silencing behavior when receive errors occur")]
         public void ReceiveExceptions()
         {
+            Using(_transport);
+
             Thread.Sleep(TimeSpan.FromMinutes(10));
         }
 
@@ -62,9 +64,9 @@ namespace Rebus.AzureServiceBus.Tests
         {
             var gotMessage = new ManualResetEvent(false);
 
-            _activator.Handle<string>(async str =>
+            _activator.Handle<string>(async (bus, context, message) =>
             {
-                Console.WriteLine("waiting 6 minutes....");
+                Console.WriteLine($"Got message with ID {context.Headers.GetValue(Headers.MessageId)} - waiting 6 minutes....");
 
                 // longer than the longest asb peek lock in the world...
                 //await Task.Delay(TimeSpan.FromSeconds(3));
@@ -80,20 +82,20 @@ namespace Rebus.AzureServiceBus.Tests
             gotMessage.WaitOrDie(TimeSpan.FromMinutes(6.5));
 
             // shut down bus
-            CleanUpDisposables();
+            _bus.Dispose();
 
             // see if queue is empty
             using (var scope = new RebusTransactionScope())
             {
-                var message = await _transport.Receive(scope.TransactionContext, new CancellationTokenSource().Token);
+                var message = await _transport.Receive(scope.TransactionContext, CancellationToken.None);
+
+                await scope.CompleteAsync();
 
                 if (message != null)
                 {
                     throw new AssertionException(
-                        $"Did not expect to receive a message - got one with ID {message.Headers.GetValue(Headers.MessageId)}");    
+                        $"Did not expect to receive a message - got one with ID {message.Headers.GetValue(Headers.MessageId)}");
                 }
-
-                await scope.CompleteAsync();
             }
         }
     }

@@ -6,12 +6,11 @@ using Rebus.Activation;
 using Rebus.AzureServiceBus.Tests.Factories;
 using Rebus.Bus;
 using Rebus.Config;
-using Rebus.Logging;
+using Rebus.Internals;
 using Rebus.Messages;
 using Rebus.Routing.TypeBased;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
-using Rebus.Threading.TaskParallelLibrary;
 
 #pragma warning disable 1998
 
@@ -26,11 +25,9 @@ namespace Rebus.AzureServiceBus.Tests
 
         protected override void SetUp()
         {
-            var connectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
-            var consoleLoggerFactory = new ConsoleLoggerFactory(false);
-            var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
-            var busLifetimeEvents = new BusLifetimeEvents();
-            new AzureServiceBusTransport(connectionString, QueueName, consoleLoggerFactory, asyncTaskFactory).PurgeInputQueue();
+            var connectionString = AzureServiceBusTransportFactory.ConnectionString;
+
+            AsyncHelpers.RunSync(() => ManagementExtensions.PurgeQueue(connectionString, QueueName));
 
             _activator = new BuiltinHandlerActivator();
 

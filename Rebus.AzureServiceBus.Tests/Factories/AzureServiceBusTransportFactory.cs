@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.IO;
-using Microsoft.ServiceBus;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus;
+using Microsoft.Azure.ServiceBus.Management;
+using Rebus.AzureServiceBus.Tests.Extensions;
+using Rebus.Bus;
 using Rebus.Extensions;
+using Rebus.Internals;
 using Rebus.Logging;
 using Rebus.Tests.Contracts.Transports;
 using Rebus.Threading.TaskParallelLibrary;
@@ -12,7 +14,7 @@ using Rebus.Transport;
 
 namespace Rebus.AzureServiceBus.Tests.Factories
 {
-    public class StandardAzureServiceBusTransportFactory : ITransportFactory
+    public class AzureServiceBusTransportFactory : ITransportFactory
     {
         public static string ConnectionString => ConnectionStringFromFileOrNull(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "asb_connection_string.txt"))
                                                  ?? ConnectionStringFromEnvironmentVariable("rebus2_asb_connection_string")
@@ -20,7 +22,7 @@ namespace Rebus.AzureServiceBus.Tests.Factories
 
         static string Throw(string message)
         {
-            throw new ConfigurationErrorsException(message);
+            throw new ApplicationException(message);
         }
 
         static string ConnectionStringFromEnvironmentVariable(string environmentVariableName)
@@ -64,7 +66,7 @@ namespace Rebus.AzureServiceBus.Tests.Factories
 
             if (inputQueueAddress == null)
             {
-                var transport = new AzureServiceBusTransport(ConnectionString, null, consoleLoggerFactory, asyncTaskFactory);
+                var transport = new AzureServiceBusTransport(ConnectionString, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory);
 
                 transport.Initialize();
 
@@ -90,36 +92,41 @@ namespace Rebus.AzureServiceBus.Tests.Factories
 
         public static void DeleteQueue(string queueName)
         {
-            var namespaceManager = NamespaceManager.CreateFromConnectionString(ConnectionString);
+            var managementClient = new ManagementClient(ConnectionString);
 
-            if (!namespaceManager.QueueExists(queueName)) return;
-
-            Console.Write("Deleting ASB queue {0}...", queueName);
-
-            try
+            AsyncHelpers.RunSync(async () =>
             {
-                namespaceManager.DeleteQueue(queueName);
-                Console.WriteLine("OK!");
-            }
-            catch (MessagingEntityNotFoundException)
-            {
-                Console.WriteLine("OK (was not there)");   
-            }        }
+                try
+                {
+                    Console.Write("Deleting ASB queue {0}...", queueName);
+                    await managementClient.DeleteQueueAsync(queueName);
+                    Console.WriteLine("OK!");
+                }
+                catch (MessagingEntityNotFoundException)
+                {
+                    Console.WriteLine("OK (was not there)");
+                }
+            });
+        }
 
         public static void DeleteTopic(string topic)
         {
-            var namespaceManager = NamespaceManager.CreateFromConnectionString(ConnectionString);
+            var managementClient = new ManagementClient(ConnectionString);
 
-            try
+            AsyncHelpers.RunSync(async () =>
             {
-                Console.Write("Deleting topic '{0}' ...", topic);
-                namespaceManager.DeleteTopic(topic);
-                Console.WriteLine("OK!");
-            }
-            catch (MessagingEntityNotFoundException)
-            {
-                Console.WriteLine("OK! (wasn't even there)");
-            }
+
+                try
+                {
+                    Console.Write("Deleting topic '{0}' ...", topic);
+                    await managementClient.DeleteTopicAsync(topic);
+                    Console.WriteLine("OK!");
+                }
+                catch (MessagingEntityNotFoundException)
+                {
+                    Console.WriteLine("OK! (wasn't even there)");
+                }
+            });
         }
     }
 }
