@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using FluentAssertions;
 using Newtonsoft.Json;
 using NUnit.Framework;
 using Rebus.Activation;
@@ -49,15 +50,17 @@ namespace Rebus.AzureServiceBus.Tests
         ///     Receiving 10000 messages took 28,8 s - that's 347,6 msg/s
         /// 
         /// </summary>
-        [TestCase(10, 1000)]
-        [TestCase(50, 1000)]
-        [TestCase(100, 1000)]
-        [TestCase(10, 10000, Ignore = "takes too long to run always")]
-        [TestCase(20, 10000, Ignore = "takes too long to run always")]
-        [TestCase(30, 10000, Ignore = "takes too long to run always")]
-        [TestCase(50, 10000, Ignore = "takes too long to run always")]
-        [TestCase(100, 10000, Ignore = "takes too long to run always")]
-        public void WorksWithPrefetch(int prefetch, int numberOfMessages)
+        [TestCase(10, 1000, 10)]
+        [TestCase(50, 1000, 10)]
+        [TestCase(100, 1000, 10)]
+        [TestCase(100, 1000, 50)]
+        [TestCase(100, 1000, 100)]
+        [TestCase(10, 10000, 10, Ignore = "takes too long to run always")]
+        [TestCase(20, 10000, 10, Ignore = "takes too long to run always")]
+        [TestCase(30, 10000, 10, Ignore = "takes too long to run always")]
+        [TestCase(50, 10000, 10, Ignore = "takes too long to run always")]
+        [TestCase(100, 10000, 10, Ignore = "takes too long to run always")]
+        public void WorksWithPrefetch(int prefetch, int numberOfMessages, int maxParallelism)
         {
             var activator = Using(new BuiltinHandlerActivator());
             var counter = new SharedCounter(numberOfMessages);
@@ -100,12 +103,13 @@ namespace Rebus.AzureServiceBus.Tests
                 .Transport(t =>
                 {
                     t.UseAzureServiceBus(AzureServiceBusTransportFactory.ConnectionString, _queueName)
-                        .EnablePrefetching(prefetch);
+                        .EnablePrefetching(prefetch)
+                        ;
                 })
                 .Options(o =>
                 {
                     o.SetNumberOfWorkers(1);
-                    o.SetMaxParallelism(10);
+                    o.SetMaxParallelism(maxParallelism);
                 })
                 .Start();
 
