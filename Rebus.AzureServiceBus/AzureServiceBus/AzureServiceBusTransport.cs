@@ -51,7 +51,6 @@ namespace Rebus.AzureServiceBus
         readonly ConcurrentDictionary<string, TopicDescription> _topics = new ConcurrentDictionary<string, TopicDescription>(StringComparer.InvariantCultureIgnoreCase);
         readonly ConcurrentDictionary<string, TopicClient> _topicClients = new ConcurrentDictionary<string, TopicClient>(StringComparer.InvariantCultureIgnoreCase);
         readonly ConcurrentDictionary<string, QueueClient> _queueClients = new ConcurrentDictionary<string, QueueClient>(StringComparer.InvariantCultureIgnoreCase);
-        readonly NamespaceManager _namespaceManager;
         readonly string _connectionString;
         readonly IAsyncTaskFactory _asyncTaskFactory;
         readonly string _inputQueueAddress;
@@ -79,7 +78,6 @@ namespace Rebus.AzureServiceBus
 
             _log = rebusLoggerFactory.GetLogger<AzureServiceBusTransport>();
 
-            _namespaceManager = NamespaceManager.CreateFromConnectionString(connectionString);
             _connectionString = connectionString;
             _asyncTaskFactory = asyncTaskFactory;
 
@@ -115,10 +113,12 @@ namespace Rebus.AzureServiceBus
         public void PurgeInputQueue()
         {
             _log.Info("Purging queue '{0}'", _inputQueueAddress);
-            _namespaceManager.DeleteQueue(_inputQueueAddress);
+            GetNamespaceManager().DeleteQueue(_inputQueueAddress);
 
             CreateQueue(_inputQueueAddress);
         }
+
+        NamespaceManager GetNamespaceManager() => NamespaceManager.CreateFromConnectionString(_connectionString);
 
         /// <summary>
         /// Configures the transport to prefetch the specified number of messages into an in-mem queue for processing, disabling automatic peek lock renewal
@@ -150,7 +150,13 @@ namespace Rebus.AzureServiceBus
                 return;
             }
 
-            if (_namespaceManager.QueueExists(address)) return;
+            if (_inputQueueAddress == null)
+            {
+                _log.Info("One-way client shoult not create any queues - skipping existencecheck and potential creation");
+                return;
+            }
+
+            if (GetNamespaceManager().QueueExists(address)) return;
 
             var now = DateTime.Now;
             var queueDescription = new QueueDescription(address)
@@ -165,7 +171,7 @@ namespace Rebus.AzureServiceBus
             try
             {
                 _log.Info("Queue '{0}' does not exist - will create it now", address);
-                _namespaceManager.CreateQueue(queueDescription);
+                GetNamespaceManager().CreateQueue(queueDescription);
                 _log.Info("Created!");
             }
             catch (MessagingEntityAlreadyExistsException)
@@ -476,7 +482,10 @@ namespace Rebus.AzureServiceBus
             {
                 _log.Debug("Initializing new queue client for {0}", address);
 
-                var newQueueClient = QueueClient.CreateFromConnectionString(_connectionString, address, ReceiveMode.PeekLock);
+                var connectionStringParser = new ConnectionStringParser(_connectionString);
+                var connectionStringWithoutEntityPath = connectionStringParser.GetConnectionStringWithoutEntityPath();
+
+                var newQueueClient = QueueClient.CreateFromConnectionString(connectionStringWithoutEntityPath, address, ReceiveMode.PeekLock);
 
                 return newQueueClient;
             });
@@ -556,18 +565,18 @@ namespace Rebus.AzureServiceBus
 
             var subscription = await GetOrCreateSubscription(topicPath, subscriptionName).ConfigureAwait(false);
             subscription.ForwardTo = inputQueuePath;
-            await _namespaceManager.UpdateSubscriptionAsync(subscription).ConfigureAwait(false);
+            await GetNamespaceManager().UpdateSubscriptionAsync(subscription).ConfigureAwait(false);
         }
 
         async Task<SubscriptionDescription> GetOrCreateSubscription(string topicPath, string subscriptionName)
         {
             try
             {
-                return await _namespaceManager.CreateSubscriptionAsync(topicPath, subscriptionName).ConfigureAwait(false);
+                return await GetNamespaceManager().CreateSubscriptionAsync(topicPath, subscriptionName).ConfigureAwait(false);
             }
             catch (MessagingEntityAlreadyExistsException)
             {
-                return await _namespaceManager.GetSubscriptionAsync(topicPath, subscriptionName).ConfigureAwait(false);
+                return await GetNamespaceManager().GetSubscriptionAsync(topicPath, subscriptionName).ConfigureAwait(false);
             }
         }
 
@@ -585,7 +594,7 @@ namespace Rebus.AzureServiceBus
 
             try
             {
-                await _namespaceManager.DeleteSubscriptionAsync(topicPath, subscriptionName).ConfigureAwait(false);
+                await GetNamespaceManager().DeleteSubscriptionAsync(topicPath, subscriptionName).ConfigureAwait(false);
             }
             catch (MessagingEntityNotFoundException) { }
         }
@@ -613,11 +622,11 @@ namespace Rebus.AzureServiceBus
             {
                 try
                 {
-                    return _namespaceManager.CreateTopic(normalizedTopic);
+                    return GetNamespaceManager().CreateTopic(normalizedTopic);
                 }
                 catch (MessagingEntityAlreadyExistsException)
                 {
-                    return _namespaceManager.GetTopic(normalizedTopic);
+                    return GetNamespaceManager().GetTopic(normalizedTopic);
                 }
                 catch (Exception exception)
                 {

@@ -15,7 +15,7 @@ namespace Rebus.AzureServiceBus.Tests
         [Test]
         public void ShouldNotCreateInputQueueWhenConfiguredNotTo()
         {
-            var connectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
+            var connectionString = AsbTestConfig.ConnectionString;
             var manager = NamespaceManager.CreateFromConnectionString(connectionString);
             var queueName = Guid.NewGuid().ToString("N");
 

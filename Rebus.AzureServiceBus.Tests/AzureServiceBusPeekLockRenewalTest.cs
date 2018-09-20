@@ -19,7 +19,7 @@ namespace Rebus.AzureServiceBus.Tests
     [TestFixture, Category(TestCategory.Azure)]
     public class AzureServiceBusPeekLockRenewalTest : FixtureBase
     {
-        static readonly string ConnectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
+        static readonly string ConnectionString = AsbTestConfig.ConnectionString;
         static readonly string QueueName = TestConfig.GetName("input");
 
         readonly ConsoleLoggerFactory _consoleLoggerFactory = new ConsoleLoggerFactory(false);

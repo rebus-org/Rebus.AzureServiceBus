@@ -26,7 +26,7 @@ namespace Rebus.AzureServiceBus.Tests.Factories
             PurgeQueue(queueName);
 
             var bus = Configure.With(builtinHandlerActivator)
-                .Transport(t => t.UseAzureServiceBus(StandardAzureServiceBusTransportFactory.ConnectionString, queueName))
+                .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName))
                 .Options(o =>
                 {
                     o.SetNumberOfWorkers(10);
@@ -43,7 +43,7 @@ namespace Rebus.AzureServiceBus.Tests.Factories
         {
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
-            var connectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
+            var connectionString = AsbTestConfig.ConnectionString;
             var busLifetimeEvents = new BusLifetimeEvents();
             new AzureServiceBusTransport(connectionString, queueName, consoleLoggerFactory, asyncTaskFactory)
                 .PurgeInputQueue();

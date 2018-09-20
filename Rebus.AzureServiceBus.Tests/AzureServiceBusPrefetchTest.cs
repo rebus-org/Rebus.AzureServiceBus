@@ -98,7 +98,7 @@ namespace Rebus.AzureServiceBus.Tests
             Configure.With(activator)
                 .Transport(t =>
                 {
-                    t.UseAzureServiceBus(StandardAzureServiceBusTransportFactory.ConnectionString, _queueName)
+                    t.UseAzureServiceBus(AsbTestConfig.ConnectionString, _queueName)
                         .EnablePrefetching(prefetch);
                 })
                 .Options(o =>
@@ -134,7 +134,7 @@ namespace Rebus.AzureServiceBus.Tests
         {
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
-            var connectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
+            var connectionString = AsbTestConfig.ConnectionString;
 
             var transport = new AzureServiceBusTransport(connectionString, _queueName, consoleLoggerFactory, asyncTaskFactory);
             Using(transport);

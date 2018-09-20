@@ -1,9 +1,7 @@
 ﻿using System;
 using NUnit.Framework;
 using Rebus.Activation;
-using Rebus.AzureServiceBus.Tests.Factories;
 using Rebus.Config;
-using Rebus.Tests;
 using Rebus.Tests.Contracts;
 
 namespace Rebus.AzureServiceBus.Tests
@@ -11,7 +9,7 @@ namespace Rebus.AzureServiceBus.Tests
     [TestFixture, Category(TestCategory.Azure)]
     public class AzureServiceBusContentTypeTest : FixtureBase
     {
-        static readonly string ConnectionString = StandardAzureServiceBusTransportFactory.ConnectionString;
+        static readonly string ConnectionString = AsbTestConfig.ConnectionString;
 
         [Test]
         public void LooksGood()
