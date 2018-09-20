@@ -3,7 +3,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Activation;
-using Rebus.AzureServiceBus.Tests.Factories;
 using Rebus.Config;
 using Rebus.Routing.TypeBased;
 using Rebus.Tests.Contracts;
@@ -12,6 +11,7 @@ using Rebus.Tests.Contracts.Extensions;
 namespace Rebus.AzureServiceBus.Tests
 {
     [TestFixture]
+    [Ignore("Requires some manual setup")]
     public class SharedAccessSignatureWorks : FixtureBase
     {
         /// <summary>
