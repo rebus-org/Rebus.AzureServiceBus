@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Rebus.Extensions;
 
@@ -6,12 +7,15 @@ namespace Rebus.AzureServiceBus
 {
     class ConnectionStringParser
     {
+        readonly Dictionary<string, string> _parts;
+
         public string ConnectionString { get; }
 
         public ConnectionStringParser(string connectionString)
         {
             ConnectionString = connectionString;
-            var parts = connectionString.Split(';')
+
+            _parts = connectionString.Split(';')
                 .Select(token => token.Trim())
                 .Where(token => !string.IsNullOrWhiteSpace(token))
                 .Select(token =>
@@ -27,17 +31,12 @@ namespace Rebus.AzureServiceBus
                     };
                 })
                 .ToDictionary(a => a.key, a => a.value);
-
-            Endpoint = parts.GetValue("Endpoint");
-            SharedAccessKey = parts.GetValue("SharedAccessKey");
-            SharedAccessKeyName = parts.GetValue("SharedAccessKeyName");
-            EntityPath = parts.GetValueOrNull("EntityPath");
         }
 
-        public string Endpoint { get; }
-        public string SharedAccessKeyName { get; }
-        public string SharedAccessKey { get; }
-        public string EntityPath { get; }
+        public string Endpoint => _parts.GetValue("Endpoint");
+        public string SharedAccessKeyName => _parts.GetValue("SharedAccessKeyName");
+        public string SharedAccessKey => _parts.GetValue("SharedAccessKey");
+        public string EntityPath => _parts.GetValueOrNull("EntityPath");
 
         public override string ToString()
         {
@@ -47,6 +46,6 @@ SharedAccessKeyName: {SharedAccessKeyName}
     SharedAccessKey: {SharedAccessKey}";
         }
 
-        public string GetConnectionStringWithoutEntityPath() => $"Endpoint={Endpoint};SharedAccessKeyName={SharedAccessKeyName};SharedAccessKey={SharedAccessKey}";
+        public string GetConnectionStringWithoutEntityPath() => string.Join(";", _parts.Where(p => !string.Equals(p.Key, "EntityPath")).Select(kvp => $"{kvp.Key}={kvp.Value}"));
     }
 }
