@@ -11,7 +11,7 @@ using Rebus.Tests.Contracts.Extensions;
 namespace Rebus.AzureServiceBus.Tests
 {
     [TestFixture]
-    //[Ignore("Requires some manual setup")]
+    [Ignore("Requires some manual setup")]
     public class SharedAccessSignatureWorks : FixtureBase
     {
         /// <summary>

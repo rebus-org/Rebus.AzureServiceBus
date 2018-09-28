@@ -48,6 +48,9 @@
 * Update to Microsoft's new driver and thus gain .NET Core support - finally!
 * Add ability configure (and re-configure if possible) these queue settings: partitioning, peek lock duration, default message TTL
 
+## 6.0.1
+
+* Port aforementioned (v. 5.0.1) `EntityPath` handling forward
 
 [lezzi]: https://github.com/lezzi
 [Meyce]: https://github.com/Meyce

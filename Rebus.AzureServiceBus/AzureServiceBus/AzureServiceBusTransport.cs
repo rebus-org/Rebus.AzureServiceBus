@@ -238,6 +238,12 @@ namespace Rebus.AzureServiceBus
                 return queueDescription;
             }
 
+            // one-way client does not create any queues
+            if (Address == null)
+            {
+                return;
+            }
+
             if (DoNotCreateQueuesEnabled)
             {
                 _log.Info("Transport configured to not create queue - skipping existence check and potential creation for {queueName}", address);
@@ -708,12 +714,17 @@ namespace Rebus.AzureServiceBus
         {
             return _messageSenders.GetOrAdd(queue, _ =>
             {
+                var connectionStringParser = new ConnectionStringParser(_connectionString);
+                var connectionString = connectionStringParser.GetConnectionStringWithoutEntityPath();
+
                 var messageSender = new MessageSender(
-                    _connectionString,
+                    connectionString,
                     queue,
                     retryPolicy: DefaultRetryStrategy
                 );
+                
                 _disposables.Push(messageSender.AsDisposable(t => AsyncHelpers.RunSync(async () => await t.CloseAsync().ConfigureAwait(false))));
+                
                 return messageSender;
             });
         }
