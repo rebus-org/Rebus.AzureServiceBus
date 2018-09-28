@@ -39,7 +39,9 @@
 * Remove ability to run on the "Basic" tier because it makes the world simpler, and you should at least be using "Standard" anyway
 * Add ability to set actual message ID on the `BrokeredMessage` by using Rebus' message ID as the value
 
+## 5.0.1
 
+* Fix handling of connection string when it contains the `EntityPath` element. Makes it possible to use a connection string with only RECEIVE rights to the input queue
 
 
 [lezzi]: https://github.com/lezzi
