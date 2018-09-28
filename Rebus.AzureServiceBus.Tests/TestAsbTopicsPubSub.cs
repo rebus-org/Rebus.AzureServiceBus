@@ -18,7 +18,7 @@ namespace Rebus.AzureServiceBus.Tests
         readonly string _inputQueueName1 = TestConfig.GetName("pubsub1");
         readonly string _inputQueueName2 = TestConfig.GetName("pubsub2");
         readonly string _inputQueueName3 = TestConfig.GetName("pubsub3");
-        readonly string _connectionString = AzureServiceBusTransportFactory.ConnectionString;
+        readonly string _connectionString = AsbTestConfig.ConnectionString;
         
         BuiltinHandlerActivator _bus1;
         BuiltinHandlerActivator _bus2;

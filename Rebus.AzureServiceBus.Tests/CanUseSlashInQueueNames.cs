@@ -24,7 +24,7 @@ namespace Rebus.AzureServiceBus.Tests
                 activator.Handle<string>(async _ => counter.Decrement());
 
                 var bus = Configure.With(activator)
-                    .Transport(t => t.UseAzureServiceBus(AzureServiceBusTransportFactory.ConnectionString, queueName))
+                    .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName))
                     .Start();
 
                 await bus.Subscribe<string>();

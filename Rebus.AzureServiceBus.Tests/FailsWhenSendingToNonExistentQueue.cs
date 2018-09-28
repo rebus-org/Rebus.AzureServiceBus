@@ -14,7 +14,7 @@ namespace Rebus.AzureServiceBus.Tests
     [TestFixture]
     public class FailsWhenSendingToNonExistentQueue : FixtureBase
     {
-        static readonly string ConnectionString = AzureServiceBusTransportFactory.ConnectionString;
+        static readonly string ConnectionString = AsbTestConfig.ConnectionString;
 
         [Test]
         public void YesItDoes()

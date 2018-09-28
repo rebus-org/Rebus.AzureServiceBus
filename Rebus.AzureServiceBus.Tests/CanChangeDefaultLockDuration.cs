@@ -18,7 +18,7 @@ namespace Rebus.AzureServiceBus.Tests
 
         protected override void SetUp()
         {
-            _managementClient = new ManagementClient(AzureServiceBusTransportFactory.ConnectionString);
+            _managementClient = new ManagementClient(AsbTestConfig.ConnectionString);
             _queueName = TestConfig.GetName("lockduration");
 
             AsyncHelpers.RunSync(() => _managementClient.DeleteQueueIfExistsAsync(_queueName));
@@ -37,7 +37,7 @@ namespace Rebus.AzureServiceBus.Tests
             Configure.With(Using(new BuiltinHandlerActivator()))
                 .Transport(t =>
                 {
-                    t.UseAzureServiceBus(AzureServiceBusTransportFactory.ConnectionString, _queueName)
+                    t.UseAzureServiceBus(AsbTestConfig.ConnectionString, _queueName)
                         .SetDuplicateDetectionHistoryTimeWindow(duration);
                 })
                 .Start();
@@ -58,7 +58,7 @@ namespace Rebus.AzureServiceBus.Tests
                 Configure.With(Using(new BuiltinHandlerActivator()))
                     .Transport(t =>
                     {
-                        t.UseAzureServiceBus(AzureServiceBusTransportFactory.ConnectionString, _queueName)
+                        t.UseAzureServiceBus(AsbTestConfig.ConnectionString, _queueName)
                             .SetMessagePeekLockDuration(peekLockDuration)
                             .SetDefaultMessageTimeToLive(defaultMessageTtl)
                             .SetAutoDeleteOnIdle(autoDeleteOnIdle);

@@ -34,10 +34,14 @@
 * Add .NET Standard 2.0 target specifically to handle dependency on `ConfigurationManager`
 * `.ConfigureAwait(false)` everywhere something is `await`ed - thanks [lezzi]
 
-## 5.0.0-b01
+## 5.0.0
 
 * Remove ability to run on the "Basic" tier because it makes the world simpler, and you should at least be using "Standard" anyway
 * Add ability to set actual message ID on the `BrokeredMessage` by using Rebus' message ID as the value
+
+## 5.0.1
+
+* Fix handling of connection string when it contains the `EntityPath` element. Makes it possible to use a connection string with only RECEIVE rights to the input queue
 
 ## 6.0.0
 

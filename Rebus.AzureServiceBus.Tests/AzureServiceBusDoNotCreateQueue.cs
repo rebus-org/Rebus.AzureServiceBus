@@ -5,7 +5,6 @@ using FluentAssertions;
 using Microsoft.Azure.ServiceBus;
 using NUnit.Framework;
 using Rebus.Activation;
-using Rebus.AzureServiceBus.Tests.Factories;
 using Rebus.Config;
 using Rebus.Logging;
 using Rebus.Tests.Contracts;
@@ -16,17 +15,10 @@ using Rebus.Transport;
 
 namespace Rebus.AzureServiceBus.Tests
 {
-
     [TestFixture, Category(TestCategory.Azure)]
     public class BasicAzureServiceBusBasicReceiveOnly : FixtureBase
     {
         static readonly string QueueName = TestConfig.GetName("input");
-        CancellationToken _cancellationToken;
-
-        protected override void SetUp()
-        {
-            _cancellationToken = new CancellationTokenSource().Token;
-        }
 
         [Test]
         [TestCase(5)]
@@ -36,7 +28,7 @@ namespace Rebus.AzureServiceBus.Tests
         {
             var operationTimeout = TimeSpan.FromSeconds(operationTimeoutInSeconds);
 
-            var connString = AzureServiceBusTransportFactory.ConnectionString;
+            var connString = AsbTestConfig.ConnectionString;
             var builder = new ServiceBusConnectionStringBuilder(connString)
             {
             //    OperationTimeout = operationTimeout,
@@ -68,13 +60,13 @@ namespace Rebus.AzureServiceBus.Tests
             await senderBus.Advanced.Routing.Send(QueueName, "message to receiver2");
             await senderBus.Advanced.Routing.Send(QueueName, "message to receiver3");
 
-            await Task.Delay(TimeSpan.FromSeconds(2)); // wait a bit to make sure the messages are queued.
+            //await Task.Delay(TimeSpan.FromSeconds(2)); // wait a bit to make sure the messages are queued.
 
             // receive 1
             using (var scope = new RebusTransactionScope())
             {
                 var sw = System.Diagnostics.Stopwatch.StartNew();
-                var msg = await transport.Receive(scope.TransactionContext, _cancellationToken);
+                var msg = await transport.Receive(scope.TransactionContext, CancellationToken.None);
                 sw.Stop();
                 await scope.CompleteAsync();
 
@@ -86,7 +78,7 @@ namespace Rebus.AzureServiceBus.Tests
             using (var scope = new RebusTransactionScope())
             {
                 var sw = System.Diagnostics.Stopwatch.StartNew();
-                var msg = await transport.Receive(scope.TransactionContext, _cancellationToken);
+                var msg = await transport.Receive(scope.TransactionContext, CancellationToken.None);
                 sw.Stop();
                 await scope.CompleteAsync();
 
@@ -98,7 +90,7 @@ namespace Rebus.AzureServiceBus.Tests
             using (var scope = new RebusTransactionScope())
             {
                 var sw = System.Diagnostics.Stopwatch.StartNew();
-                var msg = await transport.Receive(scope.TransactionContext, _cancellationToken);
+                var msg = await transport.Receive(scope.TransactionContext, CancellationToken.None);
                 sw.Stop();
                 await scope.CompleteAsync();
 
@@ -110,7 +102,7 @@ namespace Rebus.AzureServiceBus.Tests
             using (var scope = new RebusTransactionScope())
             {
                 var sw = System.Diagnostics.Stopwatch.StartNew();
-                var msg = await transport.Receive(scope.TransactionContext, _cancellationToken);
+                var msg = await transport.Receive(scope.TransactionContext, CancellationToken.None);
                 sw.Stop();
                 await scope.CompleteAsync();
 
@@ -127,7 +119,7 @@ namespace Rebus.AzureServiceBus.Tests
             using (var scope = new RebusTransactionScope())
             {
                 var sw = System.Diagnostics.Stopwatch.StartNew();
-                var msg = await transport.Receive(scope.TransactionContext, _cancellationToken);
+                var msg = await transport.Receive(scope.TransactionContext, CancellationToken.None);
                 sw.Stop();
                 await scope.CompleteAsync();
 
@@ -139,7 +131,7 @@ namespace Rebus.AzureServiceBus.Tests
             using (var scope = new RebusTransactionScope())
             {
                 var sw = System.Diagnostics.Stopwatch.StartNew();
-                var msg = await transport.Receive(scope.TransactionContext, _cancellationToken);
+                var msg = await transport.Receive(scope.TransactionContext, CancellationToken.None);
                 sw.Stop();
                 await scope.CompleteAsync();
 
@@ -152,7 +144,7 @@ namespace Rebus.AzureServiceBus.Tests
         public async Task ShouldBeAbleToRecieveEvenWhenNotCreatingQueue()
         {
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
-            var transport = new AzureServiceBusTransport(AzureServiceBusTransportFactory.ConnectionString, QueueName, consoleLoggerFactory, new TplAsyncTaskFactory(consoleLoggerFactory));
+            var transport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, QueueName, consoleLoggerFactory, new TplAsyncTaskFactory(consoleLoggerFactory));
             transport.PurgeInputQueue();
             //Create the queue for the receiver since it cannot create it self beacuse of lacking rights on the namespace
             transport.CreateQueue(QueueName);
@@ -163,12 +155,12 @@ namespace Rebus.AzureServiceBus.Tests
             var receiverBus = Configure.With(recieverActivator)
                 .Logging(l => l.ColoredConsole())
                 .Transport(t =>
-                    t.UseAzureServiceBus(AzureServiceBusTransportFactory.ConnectionString, QueueName)
+                    t.UseAzureServiceBus(AsbTestConfig.ConnectionString, QueueName)
                         .DoNotCreateQueues())
                 .Start();
 
             var senderBus = Configure.With(senderActivator)
-                .Transport(t => t.UseAzureServiceBus(AzureServiceBusTransportFactory.ConnectionString, "sender"))
+                .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, "sender"))
                 .Start();
 
             Using(receiverBus);

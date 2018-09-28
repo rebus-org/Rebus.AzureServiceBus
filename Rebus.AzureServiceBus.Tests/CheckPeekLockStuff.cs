@@ -4,7 +4,6 @@ using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.ServiceBus.Core;
 using Microsoft.Azure.ServiceBus.Management;
 using NUnit.Framework;
-using Rebus.AzureServiceBus.Tests.Factories;
 using Rebus.Internals;
 using Rebus.Tests.Contracts;
 
@@ -20,7 +19,7 @@ namespace Rebus.AzureServiceBus.Tests
 
         protected override void SetUp()
         {
-            var connectionString = AzureServiceBusTransportFactory.ConnectionString;
+            var connectionString = AsbTestConfig.ConnectionString;
             
             _queueName = TestConfig.GetName("test-queue");
             

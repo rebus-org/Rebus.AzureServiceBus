@@ -12,7 +12,7 @@ namespace Rebus.AzureServiceBus.Tests
     [TestFixture]
     public class TestShutdownTime : FixtureBase
     {
-        static readonly string ConnectionString = AzureServiceBusTransportFactory.ConnectionString;
+        static readonly string ConnectionString = AsbTestConfig.ConnectionString;
         static readonly string QueueName = TestConfig.GetName("timeouttest");
 
         [Test]

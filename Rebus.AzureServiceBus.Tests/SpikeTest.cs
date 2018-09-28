@@ -16,7 +16,7 @@ namespace Rebus.AzureServiceBus.Tests
     [TestFixture]
     public class SpikeTest : FixtureBase
     {
-        static readonly string ConnectionString = AzureServiceBusTransportFactory.ConnectionString;
+        static readonly string ConnectionString = AsbTestConfig.ConnectionString;
         ManagementClient _managementClient;
 
         protected override void SetUp()

@@ -14,7 +14,7 @@ namespace Rebus.AzureServiceBus.Tests
     public class WorksWhenEnablingPartitioning : FixtureBase
     {
         readonly string _queueName = TestConfig.GetName("input");
-        readonly string _connectionString = AzureServiceBusTransportFactory.ConnectionString;
+        readonly string _connectionString = AsbTestConfig.ConnectionString;
 
         [Test]
         public async Task YesItDoes()
