@@ -52,5 +52,9 @@
 
 * Port aforementioned (v. 5.0.1) `EntityPath` handling forward
 
+## 6.0.2
+
+* Fix bug that would result in `MessagingEntityNotFoundException`s when publishing to non-existent topics
+
 [lezzi]: https://github.com/lezzi
 [Meyce]: https://github.com/Meyce

@@ -446,6 +446,10 @@ namespace Rebus.AzureServiceBus
                                 {
                                     await GetTopicClient(topicName).SendAsync(list).ConfigureAwait(false);
                                 }
+                                catch (MessagingEntityNotFoundException)
+                                {
+                                    // if the topic does not exist, it's allright
+                                }
                                 catch (Exception exception)
                                 {
                                     throw new RebusApplicationException(exception, $"Could not publish to topic '{topicName}'");
