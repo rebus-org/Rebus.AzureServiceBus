@@ -11,6 +11,17 @@ namespace Rebus.AzureServiceBus
 
         public string ConnectionString { get; }
 
+        public ConnectionStringParser(string endpoint, string sharedAccessKeyName, string sharedAccessKey, string entityPath)
+        {
+            _parts = new Dictionary<string, string>
+            {
+                {"Endpoint", endpoint},
+                {"SharedAccessKeyName", sharedAccessKeyName},
+                {"SharedAccessKey", sharedAccessKey},
+                {"EntityPath", entityPath}
+            };
+        }
+
         public ConnectionStringParser(string connectionString)
         {
             ConnectionString = connectionString;
@@ -47,7 +58,7 @@ SharedAccessKeyName: {SharedAccessKeyName}
         }
 
         public string GetConnectionStringWithoutEntityPath() => string.Join(";", _parts.Where(p => !string.Equals(p.Key, "EntityPath")).Select(kvp => $"{kvp.Key}={kvp.Value}"));
-        
+
         public string GetConnectionString() => string.Join(";", _parts.Select(kvp => $"{kvp.Key}={kvp.Value}"));
     }
 }
