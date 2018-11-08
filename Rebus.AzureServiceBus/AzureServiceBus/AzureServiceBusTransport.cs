@@ -125,6 +125,9 @@ namespace Rebus.AzureServiceBus
 
             var subscription = await GetOrCreateSubscription(topicPath, subscriptionName).ConfigureAwait(false);
 
+            // if it looks fine, just skip it
+            if (subscription.ForwardTo == inputQueuePath) return;
+
             subscription.ForwardTo = inputQueuePath;
 
             await _managementClient.UpdateSubscriptionAsync(subscription).ConfigureAwait(false);
@@ -166,9 +169,9 @@ namespace Rebus.AzureServiceBus
 
         string GetSubscriptionName()
         {
-            var idx = Address.LastIndexOf("/", StringComparison.Ordinal) + 1;
+            //var idx = Address.LastIndexOf("/", StringComparison.Ordinal) + 1;
 
-            return Address.Substring(idx).ToValidAzureServiceBusEntityName();
+            return Address.ToValidAzureServiceBusEntityName();
         }
 
         void VerifyIsOwnInputQueueAddress(string subscriberAddress)
@@ -184,6 +187,15 @@ namespace Rebus.AzureServiceBus
 
         async Task<TopicDescription> EnsureTopicExists(string normalizedTopic)
         {
+            try
+            {
+                return await _managementClient.GetTopicAsync(normalizedTopic).ConfigureAwait(false);
+            }
+            catch (MessageNotFoundException)
+            {
+                // it's OK... try and create it instead
+            }
+
             try
             {
                 return await _managementClient.CreateTopicAsync(normalizedTopic).ConfigureAwait(false);
@@ -726,9 +738,9 @@ namespace Rebus.AzureServiceBus
                     queue,
                     retryPolicy: DefaultRetryStrategy
                 );
-                
+
                 _disposables.Push(messageSender.AsDisposable(t => AsyncHelpers.RunSync(async () => await t.CloseAsync().ConfigureAwait(false))));
-                
+
                 return messageSender;
             });
         }

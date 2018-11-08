@@ -56,5 +56,9 @@
 
 * Fix bug that would result in `MessagingEntityNotFoundException`s when publishing to non-existent topics
 
+## 6.0.4
+
+* Small improvement of subscription registration performance by avoiding an update if the subscription looks as it should
+
 [lezzi]: https://github.com/lezzi
 [Meyce]: https://github.com/Meyce

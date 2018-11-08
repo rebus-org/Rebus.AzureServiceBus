@@ -6,9 +6,14 @@ namespace Rebus.AzureServiceBus.Tests
 {
     static class AsbTestConfig
     {
-        public static string ConnectionString => ConnectionStringFromFileOrNull(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "asb_connection_string.txt"))
-                                                 ?? ConnectionStringFromEnvironmentVariable("rebus2_asb_connection_string")
-                                                 ?? throw new ConfigurationErrorsException("Could not find Azure Service Bus connection string!");
+        static AsbTestConfig()
+        {
+            ConnectionString = ConnectionStringFromFileOrNull(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "asb_connection_string.txt"))
+                               ?? ConnectionStringFromEnvironmentVariable("rebus2_asb_connection_string")
+                               ?? throw new ConfigurationErrorsException("Could not find Azure Service Bus connection string!");
+        }
+
+        public static string ConnectionString { get; }
 
         static string ConnectionStringFromFileOrNull(string filePath)
         {
