@@ -191,7 +191,7 @@ namespace Rebus.AzureServiceBus
             {
                 return await _managementClient.GetTopicAsync(normalizedTopic).ConfigureAwait(false);
             }
-            catch (MessageNotFoundException)
+            catch (MessagingEntityNotFoundException)
             {
                 // it's OK... try and create it instead
             }
