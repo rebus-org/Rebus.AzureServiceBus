@@ -26,7 +26,7 @@ namespace Rebus.AzureServiceBus.Tests
 
         protected override void SetUp()
         {
-            AzureServiceBusTransportFactory.DeleteTopic(typeof (string).GetSimpleAssemblyQualifiedName().ToValidAzureServiceBusEntityName());
+            AzureServiceBusTransportFactory.DeleteTopic(typeof (string).GetSimpleAssemblyQualifiedName().ToValidAzureServiceBusTopicName());
 
             _bus1 = StartBus(_inputQueueName1);
             _bus2 = StartBus(_inputQueueName2);

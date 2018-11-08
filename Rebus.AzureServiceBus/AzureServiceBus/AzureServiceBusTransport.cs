@@ -101,7 +101,7 @@ namespace Rebus.AzureServiceBus
         {
             return _cachedSubscriberAddresses.GetOrAdd(topic, _ =>
             {
-                var normalizedTopic = topic.ToValidAzureServiceBusEntityName();
+                var normalizedTopic = topic.ToValidAzureServiceBusTopicName();
 
                 return new[] { $"{MagicSubscriptionPrefix}{normalizedTopic}" };
             });
@@ -115,7 +115,7 @@ namespace Rebus.AzureServiceBus
         {
             VerifyIsOwnInputQueueAddress(subscriberAddress);
 
-            var normalizedTopic = topic.ToValidAzureServiceBusEntityName();
+            var normalizedTopic = topic.ToValidAzureServiceBusTopicName();
             var topicDescription = await EnsureTopicExists(normalizedTopic).ConfigureAwait(false);
             var messageSender = GetMessageSender(Address);
 
@@ -140,7 +140,7 @@ namespace Rebus.AzureServiceBus
         {
             VerifyIsOwnInputQueueAddress(subscriberAddress);
 
-            var normalizedTopic = topic.ToValidAzureServiceBusEntityName();
+            var normalizedTopic = topic.ToValidAzureServiceBusTopicName();
             var topicDescription = await EnsureTopicExists(normalizedTopic).ConfigureAwait(false);
             var topicPath = topicDescription.Path;
             var subscriptionName = GetSubscriptionName();
@@ -171,7 +171,7 @@ namespace Rebus.AzureServiceBus
         {
             //var idx = Address.LastIndexOf("/", StringComparison.Ordinal) + 1;
 
-            return Address.ToValidAzureServiceBusEntityName();
+            return Address.ToValidAzureServiceBusTopicName();
         }
 
         void VerifyIsOwnInputQueueAddress(string subscriberAddress)
