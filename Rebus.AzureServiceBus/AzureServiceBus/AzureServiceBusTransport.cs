@@ -51,6 +51,7 @@ namespace Rebus.AzureServiceBus
             maximumRetryCount: 10
         );
 
+        readonly AzureServiceBusEntityNameHelper _azureServiceBusEntityNameHelper = new AzureServiceBusEntityNameHelper();
         readonly ConcurrentStack<IDisposable> _disposables = new ConcurrentStack<IDisposable>();
         readonly ConcurrentDictionary<string, MessageSender> _messageSenders = new ConcurrentDictionary<string, MessageSender>();
         readonly ConcurrentDictionary<string, TopicClient> _topicClients = new ConcurrentDictionary<string, TopicClient>();
@@ -73,14 +74,17 @@ namespace Rebus.AzureServiceBus
         {
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
 
-            Address = queueName?.ToLowerInvariant();
-
-            if (Address != null)
+            if (queueName != null)
             {
-                if (Address.StartsWith(MagicSubscriptionPrefix))
+                // this never happens
+                if (queueName.StartsWith(MagicSubscriptionPrefix))
                 {
                     throw new ArgumentException($"Sorry, but the queue name '{queueName}' cannot be used because it conflicts with Rebus' internally used 'magic subscription prefix': '{MagicSubscriptionPrefix}'. ");
                 }
+
+                _azureServiceBusEntityNameHelper.EnsureIsValidQueueName(queueName);
+
+                Address = queueName;
             }
 
             _connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
@@ -99,12 +103,7 @@ namespace Rebus.AzureServiceBus
         /// </summary>
         public async Task<string[]> GetSubscriberAddresses(string topic)
         {
-            return _cachedSubscriberAddresses.GetOrAdd(topic, _ =>
-            {
-                var normalizedTopic = topic.ToValidAzureServiceBusTopicName();
-
-                return new[] { $"{MagicSubscriptionPrefix}{normalizedTopic}" };
-            });
+            return _cachedSubscriberAddresses.GetOrAdd(topic, _ => new[] { $"{MagicSubscriptionPrefix}{topic}" });
         }
 
         /// <summary>
@@ -115,8 +114,9 @@ namespace Rebus.AzureServiceBus
         {
             VerifyIsOwnInputQueueAddress(subscriberAddress);
 
-            var normalizedTopic = topic.ToValidAzureServiceBusTopicName();
-            var topicDescription = await EnsureTopicExists(normalizedTopic).ConfigureAwait(false);
+            _log.Debug("Registering subscription for topic {topicName}", topic);
+
+            var topicDescription = await EnsureTopicExists(topic).ConfigureAwait(false);
             var messageSender = GetMessageSender(Address);
 
             var inputQueuePath = messageSender.Path;
@@ -131,6 +131,8 @@ namespace Rebus.AzureServiceBus
             subscription.ForwardTo = inputQueuePath;
 
             await _managementClient.UpdateSubscriptionAsync(subscription).ConfigureAwait(false);
+
+            _log.Info("Subscription {subscriptionName} for topic {topicName} successfully registered", subscriptionName, topic);
         }
 
         /// <summary>
@@ -140,14 +142,17 @@ namespace Rebus.AzureServiceBus
         {
             VerifyIsOwnInputQueueAddress(subscriberAddress);
 
-            var normalizedTopic = topic.ToValidAzureServiceBusTopicName();
-            var topicDescription = await EnsureTopicExists(normalizedTopic).ConfigureAwait(false);
+            _log.Debug("Unregistering subscription for topic {topicName}", topic);
+
+            var topicDescription = await EnsureTopicExists(topic).ConfigureAwait(false);
             var topicPath = topicDescription.Path;
             var subscriptionName = GetSubscriptionName();
 
             try
             {
                 await _managementClient.DeleteSubscriptionAsync(topicPath, subscriptionName).ConfigureAwait(false);
+
+                _log.Info("Subscription {subscriptionName} for topic {topicName} successfully unregistered", subscriptionName, topic);
             }
             catch (MessagingEntityNotFoundException)
             {
@@ -169,9 +174,8 @@ namespace Rebus.AzureServiceBus
 
         string GetSubscriptionName()
         {
-            //var idx = Address.LastIndexOf("/", StringComparison.Ordinal) + 1;
-
-            return Address.ToValidAzureServiceBusTopicName();
+            // queueu names can have multiple segments in them separated by / - subscription names cannot!
+            return Address.Replace("/", "_");
         }
 
         void VerifyIsOwnInputQueueAddress(string subscriberAddress)
@@ -380,6 +384,11 @@ namespace Rebus.AzureServiceBus
         /// </summary>
         public async Task Send(string destinationAddress, TransportMessage message, ITransactionContext context)
         {
+            if (!destinationAddress.StartsWith(MagicSubscriptionPrefix))
+            {
+                _azureServiceBusEntityNameHelper.EnsureIsValidQueueName(destinationAddress);
+            }
+
             var outgoingMessages = GetOutgoingMessages(context);
 
             outgoingMessages.Enqueue(new OutgoingMessage(destinationAddress, message));

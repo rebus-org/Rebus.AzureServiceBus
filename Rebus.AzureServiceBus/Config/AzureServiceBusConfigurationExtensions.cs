@@ -5,6 +5,7 @@ using Rebus.Pipeline.Receive;
 using Rebus.Subscriptions;
 using Rebus.Threading;
 using Rebus.Timeouts;
+using Rebus.Topic;
 using Rebus.Transport;
 
 // ReSharper disable once CheckNamespace
@@ -41,6 +42,8 @@ namespace Rebus.Config
             configurer.Register(c => c.Get<AzureServiceBusTransport>());
 
             configurer.OtherService<ITimeoutManager>().Register(c => new DisabledTimeoutManager(), description: AsbTimeoutManagerText);
+
+            configurer.OtherService<ITopicNameConvention>().Register(c => new AzureServiceBusTopicNameConvention());
 
             OneWayClientBackdoor.ConfigureOneWayClient(configurer);
         }
@@ -106,6 +109,8 @@ namespace Rebus.Config
             // disable timeout manager
             configurer.OtherService<ITimeoutManager>()
                 .Register(c => new DisabledTimeoutManager(), description: AsbTimeoutManagerText);
+ 
+            configurer.OtherService<ITopicNameConvention>().Register(c => new AzureServiceBusTopicNameConvention());
         }
 
         static string GetConnectionString(string connectionString)

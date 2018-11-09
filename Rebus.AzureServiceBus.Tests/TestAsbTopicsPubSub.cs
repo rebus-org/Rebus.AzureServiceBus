@@ -3,9 +3,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Activation;
-using Rebus.AzureServiceBus.Tests.Factories;
+using Rebus.AzureServiceBus.Tests.Bugs;
 using Rebus.Config;
-using Rebus.Extensions;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
 #pragma warning disable 1998
@@ -26,7 +25,7 @@ namespace Rebus.AzureServiceBus.Tests
 
         protected override void SetUp()
         {
-            AzureServiceBusTransportFactory.DeleteTopic(typeof (string).GetSimpleAssemblyQualifiedName().ToValidAzureServiceBusTopicName());
+            Using(new TopicDeleter(new AzureServiceBusTopicNameConvention().GetTopic(typeof(string))));
 
             _bus1 = StartBus(_inputQueueName1);
             _bus2 = StartBus(_inputQueueName2);

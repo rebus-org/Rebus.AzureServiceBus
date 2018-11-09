@@ -60,5 +60,9 @@
 
 * Small improvement of subscription registration performance by avoiding an update if the subscription looks as it should
 
+## 7.0.0-a01
+
+* Several adjustments to how queue names are validated and how topic names are generated. Please note that this is a BREAKING CHANGE, because queue names and topic names are no longer automatically lowercased (because it's not necessary), and topic names can now have . in them (because that has always been possible). If you update to 7, you must update ALL of your endpoints, otherwise pub/sub will not work!
+
 [lezzi]: https://github.com/lezzi
 [Meyce]: https://github.com/Meyce

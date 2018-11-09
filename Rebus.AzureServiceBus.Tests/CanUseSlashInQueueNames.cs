@@ -11,7 +11,6 @@ namespace Rebus.AzureServiceBus.Tests
     [TestFixture]
     public class CanUseSlashInQueueNames : FixtureBase
     {
-
         [Test]
         public async Task ItJustWorks()
         {
