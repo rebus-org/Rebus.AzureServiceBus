@@ -58,6 +58,7 @@ namespace Rebus.AzureServiceBus
         readonly ConcurrentDictionary<string, TopicClient> _topicClients = new ConcurrentDictionary<string, TopicClient>();
         readonly ConcurrentDictionary<string, string[]> _cachedSubscriberAddresses = new ConcurrentDictionary<string, string[]>();
         readonly IAsyncTaskFactory _asyncTaskFactory;
+        readonly CancellationToken _cancellationToken;
         readonly ManagementClient _managementClient;
         readonly string _connectionString;
         readonly TimeSpan? _receiveTimeout;
@@ -71,7 +72,7 @@ namespace Rebus.AzureServiceBus
         /// <summary>
         /// Constructs the transport, connecting to the service bus pointed to by the connection string.
         /// </summary>
-        public AzureServiceBusTransport(string connectionString, string queueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory)
+        public AzureServiceBusTransport(string connectionString, string queueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
 
@@ -90,6 +91,7 @@ namespace Rebus.AzureServiceBus
 
             _connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
             _asyncTaskFactory = asyncTaskFactory ?? throw new ArgumentNullException(nameof(asyncTaskFactory));
+            _cancellationToken = cancellationToken;
             _log = rebusLoggerFactory.GetLogger<AzureServiceBusTransport>();
             _managementClient = new ManagementClient(connectionString);
 
@@ -133,10 +135,10 @@ namespace Rebus.AzureServiceBus
 
                 subscription.ForwardTo = inputQueuePath;
 
-                await _managementClient.UpdateSubscriptionAsync(subscription).ConfigureAwait(false);
+                await _managementClient.UpdateSubscriptionAsync(subscription, _cancellationToken).ConfigureAwait(false);
 
                 _log.Info("Subscription {subscriptionName} for topic {topicName} successfully registered", subscriptionName, topic);
-            });
+            }, _cancellationToken);
         }
 
         /// <summary>
@@ -156,7 +158,7 @@ namespace Rebus.AzureServiceBus
 
                 try
                 {
-                    await _managementClient.DeleteSubscriptionAsync(topicPath, subscriptionName).ConfigureAwait(false);
+                    await _managementClient.DeleteSubscriptionAsync(topicPath, subscriptionName, _cancellationToken).ConfigureAwait(false);
 
                     _log.Info("Subscription {subscriptionName} for topic {topicName} successfully unregistered",
                         subscriptionName, topic);
@@ -165,18 +167,18 @@ namespace Rebus.AzureServiceBus
                 {
                     // it's alright man
                 }
-            });
+            }, _cancellationToken);
         }
 
         async Task<SubscriptionDescription> GetOrCreateSubscription(string topicPath, string subscriptionName)
         {
             try
             {
-                return await _managementClient.CreateSubscriptionAsync(topicPath, subscriptionName).ConfigureAwait(false);
+                return await _managementClient.CreateSubscriptionAsync(topicPath, subscriptionName, _cancellationToken).ConfigureAwait(false);
             }
             catch (MessagingEntityAlreadyExistsException)
             {
-                return await _managementClient.GetSubscriptionAsync(topicPath, subscriptionName).ConfigureAwait(false);
+                return await _managementClient.GetSubscriptionAsync(topicPath, subscriptionName, _cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -201,7 +203,7 @@ namespace Rebus.AzureServiceBus
         {
             try
             {
-                return await _managementClient.GetTopicAsync(normalizedTopic).ConfigureAwait(false);
+                return await _managementClient.GetTopicAsync(normalizedTopic, _cancellationToken).ConfigureAwait(false);
             }
             catch (MessagingEntityNotFoundException)
             {
@@ -210,11 +212,11 @@ namespace Rebus.AzureServiceBus
 
             try
             {
-                return await _managementClient.CreateTopicAsync(normalizedTopic).ConfigureAwait(false);
+                return await _managementClient.CreateTopicAsync(normalizedTopic, _cancellationToken).ConfigureAwait(false);
             }
             catch (MessagingEntityAlreadyExistsException)
             {
-                return await _managementClient.GetTopicAsync(normalizedTopic).ConfigureAwait(false);
+                return await _managementClient.GetTopicAsync(normalizedTopic, _cancellationToken).ConfigureAwait(false);
             }
             catch (Exception exception)
             {
@@ -276,7 +278,7 @@ namespace Rebus.AzureServiceBus
 
             AsyncHelpers.RunSync(async () =>
             {
-                if (await _managementClient.QueueExistsAsync(address).ConfigureAwait(false)) return;
+                if (await _managementClient.QueueExistsAsync(address, _cancellationToken).ConfigureAwait(false)) return;
 
                 try
                 {
@@ -284,7 +286,7 @@ namespace Rebus.AzureServiceBus
 
                     var queueDescription = GetInputQueueDescription();
 
-                    await _managementClient.CreateQueueAsync(queueDescription).ConfigureAwait(false);
+                    await _managementClient.CreateQueueAsync(queueDescription, _cancellationToken).ConfigureAwait(false);
                 }
                 catch (MessagingEntityAlreadyExistsException)
                 {
@@ -370,7 +372,7 @@ namespace Rebus.AzureServiceBus
                 }
 
                 _log.Info("Updating ASB queue {queueName}: {updates}", address, updates);
-                await _managementClient.UpdateQueueAsync(queueDescription);
+                await _managementClient.UpdateQueueAsync(queueDescription, _cancellationToken);
             });
         }
 
@@ -378,7 +380,7 @@ namespace Rebus.AzureServiceBus
         {
             try
             {
-                return await _managementClient.GetQueueAsync(address).ConfigureAwait(false);
+                return await _managementClient.GetQueueAsync(address, _cancellationToken).ConfigureAwait(false);
             }
             catch (Exception exception)
             {
@@ -735,7 +737,7 @@ namespace Rebus.AzureServiceBus
             try
             {
                 AsyncHelpers.RunSync(async () =>
-                    await ManagementExtensions.PurgeQueue(_connectionString, queueName).ConfigureAwait(false));
+                    await ManagementExtensions.PurgeQueue(_connectionString, queueName, _cancellationToken).ConfigureAwait(false));
             }
             catch (Exception exception)
             {

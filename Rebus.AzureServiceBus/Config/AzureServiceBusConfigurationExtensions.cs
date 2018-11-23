@@ -1,4 +1,5 @@
-﻿using Rebus.AzureServiceBus;
+﻿using System.Threading;
+using Rebus.AzureServiceBus;
 using Rebus.Logging;
 using Rebus.Pipeline;
 using Rebus.Pipeline.Receive;
@@ -30,9 +31,10 @@ namespace Rebus.Config
                 .OtherService<AzureServiceBusTransport>()
                 .Register(c =>
                 {
+                    var cancellationToken = c.Get<CancellationToken>();
                     var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                     var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
-                    return new AzureServiceBusTransport(connectionString, null, rebusLoggerFactory, asyncTaskFactory);
+                    return new AzureServiceBusTransport(connectionString, null, rebusLoggerFactory, asyncTaskFactory, cancellationToken);
                 });
 
             configurer
@@ -69,9 +71,10 @@ namespace Rebus.Config
                 .OtherService<AzureServiceBusTransport>()
                 .Register(c =>
                 {
+                    var cancellationToken = c.Get<CancellationToken>();
                     var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                     var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
-                    var transport = new AzureServiceBusTransport(connectionString, inputQueueAddress, rebusLoggerFactory, asyncTaskFactory);
+                    var transport = new AzureServiceBusTransport(connectionString, inputQueueAddress, rebusLoggerFactory, asyncTaskFactory, cancellationToken);
 
                     if (settings.PrefetchingEnabled)
                     {
