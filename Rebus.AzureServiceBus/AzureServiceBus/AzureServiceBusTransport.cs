@@ -51,6 +51,7 @@ namespace Rebus.AzureServiceBus
             maximumRetryCount: 10
         );
 
+        readonly ExceptionIgnorant _subscriptionExceptionIgnorant = new ExceptionIgnorant(maxAttemps: 10).Ignore<ServiceBusException>(ex => ex.IsTransient);
         readonly AzureServiceBusEntityNameHelper _azureServiceBusEntityNameHelper = new AzureServiceBusEntityNameHelper();
         readonly ConcurrentStack<IDisposable> _disposables = new ConcurrentStack<IDisposable>();
         readonly ConcurrentDictionary<string, MessageSender> _messageSenders = new ConcurrentDictionary<string, MessageSender>();
@@ -116,23 +117,26 @@ namespace Rebus.AzureServiceBus
 
             _log.Debug("Registering subscription for topic {topicName}", topic);
 
-            var topicDescription = await EnsureTopicExists(topic).ConfigureAwait(false);
-            var messageSender = GetMessageSender(Address);
+            await _subscriptionExceptionIgnorant.Execute(async () =>
+            {
+                var topicDescription = await EnsureTopicExists(topic).ConfigureAwait(false);
+                var messageSender = GetMessageSender(Address);
 
-            var inputQueuePath = messageSender.Path;
-            var topicPath = topicDescription.Path;
-            var subscriptionName = GetSubscriptionName();
+                var inputQueuePath = messageSender.Path;
+                var topicPath = topicDescription.Path;
+                var subscriptionName = GetSubscriptionName();
 
-            var subscription = await GetOrCreateSubscription(topicPath, subscriptionName).ConfigureAwait(false);
+                var subscription = await GetOrCreateSubscription(topicPath, subscriptionName).ConfigureAwait(false);
 
-            // if it looks fine, just skip it
-            if (subscription.ForwardTo == inputQueuePath) return;
+                // if it looks fine, just skip it
+                if (subscription.ForwardTo == inputQueuePath) return;
 
-            subscription.ForwardTo = inputQueuePath;
+                subscription.ForwardTo = inputQueuePath;
 
-            await _managementClient.UpdateSubscriptionAsync(subscription).ConfigureAwait(false);
+                await _managementClient.UpdateSubscriptionAsync(subscription).ConfigureAwait(false);
 
-            _log.Info("Subscription {subscriptionName} for topic {topicName} successfully registered", subscriptionName, topic);
+                _log.Info("Subscription {subscriptionName} for topic {topicName} successfully registered", subscriptionName, topic);
+            });
         }
 
         /// <summary>
@@ -144,20 +148,24 @@ namespace Rebus.AzureServiceBus
 
             _log.Debug("Unregistering subscription for topic {topicName}", topic);
 
-            var topicDescription = await EnsureTopicExists(topic).ConfigureAwait(false);
-            var topicPath = topicDescription.Path;
-            var subscriptionName = GetSubscriptionName();
-
-            try
+            await _subscriptionExceptionIgnorant.Execute(async () =>
             {
-                await _managementClient.DeleteSubscriptionAsync(topicPath, subscriptionName).ConfigureAwait(false);
+                var topicDescription = await EnsureTopicExists(topic).ConfigureAwait(false);
+                var topicPath = topicDescription.Path;
+                var subscriptionName = GetSubscriptionName();
 
-                _log.Info("Subscription {subscriptionName} for topic {topicName} successfully unregistered", subscriptionName, topic);
-            }
-            catch (MessagingEntityNotFoundException)
-            {
-                // it's alright man
-            }
+                try
+                {
+                    await _managementClient.DeleteSubscriptionAsync(topicPath, subscriptionName).ConfigureAwait(false);
+
+                    _log.Info("Subscription {subscriptionName} for topic {topicName} successfully unregistered",
+                        subscriptionName, topic);
+                }
+                catch (MessagingEntityNotFoundException)
+                {
+                    // it's alright man
+                }
+            });
         }
 
         async Task<SubscriptionDescription> GetOrCreateSubscription(string topicPath, string subscriptionName)
