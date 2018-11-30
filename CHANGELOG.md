@@ -60,5 +60,11 @@
 
 * Small improvement of subscription registration performance by avoiding an update if the subscription looks as it should
 
+## 6.0.5
+
+* Fix bug that would "forget" to stop automatic peek lock renewal in cases where message handler throws an exception, generating unnecessary noise in the log
+
+
+
 [lezzi]: https://github.com/lezzi
 [Meyce]: https://github.com/Meyce

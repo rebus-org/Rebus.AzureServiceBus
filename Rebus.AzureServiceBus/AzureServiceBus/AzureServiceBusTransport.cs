@@ -524,7 +524,9 @@ namespace Rebus.AzureServiceBus
                         intervalSeconds: (int)lockRenewalInterval.TotalSeconds,
                         prettyInsignificant: true);
 
+                // be sure to stop the renewal task regardless of whether we're committing or aborting
                 context.OnCommitted(async () => renewalTask.Dispose());
+                context.OnAborted(async () => renewalTask.Dispose());
 
                 renewalTask.Start();
             }
