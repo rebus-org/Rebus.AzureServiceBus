@@ -27,7 +27,7 @@ namespace Rebus.AzureServiceBus.Tests.Factories
 
             if (inputQueueAddress == null)
             {
-                var transport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, null, consoleLoggerFactory, asyncTaskFactory);
+                var transport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, null, consoleLoggerFactory, asyncTaskFactory, new AzureServiceBusNameHelper());
 
                 transport.Initialize();
 
@@ -36,7 +36,7 @@ namespace Rebus.AzureServiceBus.Tests.Factories
 
             return _queuesToDelete.GetOrAdd(inputQueueAddress, () =>
             {
-                var transport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory);
+                var transport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory, new AzureServiceBusNameHelper());
 
                 transport.PurgeInputQueue();
 
@@ -49,6 +49,8 @@ namespace Rebus.AzureServiceBus.Tests.Factories
         public void CleanUp()
         {
             _queuesToDelete.Keys.ForEach(DeleteQueue);
+
+            _queuesToDelete.Values.ForEach(t => t.Dispose());
         }
 
         public static void DeleteQueue(string queueName)

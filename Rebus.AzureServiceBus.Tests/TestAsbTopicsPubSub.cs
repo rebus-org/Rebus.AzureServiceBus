@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.AzureServiceBus.Tests.Bugs;
 using Rebus.Config;
+using Rebus.Internals;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
 #pragma warning disable 1998
@@ -25,7 +26,7 @@ namespace Rebus.AzureServiceBus.Tests
 
         protected override void SetUp()
         {
-            Using(new TopicDeleter(new AzureServiceBusTopicNameConvention().GetTopic(typeof(string))));
+            Using(new TopicDeleter(new AzureServiceBusNameHelper().GetTopic(typeof(string))));
 
             _bus1 = StartBus(_inputQueueName1);
             _bus2 = StartBus(_inputQueueName2);

@@ -47,9 +47,11 @@ namespace Rebus.AzureServiceBus.Tests.Factories
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
             var connectionString = AsbTestConfig.ConnectionString;
-            var busLifetimeEvents = new BusLifetimeEvents();
-            new AzureServiceBusTransport(connectionString, queueName, consoleLoggerFactory, asyncTaskFactory)
-                .PurgeInputQueue();
+
+            using (var transport = new AzureServiceBusTransport(connectionString, queueName, consoleLoggerFactory, asyncTaskFactory, new AzureServiceBusNameHelper()))
+            {
+                transport.PurgeInputQueue();
+            }
         }
 
         public void Cleanup()

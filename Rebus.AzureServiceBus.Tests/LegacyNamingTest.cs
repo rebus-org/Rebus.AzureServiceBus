@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -55,6 +56,8 @@ namespace Rebus.AzureServiceBus.Tests
                 .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, "subscriber").UseLegacyNaming())
                 .Start();
 
+            await subscriber.Bus.Subscribe<JustAnEvent>();
+
             // simulate legacy style publish
             await publisher.Advanced.Topics.Publish(NormalizeLegacyStyle(typeof(JustAnEvent).GetSimpleAssemblyQualifiedName()), new JustAnEvent());
 
@@ -63,7 +66,13 @@ namespace Rebus.AzureServiceBus.Tests
 
         static string NormalizeLegacyStyle(string topic)
         {
-            return topic;
+            return new string(topic.Select(c =>
+                {
+                    if (!char.IsLetterOrDigit(c)) return '_';
+
+                    return char.ToLowerInvariant(c);
+                })
+                .ToArray());
         }
 
         class JustAnEvent { }

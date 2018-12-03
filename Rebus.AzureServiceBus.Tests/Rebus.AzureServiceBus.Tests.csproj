@@ -34,8 +34,6 @@
     <DefineConstants>NETSTANDARD1_6</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\Rebus.AzureServiceBus\AzureServiceBus\AzureServiceBusEntityNameHelper.cs" Link="Links\AzureServiceBusEntityNameHelper.cs" />
-    <Compile Include="..\Rebus.AzureServiceBus\AzureServiceBus\AzureServiceBusTopicNameConvention.cs" Link="Links\AzureServiceBusTopicNameConvention.cs" />
     <Compile Include="..\Rebus.AzureServiceBus\Internals\AsyncHelpers.cs" Link="Extensions\AsyncHelpers.cs" />
     <Compile Include="..\Rebus.AzureServiceBus\Internals\ExceptionIgnorant.cs" Link="Links\ExceptionIgnorant.cs" />
     <Compile Include="..\Rebus.AzureServiceBus\Internals\ManagementExtensions.cs" Link="Extensions\ManagementExtensions.cs" />

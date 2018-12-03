@@ -64,6 +64,7 @@
 
 * Several adjustments to how queue names are validated and how topic names are generated. Please note that this is a BREAKING CHANGE, because queue names and topic names are no longer automatically lowercased (because it's not necessary), and topic names can now have . in them (because that has always been possible). If you update to 7, you must update ALL of your endpoints, otherwise pub/sub will not work!
 * Fix bug that would "forget" to stop automatic peek lock renewal in cases where message handler throws an exception, generating unnecessary noise in the log
+* Add ability to run in "legacy naming mode", meaning that topics are more conservatively sanitized to work the same way as all versions of the transport prior to version 7
 
 [lezzi]: https://github.com/lezzi
 [Meyce]: https://github.com/Meyce

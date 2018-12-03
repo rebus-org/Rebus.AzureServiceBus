@@ -35,7 +35,8 @@ namespace Rebus.Config
                     var cancellationToken = c.Get<CancellationToken>();
                     var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                     var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
-                    return new AzureServiceBusTransport(connectionString, null, rebusLoggerFactory, asyncTaskFactory, cancellationToken);
+                    var azureServiceBusNameHelper = c.Get<AzureServiceBusNameHelper>();
+                    return new AzureServiceBusTransport(connectionString, null, rebusLoggerFactory, asyncTaskFactory, azureServiceBusNameHelper, cancellationToken);
                 });
 
             configurer
@@ -46,7 +47,9 @@ namespace Rebus.Config
 
             configurer.OtherService<ITimeoutManager>().Register(c => new DisabledTimeoutManager(), description: AsbTimeoutManagerText);
 
-            configurer.OtherService<ITopicNameConvention>().Register(c => new AzureServiceBusTopicNameConvention());
+            configurer.OtherService<ITopicNameConvention>().Register(c => c.Get<AzureServiceBusNameHelper>());
+            
+            configurer.OtherService<AzureServiceBusNameHelper>().Register(c => new AzureServiceBusNameHelper(settingsBuilder.LegacyNamingEnabled));
 
             OneWayClientBackdoor.ConfigureOneWayClient(configurer);
 
@@ -74,11 +77,11 @@ namespace Rebus.Config
                 .OtherService<AzureServiceBusTransport>()
                 .Register(c =>
                 {
-                    var nameConvention = c.Get<AzureServiceBusTopicNameConvention>();
+                    var azureServiceBusNameHelper = c.Get<AzureServiceBusNameHelper>();
                     var cancellationToken = c.Get<CancellationToken>();
                     var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                     var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
-                    var transport = new AzureServiceBusTransport(connectionString, inputQueueAddress, rebusLoggerFactory, asyncTaskFactory, cancellationToken);
+                    var transport = new AzureServiceBusTransport(connectionString, inputQueueAddress, rebusLoggerFactory, asyncTaskFactory, azureServiceBusNameHelper, cancellationToken);
 
                     if (settings.PrefetchingEnabled)
                     {
@@ -114,13 +117,11 @@ namespace Rebus.Config
             });
 
             // disable timeout manager
-            configurer.OtherService<ITimeoutManager>()
-                .Register(c => new DisabledTimeoutManager(), description: AsbTimeoutManagerText);
+            configurer.OtherService<ITimeoutManager>().Register(c => new DisabledTimeoutManager(), description: AsbTimeoutManagerText);
  
-            configurer.OtherService<AzureServiceBusTopicNameConvention>()
-                .Register(c => new AzureServiceBusTopicNameConvention());
+            configurer.OtherService<AzureServiceBusNameHelper>().Register(c => new AzureServiceBusNameHelper(settings.LegacyNamingEnabled));
 
-            configurer.OtherService<ITopicNameConvention>().Register(c => c.Get<AzureServiceBusTopicNameConvention>());
+            configurer.OtherService<ITopicNameConvention>().Register(c => c.Get<AzureServiceBusNameHelper>());
         }
 
         static string GetConnectionString(string connectionString)
