@@ -11,7 +11,7 @@ using Rebus.Tests.Contracts.Extensions;
 
 namespace Rebus.AzureServiceBus.Tests
 {
-    [TestFixture, Category(TestCategory.Azure)]
+    [TestFixture]
     public class TestAsbTopicsPubSub : FixtureBase
     {
         readonly string _inputQueueName1 = TestConfig.GetName("pubsub1");

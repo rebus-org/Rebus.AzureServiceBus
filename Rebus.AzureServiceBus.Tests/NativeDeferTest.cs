@@ -16,7 +16,7 @@ using Rebus.Threading.TaskParallelLibrary;
 
 namespace Rebus.AzureServiceBus.Tests
 {
-    [TestFixture, Category(TestCategory.Azure)]
+    [TestFixture]
     public class NativeDeferTest : FixtureBase
     {
         static readonly string QueueName = TestConfig.GetName("input");

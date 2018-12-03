@@ -6,7 +6,7 @@ using Rebus.Tests.Contracts;
 
 namespace Rebus.AzureServiceBus.Tests
 {
-    [TestFixture, Category(TestCategory.Azure)]
+    [TestFixture]
     public class AzureServiceBusContentTypeTest : FixtureBase
     {
         static readonly string ConnectionString = AsbTestConfig.ConnectionString;

@@ -23,9 +23,10 @@ namespace Rebus.Config
         /// <summary>
         /// Configures Rebus to use Azure Service Bus to transport messages as a one-way client (i.e. will not be able to receive any messages)
         /// </summary>
-        public static void UseAzureServiceBusAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionStringNameOrConnectionString)
+        public static AzureServiceBusTransportClientSettings UseAzureServiceBusAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionStringNameOrConnectionString)
         {
             var connectionString = GetConnectionString(connectionStringNameOrConnectionString);
+            var settingsBuilder = new AzureServiceBusTransportClientSettings();
 
             configurer
                 .OtherService<AzureServiceBusTransport>()
@@ -48,6 +49,8 @@ namespace Rebus.Config
             configurer.OtherService<ITopicNameConvention>().Register(c => new AzureServiceBusTopicNameConvention());
 
             OneWayClientBackdoor.ConfigureOneWayClient(configurer);
+
+            return settingsBuilder;
         }
 
         /// <summary>
@@ -71,6 +74,7 @@ namespace Rebus.Config
                 .OtherService<AzureServiceBusTransport>()
                 .Register(c =>
                 {
+                    var nameConvention = c.Get<AzureServiceBusTopicNameConvention>();
                     var cancellationToken = c.Get<CancellationToken>();
                     var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                     var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
@@ -113,7 +117,10 @@ namespace Rebus.Config
             configurer.OtherService<ITimeoutManager>()
                 .Register(c => new DisabledTimeoutManager(), description: AsbTimeoutManagerText);
  
-            configurer.OtherService<ITopicNameConvention>().Register(c => new AzureServiceBusTopicNameConvention());
+            configurer.OtherService<AzureServiceBusTopicNameConvention>()
+                .Register(c => new AzureServiceBusTopicNameConvention());
+
+            configurer.OtherService<ITopicNameConvention>().Register(c => c.Get<AzureServiceBusTopicNameConvention>());
         }
 
         static string GetConnectionString(string connectionString)

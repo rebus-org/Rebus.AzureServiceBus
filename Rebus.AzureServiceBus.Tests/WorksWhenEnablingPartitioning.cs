@@ -10,7 +10,7 @@ using Rebus.Tests.Contracts.Utilities;
 
 namespace Rebus.AzureServiceBus.Tests
 {
-    [TestFixture, Category(TestCategory.Azure)]
+    [TestFixture]
     public class WorksWhenEnablingPartitioning : FixtureBase
     {
         readonly string _queueName = TestConfig.GetName("input");

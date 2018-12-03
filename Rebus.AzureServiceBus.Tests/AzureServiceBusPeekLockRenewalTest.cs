@@ -3,7 +3,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Activation;
-using Rebus.AzureServiceBus.Tests.Factories;
 using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Extensions;
@@ -16,7 +15,7 @@ using Rebus.Transport;
 
 namespace Rebus.AzureServiceBus.Tests
 {
-    [TestFixture, Category(TestCategory.Azure)]
+    [TestFixture]
     public class AzureServiceBusPeekLockRenewalTest : FixtureBase
     {
         static readonly string ConnectionString = AsbTestConfig.ConnectionString;

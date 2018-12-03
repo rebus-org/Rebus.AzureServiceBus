@@ -1,10 +1,9 @@
 ﻿using System;
-using Rebus.Exceptions;
 
 namespace Rebus.Config
 {
     /// <summary>
-    /// Allows for configuring additional options for the Azure Service Bus transport
+    /// Allows for configuring additional options for the Azure Service Bus transport (when running in full-duplex mode)
     /// </summary>
     public class AzureServiceBusTransportSettings
     {
@@ -13,6 +12,7 @@ namespace Rebus.Config
         internal bool PartitioningEnabled { get; set; }
         internal bool DoNotCreateQueuesEnabled { get; set; }
         internal bool AutomaticPeekLockRenewalEnabled { get; set; }
+        internal bool LegacyNamingEnabled { get; set; }
         internal TimeSpan? DefaultMessageTimeToLive { get; set; }
         internal TimeSpan? LockDuration { get; set; }
         internal TimeSpan? AutoDeleteOnIdle { get; set; }
@@ -109,6 +109,16 @@ namespace Rebus.Config
         public AzureServiceBusTransportSettings AutomaticallyRenewPeekLock()
         {
             AutomaticPeekLockRenewalEnabled = true;
+            return this;
+        }
+
+        /// <summary>
+        /// Enables "legacy naming", which means that queue names are lowercased, and topic names are "normalized" to be in accordance
+        /// with how v6 of the transport did it.
+        /// </summary>
+        public AzureServiceBusTransportSettings UseLegacyNaming()
+        {
+            LegacyNamingEnabled = true;
             return this;
         }
 
