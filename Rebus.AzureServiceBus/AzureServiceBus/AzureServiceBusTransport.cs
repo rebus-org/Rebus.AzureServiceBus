@@ -86,7 +86,7 @@ namespace Rebus.AzureServiceBus
                     throw new ArgumentException($"Sorry, but the queue name '{queueName}' cannot be used because it conflicts with Rebus' internally used 'magic subscription prefix': '{MagicSubscriptionPrefix}'. ");
                 }
 
-                Address = _azureServiceBusNameHelper.ReplaceInvalidCharacters(queueName);
+                Address = _azureServiceBusNameHelper.ReplaceInvalidCharacters(queueName, isQueueName: true);
 
                 _azureServiceBusNameHelper.EnsureIsValidQueueName(Address);
             }
