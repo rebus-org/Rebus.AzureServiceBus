@@ -19,8 +19,8 @@ namespace Rebus.AzureServiceBus
         public AzureServiceBusNameHelper(bool useLegacyNaming = false)
         {
             _additionalValidCharacters = useLegacyNaming
-                ? new char[0]
-                : new[] { '.', '-' };
+                ? new[] { '_' }
+                : new[] { '.', '-', '_' };
 
             _lowerCase = useLegacyNaming;
         }
