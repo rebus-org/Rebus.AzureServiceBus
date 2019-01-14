@@ -5,7 +5,6 @@ using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.AzureServiceBus.Tests.Bugs;
 using Rebus.Config;
-using Rebus.Internals;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
 #pragma warning disable 1998
@@ -49,8 +48,8 @@ namespace Rebus.AzureServiceBus.Tests
 
             await _bus3.Bus.Publish("hello there!!!!");
 
-            gotString1.WaitOrDie(TimeSpan.FromSeconds(2));
-            gotString2.WaitOrDie(TimeSpan.FromSeconds(2));
+            gotString1.WaitOrDie(TimeSpan.FromSeconds(3));
+            gotString2.WaitOrDie(TimeSpan.FromSeconds(3));
         }
 
         [Test]
@@ -77,7 +76,7 @@ namespace Rebus.AzureServiceBus.Tests
 
             await _bus3.Bus.Publish("hello there!!!!");
 
-            gotString1.WaitOrDie(TimeSpan.FromSeconds(2));
+            gotString1.WaitOrDie(TimeSpan.FromSeconds(3));
 
             Assert.That(subscriber2GotTheMessage, Is.False, "Didn't expect subscriber 2 to get the string since it was unsubscribed");
         }
