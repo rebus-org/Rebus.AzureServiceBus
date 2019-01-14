@@ -5,13 +5,13 @@ using Rebus.Internals;
 
 namespace Rebus.AzureServiceBus.Tests.Bugs
 {
-    public class TopicDeleter : IDisposable
+    public class QueueDeleter : IDisposable
     {
-        readonly string _topicName;
+        readonly string _queueName;
 
-        public TopicDeleter(string topicName)
+        public QueueDeleter(string queueName)
         {
-            _topicName = topicName;
+            _queueName = queueName;
         }
 
         public void Dispose()
@@ -22,11 +22,11 @@ namespace Rebus.AzureServiceBus.Tests.Bugs
             {
                 try
                 {
-                    var topicDescription = await managementClient.GetTopicAsync(_topicName);
+                    var topicDescription = await managementClient.GetQueueAsync(_queueName);
 
-                    await managementClient.DeleteTopicAsync(topicDescription.Path);
+                    await managementClient.DeleteQueueAsync(topicDescription.Path);
 
-                    Console.WriteLine($"Deleted topic '{_topicName}'");
+                    Console.WriteLine($"Deleted queue '{_queueName}'");
                 }
                 catch (MessagingEntityNotFoundException)
                 {

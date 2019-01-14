@@ -38,11 +38,11 @@ namespace Rebus.AzureServiceBus
         /// <summary>
         /// "Sanitizes" the string <paramref name="str"/> to make it into a valid ASB entity name
         /// </summary>
-        public string ReplaceInvalidCharacters(string str, bool isQueueName = false)
+        public string ReplaceInvalidCharacters(string str)
         {
             var name = string.Concat(str.Select(c =>
             {
-                if (isQueueName && c == '/') return '/';
+                if (c == '/') return '/';
 
                 return IsValidCharacter(c) ? c : '_';
             }));
