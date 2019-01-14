@@ -64,6 +64,9 @@
 
 * Fix bug that would "forget" to stop automatic peek lock renewal in cases where message handler throws an exception, generating unnecessary noise in the log
 
+## 6.0.6
+
+* Update Azure Service Bus dependency to 3.2.1
 
 
 [lezzi]: https://github.com/lezzi
