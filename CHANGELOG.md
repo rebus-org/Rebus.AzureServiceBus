@@ -69,12 +69,13 @@
 * Update Azure Service Bus dependency to 3.2.1
 
 
-## 7.0.0-a06
+## 7.0.0-a07
 
 * Several adjustments to how queue names are validated and how topic names are generated. Please note that this is a BREAKING CHANGE, because queue names and topic names are no longer automatically lowercased (because it's not necessary), and topic names can now have . in them (because that has always been possible). If you update to 7, you must update ALL of your endpoints, otherwise pub/sub will not work!
 * Fix bug that would "forget" to stop automatic peek lock renewal in cases where message handler throws an exception, generating unnecessary noise in the log
 * Add ability to run in "legacy naming mode", meaning that topics are more conservatively sanitized to work the same way as all versions of the transport prior to version 7
 * Fix bug that accidentally replaced `/` in topic names when publishing, which would cause topics with `/` to be unreachable
+* Fix one-way client legacy naming bug (one-way client would not adhere to legacy naming convention, even when `.UseLegacyNaming()` was called on the configuration builder)
 
 
 [lezzi]: https://github.com/lezzi

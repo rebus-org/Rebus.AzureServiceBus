@@ -64,6 +64,30 @@ namespace Rebus.AzureServiceBus.Tests
             gotTheEvent.WaitOrDie(TimeSpan.FromSeconds(3));
         }
 
+        [Test]
+        public async Task CanPublishToSubscriberWithLegacyModeEnabled_OneWayClient()
+        {
+            var publisher = Configure.With(Using(new BuiltinHandlerActivator()))
+                .Transport(t => t.UseAzureServiceBusAsOneWayClient(AsbTestConfig.ConnectionString).UseLegacyNaming())
+                .Start();
+
+            var subscriber = new BuiltinHandlerActivator();
+            var gotTheEvent = new ManualResetEvent(false);
+
+            subscriber.Handle<JustAnEvent>(async e => gotTheEvent.Set());
+
+            Configure.With(Using(subscriber))
+                .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, "subscriber").UseLegacyNaming())
+                .Start();
+
+            await subscriber.Bus.Subscribe<JustAnEvent>();
+
+            // simulate legacy style publish
+            await publisher.Publish(new JustAnEvent());
+
+            gotTheEvent.WaitOrDie(TimeSpan.FromSeconds(3));
+        }
+
         static string NormalizeLegacyStyle(string topic)
         {
             return new string(topic.Select(c =>

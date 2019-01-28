@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 using Rebus.AzureServiceBus;
 using Rebus.Logging;
 using Rebus.Pipeline;
@@ -23,9 +24,8 @@ namespace Rebus.Config
         /// <summary>
         /// Configures Rebus to use Azure Service Bus to transport messages as a one-way client (i.e. will not be able to receive any messages)
         /// </summary>
-        public static AzureServiceBusTransportClientSettings UseAzureServiceBusAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionStringNameOrConnectionString)
+        public static AzureServiceBusTransportClientSettings UseAzureServiceBusAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionString)
         {
-            var connectionString = GetConnectionString(connectionStringNameOrConnectionString);
             var settingsBuilder = new AzureServiceBusTransportClientSettings();
 
             configurer
@@ -36,20 +36,18 @@ namespace Rebus.Config
                     var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                     var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
                     var azureServiceBusNameHelper = c.Get<AzureServiceBusNameHelper>();
-                    return new AzureServiceBusTransport(connectionString, null, rebusLoggerFactory, asyncTaskFactory, azureServiceBusNameHelper, cancellationToken);
+
+                    return new AzureServiceBusTransport(
+                        connectionString: connectionString,
+                        queueName: null,
+                        rebusLoggerFactory: rebusLoggerFactory,
+                        asyncTaskFactory: asyncTaskFactory,
+                        azureServiceBusNameHelper: azureServiceBusNameHelper,
+                        cancellationToken: cancellationToken
+                    );
                 });
 
-            configurer
-                .OtherService<ISubscriptionStorage>()
-                .Register(c => c.Get<AzureServiceBusTransport>(), description: AsbSubStorageText);
-
-            configurer.Register(c => c.Get<AzureServiceBusTransport>());
-
-            configurer.OtherService<ITimeoutManager>().Register(c => new DisabledTimeoutManager(), description: AsbTimeoutManagerText);
-
-            configurer.OtherService<ITopicNameConvention>().Register(c => c.Get<AzureServiceBusNameHelper>());
-            
-            configurer.OtherService<AzureServiceBusNameHelper>().Register(c => new AzureServiceBusNameHelper(settingsBuilder.LegacyNamingEnabled));
+            RegisterServices(configurer, () => settingsBuilder.LegacyNamingEnabled);
 
             OneWayClientBackdoor.ConfigureOneWayClient(configurer);
 
@@ -60,18 +58,10 @@ namespace Rebus.Config
         /// Configures Rebus to use Azure Service Bus queues to transport messages, connecting to the service bus instance pointed to by the connection string
         /// (or the connection string with the specified name from the current app.config)
         /// </summary>
-        public static AzureServiceBusTransportSettings UseAzureServiceBus(this StandardConfigurer<ITransport> configurer, string connectionStringNameOrConnectionString, string inputQueueAddress)
+        public static AzureServiceBusTransportSettings UseAzureServiceBus(this StandardConfigurer<ITransport> configurer, string connectionString, string inputQueueAddress)
         {
-            var connectionString = GetConnectionString(connectionStringNameOrConnectionString);
             var settingsBuilder = new AzureServiceBusTransportSettings();
 
-            RegisterStandardTransport(configurer, inputQueueAddress, connectionString, settingsBuilder);
-
-            return settingsBuilder;
-        }
-
-        static void RegisterStandardTransport(StandardConfigurer<ITransport> configurer, string inputQueueAddress, string connectionString, AzureServiceBusTransportSettings settings)
-        {
             // register the actual transport as itself
             configurer
                 .OtherService<AzureServiceBusTransport>()
@@ -81,31 +71,33 @@ namespace Rebus.Config
                     var cancellationToken = c.Get<CancellationToken>();
                     var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                     var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
-                    var transport = new AzureServiceBusTransport(connectionString, inputQueueAddress, rebusLoggerFactory, asyncTaskFactory, azureServiceBusNameHelper, cancellationToken);
 
-                    if (settings.PrefetchingEnabled)
+                    var transport = new AzureServiceBusTransport(
+                        connectionString: connectionString,
+                        queueName: inputQueueAddress,
+                        rebusLoggerFactory: rebusLoggerFactory,
+                        asyncTaskFactory: asyncTaskFactory,
+                        azureServiceBusNameHelper: azureServiceBusNameHelper,
+                        cancellationToken: cancellationToken
+                    );
+
+                    if (settingsBuilder.PrefetchingEnabled)
                     {
-                        transport.PrefetchMessages(settings.NumberOfMessagesToPrefetch);
+                        transport.PrefetchMessages(settingsBuilder.NumberOfMessagesToPrefetch);
                     }
 
-                    transport.AutomaticallyRenewPeekLock = settings.AutomaticPeekLockRenewalEnabled;
-                    transport.PartitioningEnabled = settings.PartitioningEnabled;
-                    transport.DoNotCreateQueuesEnabled = settings.DoNotCreateQueuesEnabled;
-                    transport.DefaultMessageTimeToLive = settings.DefaultMessageTimeToLive;
-                    transport.LockDuration = settings.LockDuration;
-                    transport.AutoDeleteOnIdle = settings.AutoDeleteOnIdle;
-                    transport.DuplicateDetectionHistoryTimeWindow = settings.DuplicateDetectionHistoryTimeWindow;
+                    transport.AutomaticallyRenewPeekLock = settingsBuilder.AutomaticPeekLockRenewalEnabled;
+                    transport.PartitioningEnabled = settingsBuilder.PartitioningEnabled;
+                    transport.DoNotCreateQueuesEnabled = settingsBuilder.DoNotCreateQueuesEnabled;
+                    transport.DefaultMessageTimeToLive = settingsBuilder.DefaultMessageTimeToLive;
+                    transport.LockDuration = settingsBuilder.LockDuration;
+                    transport.AutoDeleteOnIdle = settingsBuilder.AutoDeleteOnIdle;
+                    transport.DuplicateDetectionHistoryTimeWindow = settingsBuilder.DuplicateDetectionHistoryTimeWindow;
                     
                     return transport;
                 });
 
-            // map subscription storage to transport
-            configurer
-                .OtherService<ISubscriptionStorage>()
-                .Register(c => c.Get<AzureServiceBusTransport>(), description: AsbSubStorageText);
-
-            // map ITransport to transport
-            configurer.Register(c => c.Get<AzureServiceBusTransport>());
+            RegisterServices(configurer, () => settingsBuilder.LegacyNamingEnabled);
 
             // remove deferred messages step
             configurer.OtherService<IPipeline>().Decorate(c =>
@@ -116,17 +108,31 @@ namespace Rebus.Config
                     .RemoveIncomingStep(s => s.GetType() == typeof(HandleDeferredMessagesStep));
             });
 
-            // disable timeout manager
-            configurer.OtherService<ITimeoutManager>().Register(c => new DisabledTimeoutManager(), description: AsbTimeoutManagerText);
- 
-            configurer.OtherService<AzureServiceBusNameHelper>().Register(c => new AzureServiceBusNameHelper(settings.LegacyNamingEnabled));
-
-            configurer.OtherService<ITopicNameConvention>().Register(c => c.Get<AzureServiceBusNameHelper>());
+            return settingsBuilder;
         }
 
-        static string GetConnectionString(string connectionString)
+        static void RegisterServices(StandardConfigurer<ITransport> configurer, Func<bool> legacyNamingEnabled)
         {
-            return connectionString;
+            // map ITransport to transport implementation
+            configurer.Register(c => c.Get<AzureServiceBusTransport>());
+
+            // map subscription storage to transport
+            configurer
+                .OtherService<ISubscriptionStorage>()
+                .Register(c => c.Get<AzureServiceBusTransport>(), description: AsbSubStorageText);
+
+            // disable timeout manager
+            configurer.OtherService<ITimeoutManager>().Register(c => new DisabledTimeoutManager(), description: AsbTimeoutManagerText);
+
+            configurer.OtherService<AzureServiceBusNameHelper>().Register(c =>
+            {
+                // lazy-evaluated setting because the builder needs a chance to be built upon before getting its settings
+                var useLegacyNaming = legacyNamingEnabled();
+
+                return new AzureServiceBusNameHelper(useLegacyNaming: useLegacyNaming);
+            });
+
+            configurer.OtherService<ITopicNameConvention>().Register(c => c.Get<AzureServiceBusNameHelper>());
         }
     }
 }
