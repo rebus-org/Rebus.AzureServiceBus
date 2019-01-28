@@ -12,6 +12,7 @@ namespace Rebus.AzureServiceBus
     {
         readonly char[] _additionalValidCharacters;
         readonly bool _lowerCase;
+        readonly bool _useLegacyNaming;
 
         /// <summary>
         /// Creates the name helper, using legacy naming (more conservative escaping, lowercase throughout) if <paramref name="useLegacyNaming"/> is true
@@ -23,6 +24,7 @@ namespace Rebus.AzureServiceBus
                 : new[] { '.', '-', '_' };
 
             _lowerCase = useLegacyNaming;
+            _useLegacyNaming = useLegacyNaming;
         }
 
         /// <summary>
@@ -30,9 +32,19 @@ namespace Rebus.AzureServiceBus
         /// </summary>
         public string GetTopic(Type eventType)
         {
+            if (!_useLegacyNaming)
+            {
+                var assemblyName = ReplaceInvalidCharacters(eventType.Assembly.GetName().Name);
+                var typeName = ReplaceInvalidCharacters(eventType.FullName);
+
+                return $"{assemblyName}/{typeName}";
+            }
+
             var simpleAssemblyQualifiedName = eventType.GetSimpleAssemblyQualifiedName();
 
-            return ReplaceInvalidCharacters(simpleAssemblyQualifiedName);
+            var topicName = ReplaceInvalidCharacters(simpleAssemblyQualifiedName);
+
+            return topicName;
         }
 
         /// <summary>
