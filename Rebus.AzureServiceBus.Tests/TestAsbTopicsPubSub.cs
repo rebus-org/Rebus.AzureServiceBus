@@ -23,12 +23,14 @@ namespace Rebus.AzureServiceBus.Tests
 	    {
 		    var activator = Using(new BuiltinHandlerActivator());
 		    Configure.With(activator)
-			    .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, "group/some.inputqueue"))
+			    .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, "some.inputqueue")
+                    .UseLegacyNaming()
+                )
                 .Options(c =>
                 {
                     c.Decorate<INameFormatter>(r =>
                     {
-                        return new PrefixNameFormatter("Rebus.Is Cool/", new LegacyV3NameFormatter());
+                        return new PrefixNameFormatter("prefix/", new LegacyV3NameFormatter());
                     });
                 })
 			    .Start();
@@ -37,11 +39,13 @@ namespace Rebus.AzureServiceBus.Tests
 
 		    activator.Handle<object>(async str => gotString1.Set());
 
-		    await activator.Bus.Advanced.Topics.Subscribe("group/" + "some.interesting topic");
+		    // await activator.Bus.Advanced.Topics.Subscribe("group/" + "some.interesting topic");
+            await activator.Bus.Subscribe<object>();
 
 		    await Task.Delay(500);
 
-		    await activator.Bus.Advanced.Topics.Publish("group/" + "some.interesting topic", new object{ });
+		    // await activator.Bus.Advanced.Topics.Publish("group/" + "some.interesting topic", new object{ });
+            await activator.Bus.Publish(new object { });
 
 		    gotString1.WaitOrDie(TimeSpan.FromSeconds(2));
 	    }

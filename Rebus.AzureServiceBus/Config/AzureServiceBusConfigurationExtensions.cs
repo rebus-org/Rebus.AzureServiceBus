@@ -139,9 +139,7 @@ namespace Rebus.Config
                 // lazy-evaluated setting because the builder needs a chance to be built upon before getting its settings
                 var useLegacyNaming = legacyNamingEnabled();
 
-                var nameFormatter = c.Get<INameFormatter>();
-
-                return new DefaultAzureServiceBusTopicNameConvention(nameFormatter, useLegacyNaming: useLegacyNaming);
+                return new DefaultAzureServiceBusTopicNameConvention(useLegacyNaming: useLegacyNaming);
             });
 
             configurer.OtherService<ITopicNameConvention>().Register(c => c.Get<DefaultAzureServiceBusTopicNameConvention>());

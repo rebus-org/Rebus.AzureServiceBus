@@ -3,16 +3,16 @@
 namespace Rebus.AzureServiceBus.NameFormat
 {
     /// <summary>
-    /// A formatter that formats queue, topic and subscription namest.
+    /// A formatter that formats queue, topic and subscription names using a default convention.
     /// </summary>
     public class DefaultNameFormatter : INameFormatter
     {
         readonly char[] _additionalValidCharacters;
 
         /// <summary>
-        /// Creates the name helper, using legacy naming (more conservative escaping, lowercase throughout) if <paramref name="useLegacyNaming"/> is true
+        /// Creates the name formatter.
         /// </summary>
-        public DefaultNameFormatter(bool useLegacyNaming = false)
+        public DefaultNameFormatter()
         {
             _additionalValidCharacters = new[] { '.', '-', '_' };
         }

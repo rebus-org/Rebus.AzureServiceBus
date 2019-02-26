@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Linq;
-using Rebus.AzureServiceBus.NameFormat;
 using Rebus.Extensions;
 using Rebus.Topic;
 
@@ -11,15 +9,13 @@ namespace Rebus.AzureServiceBus
     /// </summary>
     public class DefaultAzureServiceBusTopicNameConvention : ITopicNameConvention
     {
-        readonly INameFormatter _nameFormatter;
         readonly bool _useLegacyNaming;
 
         /// <summary>
         /// Creates the name helper, using legacy topic naming if <paramref name="useLegacyNaming"/> is true.
         /// </summary>
-        public DefaultAzureServiceBusTopicNameConvention(INameFormatter nameFormatter, bool useLegacyNaming)
+        public DefaultAzureServiceBusTopicNameConvention(bool useLegacyNaming)
         {
-            _nameFormatter = nameFormatter ?? throw new ArgumentNullException(nameof(nameFormatter));
             _useLegacyNaming = useLegacyNaming;
         }
 
@@ -44,7 +40,7 @@ namespace Rebus.AzureServiceBus
                 topicName = simpleAssemblyQualifiedName;
             }
 
-            return _nameFormatter.FormatTopicName(topicName);
+            return topicName;
         }
     }
 }
