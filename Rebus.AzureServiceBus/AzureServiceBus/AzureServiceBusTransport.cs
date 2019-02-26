@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.ServiceBus.Core;
 using Microsoft.Azure.ServiceBus.Management;
+using Rebus.AzureServiceBus.NameFormat;
 using Rebus.Bus;
 using Rebus.Exceptions;
 using Rebus.Extensions;
@@ -52,7 +53,7 @@ namespace Rebus.AzureServiceBus
         );
 
         readonly ExceptionIgnorant _subscriptionExceptionIgnorant = new ExceptionIgnorant(maxAttemps: 10).Ignore<ServiceBusException>(ex => ex.IsTransient);
-        readonly AzureServiceBusNameHelper _azureServiceBusNameHelper;
+        readonly INameFormatter _nameFormatter;
         readonly ConcurrentStack<IDisposable> _disposables = new ConcurrentStack<IDisposable>();
         readonly ConcurrentDictionary<string, MessageSender> _messageSenders = new ConcurrentDictionary<string, MessageSender>();
         readonly ConcurrentDictionary<string, TopicClient> _topicClients = new ConcurrentDictionary<string, TopicClient>();
@@ -72,11 +73,11 @@ namespace Rebus.AzureServiceBus
         /// <summary>
         /// Constructs the transport, connecting to the service bus pointed to by the connection string.
         /// </summary>
-        public AzureServiceBusTransport(string connectionString, string queueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory, AzureServiceBusNameHelper azureServiceBusNameHelper, CancellationToken cancellationToken = default(CancellationToken))
+        public AzureServiceBusTransport(string connectionString, string queueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory, INameFormatter nameFormatter, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
 
-            _azureServiceBusNameHelper = azureServiceBusNameHelper;
+            _nameFormatter = nameFormatter;
 
             if (queueName != null)
             {
@@ -86,9 +87,7 @@ namespace Rebus.AzureServiceBus
                     throw new ArgumentException($"Sorry, but the queue name '{queueName}' cannot be used because it conflicts with Rebus' internally used 'magic subscription prefix': '{MagicSubscriptionPrefix}'. ");
                 }
 
-                Address = _azureServiceBusNameHelper.ReplaceInvalidCharacters(queueName);
-
-                _azureServiceBusNameHelper.EnsureIsValidQueueName(Address);
+                Address = _nameFormatter.FormatQueueName(queueName);
             }
 
             _connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
@@ -119,6 +118,8 @@ namespace Rebus.AzureServiceBus
         {
             VerifyIsOwnInputQueueAddress(subscriberAddress);
 
+            topic = _nameFormatter.FormatTopicName(topic);
+
             _log.Debug("Registering subscription for topic {topicName}", topic);
 
             await _subscriptionExceptionIgnorant.Execute(async () =>
@@ -128,7 +129,7 @@ namespace Rebus.AzureServiceBus
 
                 var inputQueuePath = messageSender.Path;
                 var topicPath = topicDescription.Path;
-                var subscriptionName = GetSubscriptionName();
+                var subscriptionName = _nameFormatter.FormatSubscriptionName(Address);
 
                 var subscription = await GetOrCreateSubscription(topicPath, subscriptionName).ConfigureAwait(false);
 
@@ -150,13 +151,15 @@ namespace Rebus.AzureServiceBus
         {
             VerifyIsOwnInputQueueAddress(subscriberAddress);
 
+            topic = _nameFormatter.FormatTopicName(topic);
+
             _log.Debug("Unregistering subscription for topic {topicName}", topic);
 
             await _subscriptionExceptionIgnorant.Execute(async () =>
             {
                 var topicDescription = await EnsureTopicExists(topic).ConfigureAwait(false);
                 var topicPath = topicDescription.Path;
-                var subscriptionName = GetSubscriptionName();
+                var subscriptionName = _nameFormatter.FormatSubscriptionName(Address);
 
                 try
                 {
@@ -182,12 +185,6 @@ namespace Rebus.AzureServiceBus
             {
                 return await _managementClient.GetSubscriptionAsync(topicPath, subscriptionName, _cancellationToken).ConfigureAwait(false);
             }
-        }
-
-        string GetSubscriptionName()
-        {
-            // queue names can have multiple segments in them separated by / - subscription names cannot!
-            return Address.Replace("/", "_");
         }
 
         void VerifyIsOwnInputQueueAddress(string subscriberAddress)
@@ -231,6 +228,8 @@ namespace Rebus.AzureServiceBus
         /// </summary>
         public void CreateQueue(string address)
         {
+            address = _nameFormatter.FormatQueueName(address);
+
             QueueDescription GetInputQueueDescription()
             {
                 var queueDescription = new QueueDescription(address);
@@ -398,7 +397,7 @@ namespace Rebus.AzureServiceBus
         {
             if (!destinationAddress.StartsWith(MagicSubscriptionPrefix))
             {
-                _azureServiceBusNameHelper.EnsureIsValidQueueName(destinationAddress);
+                destinationAddress = _nameFormatter.FormatQueueName(destinationAddress);
             }
 
             var outgoingMessages = GetOutgoingMessages(context);
@@ -469,7 +468,7 @@ namespace Rebus.AzureServiceBus
 
                         if (destinationQueue.StartsWith(MagicSubscriptionPrefix))
                         {
-                            var topicName = _azureServiceBusNameHelper.ReplaceInvalidCharacters(destinationQueue.Substring(MagicSubscriptionPrefix.Length));
+                            var topicName = _nameFormatter.FormatTopicName(destinationQueue.Substring(MagicSubscriptionPrefix.Length));
 
                             foreach (var batch in messages.Batch(DefaultOutgoingBatchSize))
                             {
