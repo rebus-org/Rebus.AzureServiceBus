@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.ServiceBus;
 using NUnit.Framework;
 using Rebus.Activation;
+using Rebus.AzureServiceBus.NameFormat;
 using Rebus.Config;
 using Rebus.Logging;
 using Rebus.Tests.Contracts;
@@ -36,7 +37,7 @@ namespace Rebus.AzureServiceBus.Tests
             var newConnString = builder.ToString();
 
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
-            var transport = new AzureServiceBusTransport(newConnString, QueueName, consoleLoggerFactory, new TplAsyncTaskFactory(consoleLoggerFactory), new AzureServiceBusNameHelper());
+            var transport = new AzureServiceBusTransport(newConnString, QueueName, consoleLoggerFactory, new TplAsyncTaskFactory(consoleLoggerFactory), new DefaultNameFormatter());
 
             Using(transport);
 
@@ -143,7 +144,7 @@ namespace Rebus.AzureServiceBus.Tests
         public async Task ShouldBeAbleToRecieveEvenWhenNotCreatingQueue()
         {
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
-            var transport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, QueueName, consoleLoggerFactory, new TplAsyncTaskFactory(consoleLoggerFactory), new AzureServiceBusNameHelper());
+            var transport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, QueueName, consoleLoggerFactory, new TplAsyncTaskFactory(consoleLoggerFactory), new DefaultNameFormatter());
             transport.PurgeInputQueue();
             //Create the queue for the receiver since it cannot create it self beacuse of lacking rights on the namespace
             transport.CreateQueue(QueueName);
