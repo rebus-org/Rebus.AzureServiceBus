@@ -14,7 +14,7 @@ namespace Rebus.AzureServiceBus
         /// <summary>
         /// Creates the name helper, using legacy topic naming if <paramref name="useLegacyNaming"/> is true.
         /// </summary>
-        public DefaultAzureServiceBusTopicNameConvention(bool useLegacyNaming)
+        public DefaultAzureServiceBusTopicNameConvention(bool useLegacyNaming = false)
         {
             _useLegacyNaming = useLegacyNaming;
         }

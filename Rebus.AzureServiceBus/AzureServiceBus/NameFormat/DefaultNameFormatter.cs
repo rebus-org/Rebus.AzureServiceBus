@@ -35,20 +35,29 @@ namespace Rebus.AzureServiceBus.NameFormat
                    || _additionalValidCharacters.Contains(c);
         }
 
+        /// <summary>
+        /// Formats the queue name into a usable name on ASB, normalizing if needed.
+        /// </summary>
         public string FormatQueueName(string queueName)
         {
             return ReplaceInvalidCharacters(queueName);
         }
 
-        public string FormatTopicName(string topicName)
-        {
-            return ReplaceInvalidCharacters(topicName);
-        }
-
+        /// <summary>
+        /// Formats the subscription name into a usable name on ASB, normalizing if needed.
+        /// </summary>
         public string FormatSubscriptionName(string subscriptionName)
         {
             // queue names can have multiple segments in them separated by / - subscription names cannot!
             return ReplaceInvalidCharacters(subscriptionName.Replace("/", "_"));
+        }
+
+        /// <summary>
+        /// Formats the topic name into a usable name on ASB, normalizing if needed.
+        /// </summary>
+        public string FormatTopicName(string topicName)
+        {
+            return ReplaceInvalidCharacters(topicName);
         }
     }
 }
