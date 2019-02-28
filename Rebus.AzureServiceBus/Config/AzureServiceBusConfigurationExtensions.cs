@@ -78,6 +78,7 @@ namespace Rebus.Config
                     transport.AutomaticallyRenewPeekLock = settings.AutomaticPeekLockRenewalEnabled;
                     transport.PartitioningEnabled = settings.PartitioningEnabled;
                     transport.DoNotCreateQueuesEnabled = settings.DoNotCreateQueuesEnabled;
+                    transport.DoNotCheckQueueConfigurationEnabled = settings.DoNotCheckQueueConfigurationEnabled;
                     transport.DefaultMessageTimeToLive = settings.DefaultMessageTimeToLive;
                     transport.LockDuration = settings.LockDuration;
                     transport.AutoDeleteOnIdle = settings.AutoDeleteOnIdle;
