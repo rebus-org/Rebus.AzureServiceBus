@@ -303,6 +303,12 @@ namespace Rebus.AzureServiceBus
 
         void CheckInputQueueConfiguration(string address)
         {
+            if (DoNotCheckQueueConfigurationEnabled)
+            {
+                _log.Info("Transport configured to not check queue configuration - skipping existence check for {queueName}", address);
+                return;
+            }
+
             AsyncHelpers.RunSync(async () =>
             {
                 var queueDescription = await GetQueueDescription(address).ConfigureAwait(false);
@@ -675,6 +681,11 @@ namespace Rebus.AzureServiceBus
         /// Gets/sets whether to skip creating queues
         /// </summary>
         public bool DoNotCreateQueuesEnabled { get; set; }
+
+        /// <summary>
+        /// Gets/sets whether to skip checking queues configuration
+        /// </summary>
+        public bool DoNotCheckQueueConfigurationEnabled { get; set; }
 
         /// <summary>
         /// Gets/sets the default message TTL. Must be set before calling <see cref="Initialize"/>, because that is the time when the queue is (re)configured

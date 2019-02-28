@@ -68,6 +68,10 @@
 
 * Update Azure Service Bus dependency to 3.2.1
 
+## 6.0.7
+
+* Fix bug that would result in always require a manage permission in the shared access policy, even if the queues were already created - thanks [ehabelgindy]
+
 
 ## 7.0.0-a07
 
@@ -78,5 +82,6 @@
 * Fix one-way client legacy naming bug (one-way client would not adhere to legacy naming convention, even when `.UseLegacyNaming()` was called on the configuration builder)
 * Default to using topics nested beneath their assemblies, so e.g. `await bus.Subscribe<string>()` will result in the creation of a topic named `mscorlib/System.String`, which will be formatted as a topic named `System.String` nested beneat `mscorlib` in tool that support it
 
+[ehabelgindy]: https://github.com/ehabelgindy
 [lezzi]: https://github.com/lezzi
 [Meyce]: https://github.com/Meyce

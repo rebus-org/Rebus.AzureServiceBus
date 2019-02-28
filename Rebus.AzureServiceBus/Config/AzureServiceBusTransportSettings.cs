@@ -1,4 +1,5 @@
 ﻿using System;
+// ReSharper disable UnusedMember.Global
 
 namespace Rebus.Config
 {
@@ -12,6 +13,7 @@ namespace Rebus.Config
         internal bool PartitioningEnabled { get; set; }
         internal bool DoNotCreateQueuesEnabled { get; set; }
         internal bool AutomaticPeekLockRenewalEnabled { get; set; }
+        internal bool DoNotCheckQueueConfigurationEnabled { get; set; }
         internal bool LegacyNamingEnabled { get; set; }
         internal TimeSpan? DefaultMessageTimeToLive { get; set; }
         internal TimeSpan? LockDuration { get; set; }
@@ -131,6 +133,18 @@ namespace Rebus.Config
         public AzureServiceBusTransportSettings DoNotCreateQueues()
         {
             DoNotCreateQueuesEnabled = true;
+            return this;
+        }
+
+        /// <summary>
+        /// Skips queue configuration checks. Can be used when the connection string does not have manage rights to the queue object, e.g.
+        /// when a read-only shared-access signature is used to access an input queue. Please note that the signature MUST
+        /// have write access to the configured error queue, unless Azure Service Bus' own dead-lettering is activated on the 
+        /// input queue (which is probably the preferred approach with this option)
+        /// </summary>
+        public AzureServiceBusTransportSettings DoNotCheckQueueConfiguration()
+        {
+            DoNotCheckQueueConfigurationEnabled = true;
             return this;
         }
     }

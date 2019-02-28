@@ -90,6 +90,7 @@ namespace Rebus.Config
                     transport.PartitioningEnabled = settingsBuilder.PartitioningEnabled;
                     transport.DoNotCreateQueuesEnabled = settingsBuilder.DoNotCreateQueuesEnabled;
                     transport.DefaultMessageTimeToLive = settingsBuilder.DefaultMessageTimeToLive;
+                    transport.DoNotCheckQueueConfigurationEnabled = settingsBuilder.DoNotCheckQueueConfigurationEnabled;
                     transport.LockDuration = settingsBuilder.LockDuration;
                     transport.AutoDeleteOnIdle = settingsBuilder.AutoDeleteOnIdle;
                     transport.DuplicateDetectionHistoryTimeWindow = settingsBuilder.DuplicateDetectionHistoryTimeWindow;
