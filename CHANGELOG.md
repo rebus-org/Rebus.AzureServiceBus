@@ -70,8 +70,9 @@
 
 ## 6.0.7
 
-* Fix bug that would result in always require a manage permission in the shared access policy, even if the queues were already created
+* Fix bug that would result in always require a manage permission in the shared access policy, even if the queues were already created - thanks [ehabelgindy]
 
 
+[ehabelgindy]: https://github.com/ehabelgindy
 [lezzi]: https://github.com/lezzi
 [Meyce]: https://github.com/Meyce
