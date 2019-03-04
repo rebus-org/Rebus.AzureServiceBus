@@ -3,13 +3,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Activation;
-using Rebus.AzureServiceBus.NameFormat;
 using Rebus.AzureServiceBus.Tests.Bugs;
 using Rebus.Config;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
-using Rebus.Topic;
-
 #pragma warning disable 1998
 
 namespace Rebus.AzureServiceBus.Tests
@@ -28,10 +25,7 @@ namespace Rebus.AzureServiceBus.Tests
 
         protected override void SetUp()
         {
-            var topicName = new DefaultTopicNameConvention().GetTopic(typeof(string));
-            var actualTopicName = new DefaultNameFormatter().FormatTopicName(topicName);
-
-            Using(new TopicDeleter(actualTopicName));
+            Using(new TopicDeleter(new DefaultAzureServiceBusTopicNameConvention().GetTopic(typeof(string))));
 
             _bus1 = StartBus(_inputQueueName1);
             _bus2 = StartBus(_inputQueueName2);

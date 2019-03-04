@@ -13,7 +13,10 @@ namespace Rebus.AzureServiceBus.NameFormat
         /// </summary>
         public string FormatQueueName(string queueName)
         {
-            var name = string.Concat(queueName.Select(c => (char.IsLetterOrDigit(c) || c == '/' || c == '.') ? c : '_'));
+            var name = string.Concat(queueName.Select(c =>
+            {
+                return (char.IsLetterOrDigit(c) || c == '/' || c == '.') ? c : '_';
+            }));
 
             return name.ToLowerInvariant();
         }
@@ -26,7 +29,10 @@ namespace Rebus.AzureServiceBus.NameFormat
             var idx = subscriptionName.LastIndexOf("/", StringComparison.Ordinal) + 1;
             subscriptionName = subscriptionName.Substring(idx);
 
-            subscriptionName = string.Concat(subscriptionName.Select(c => (char.IsLetterOrDigit(c) || c == '/') ? c : '_'));
+            subscriptionName = string.Concat(subscriptionName.Select(c =>
+            {
+                return (char.IsLetterOrDigit(c) || c == '/') ? c : '_';
+            }));
 
             subscriptionName = subscriptionName.ToLowerInvariant();
 
@@ -38,7 +44,10 @@ namespace Rebus.AzureServiceBus.NameFormat
         /// </summary>
         public string FormatTopicName(string topicName)
         {
-            var name = string.Concat(topicName.Select(c => char.IsLetterOrDigit(c) || c == '/' ? c : '_'));
+            var name = string.Concat(topicName.Select(c =>
+            {
+                return (char.IsLetterOrDigit(c) || c == '/') ? c : '_';
+            }));
 
             return name.ToLowerInvariant();
         }

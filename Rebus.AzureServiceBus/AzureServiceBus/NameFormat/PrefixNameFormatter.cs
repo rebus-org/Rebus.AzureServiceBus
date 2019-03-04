@@ -1,5 +1,4 @@
 ﻿using System;
-// ReSharper disable UnusedMember.Global
 
 namespace Rebus.AzureServiceBus.NameFormat
 {
@@ -8,8 +7,8 @@ namespace Rebus.AzureServiceBus.NameFormat
     /// </summary>
     public class PrefixNameFormatter : INameFormatter
     {
-        readonly INameFormatter _innerFormatter;
-        readonly string _prefix;
+        private readonly string _prefix;
+        private readonly INameFormatter _innerFormatter;
 
         /// <summary>
         /// Creates the name formatter.
