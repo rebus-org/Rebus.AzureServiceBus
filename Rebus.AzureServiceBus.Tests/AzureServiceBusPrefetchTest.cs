@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using NUnit.Framework;
 using Rebus.Activation;
+using Rebus.AzureServiceBus.NameFormat;
 using Rebus.Config;
 using Rebus.Logging;
 using Rebus.Messages;
@@ -139,7 +140,7 @@ namespace Rebus.AzureServiceBus.Tests
             var connectionString = AsbTestConfig.ConnectionString;
 
             //var transport = new AzureServiceBusTransport(connectionString, _queueName, consoleLoggerFactory, asyncTaskFactory);
-            var transport = new AzureServiceBusTransport(connectionString, _queueName, consoleLoggerFactory, asyncTaskFactory, new AzureServiceBusNameHelper());
+            var transport = new AzureServiceBusTransport(connectionString, _queueName, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter());
             Using(transport);
             transport.Initialize();
             transport.PurgeInputQueue();

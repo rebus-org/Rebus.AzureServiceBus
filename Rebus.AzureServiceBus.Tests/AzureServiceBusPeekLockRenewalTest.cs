@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Activation;
+using Rebus.AzureServiceBus.NameFormat;
 using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Extensions;
@@ -29,7 +30,7 @@ namespace Rebus.AzureServiceBus.Tests
 
         protected override void SetUp()
         {
-            _transport = new AzureServiceBusTransport(ConnectionString, QueueName, _consoleLoggerFactory, new TplAsyncTaskFactory(_consoleLoggerFactory), new AzureServiceBusNameHelper());
+            _transport = new AzureServiceBusTransport(ConnectionString, QueueName, _consoleLoggerFactory, new TplAsyncTaskFactory(_consoleLoggerFactory), new DefaultNameFormatter());
 
             Using(_transport);
 

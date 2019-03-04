@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using Rebus.AzureServiceBus;
+using Rebus.AzureServiceBus.NameFormat;
 using Rebus.Logging;
 using Rebus.Pipeline;
 using Rebus.Pipeline.Receive;
@@ -35,14 +36,14 @@ namespace Rebus.Config
                     var cancellationToken = c.Get<CancellationToken>();
                     var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                     var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
-                    var azureServiceBusNameHelper = c.Get<AzureServiceBusNameHelper>();
+                    var nameFormatter = c.Get<INameFormatter>();
 
                     return new AzureServiceBusTransport(
                         connectionString: connectionString,
                         queueName: null,
                         rebusLoggerFactory: rebusLoggerFactory,
                         asyncTaskFactory: asyncTaskFactory,
-                        azureServiceBusNameHelper: azureServiceBusNameHelper,
+                        nameFormatter: nameFormatter,
                         cancellationToken: cancellationToken
                     );
                 });
@@ -67,7 +68,7 @@ namespace Rebus.Config
                 .OtherService<AzureServiceBusTransport>()
                 .Register(c =>
                 {
-                    var azureServiceBusNameHelper = c.Get<AzureServiceBusNameHelper>();
+                    var nameFormatter = c.Get<INameFormatter>();
                     var cancellationToken = c.Get<CancellationToken>();
                     var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                     var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
@@ -77,7 +78,7 @@ namespace Rebus.Config
                         queueName: inputQueueAddress,
                         rebusLoggerFactory: rebusLoggerFactory,
                         asyncTaskFactory: asyncTaskFactory,
-                        azureServiceBusNameHelper: azureServiceBusNameHelper,
+                        nameFormatter: nameFormatter,
                         cancellationToken: cancellationToken
                     );
 
@@ -125,15 +126,24 @@ namespace Rebus.Config
             // disable timeout manager
             configurer.OtherService<ITimeoutManager>().Register(c => new DisabledTimeoutManager(), description: AsbTimeoutManagerText);
 
-            configurer.OtherService<AzureServiceBusNameHelper>().Register(c =>
+            configurer.OtherService<INameFormatter>().Register(c =>
             {
                 // lazy-evaluated setting because the builder needs a chance to be built upon before getting its settings
                 var useLegacyNaming = legacyNamingEnabled();
 
-                return new AzureServiceBusNameHelper(useLegacyNaming: useLegacyNaming);
+                if (useLegacyNaming) return new LegacyNameFormatter();
+                else return new DefaultNameFormatter();
             });
 
-            configurer.OtherService<ITopicNameConvention>().Register(c => c.Get<AzureServiceBusNameHelper>());
+            configurer.OtherService<DefaultAzureServiceBusTopicNameConvention>().Register(c =>
+            {
+                // lazy-evaluated setting because the builder needs a chance to be built upon before getting its settings
+                var useLegacyNaming = legacyNamingEnabled();
+
+                return new DefaultAzureServiceBusTopicNameConvention(useLegacyNaming: useLegacyNaming);
+            });
+
+            configurer.OtherService<ITopicNameConvention>().Register(c => c.Get<DefaultAzureServiceBusTopicNameConvention>());
         }
     }
 }

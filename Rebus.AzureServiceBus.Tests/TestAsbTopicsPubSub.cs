@@ -18,14 +18,14 @@ namespace Rebus.AzureServiceBus.Tests
         readonly string _inputQueueName2 = TestConfig.GetName("pubsub2");
         readonly string _inputQueueName3 = TestConfig.GetName("pubsub3");
         readonly string _connectionString = AsbTestConfig.ConnectionString;
-        
+
         BuiltinHandlerActivator _bus1;
         BuiltinHandlerActivator _bus2;
         BuiltinHandlerActivator _bus3;
 
         protected override void SetUp()
         {
-            Using(new TopicDeleter(new AzureServiceBusNameHelper().GetTopic(typeof(string))));
+            Using(new TopicDeleter(new DefaultAzureServiceBusTopicNameConvention().GetTopic(typeof(string))));
 
             _bus1 = StartBus(_inputQueueName1);
             _bus2 = StartBus(_inputQueueName2);
