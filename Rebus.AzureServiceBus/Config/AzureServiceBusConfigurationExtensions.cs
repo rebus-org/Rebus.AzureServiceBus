@@ -10,6 +10,7 @@ using Rebus.Threading;
 using Rebus.Timeouts;
 using Rebus.Topic;
 using Rebus.Transport;
+// ReSharper disable UnusedMember.Global
 
 // ReSharper disable once CheckNamespace
 namespace Rebus.Config
@@ -131,19 +132,13 @@ namespace Rebus.Config
                 // lazy-evaluated setting because the builder needs a chance to be built upon before getting its settings
                 var useLegacyNaming = legacyNamingEnabled();
 
-                if (useLegacyNaming) return new LegacyNameFormatter();
-                else return new DefaultNameFormatter();
+                if (useLegacyNaming)
+                {
+                    return new LegacyNameFormatter();
+                }
+                
+                return new DefaultNameFormatter();
             });
-
-            configurer.OtherService<DefaultAzureServiceBusTopicNameConvention>().Register(c =>
-            {
-                // lazy-evaluated setting because the builder needs a chance to be built upon before getting its settings
-                var useLegacyNaming = legacyNamingEnabled();
-
-                return new DefaultAzureServiceBusTopicNameConvention(useLegacyNaming: useLegacyNaming);
-            });
-
-            configurer.OtherService<ITopicNameConvention>().Register(c => c.Get<DefaultAzureServiceBusTopicNameConvention>());
         }
     }
 }

@@ -17,7 +17,7 @@ namespace Rebus.AzureServiceBus.NameFormat
             _additionalValidCharacters = new[] { '.', '-', '_' };
         }
 
-        private string ReplaceInvalidCharacters(string str)
+        string ReplaceInvalidCharacters(string str)
         {
             var name = string.Concat(str.Select(c =>
             {
