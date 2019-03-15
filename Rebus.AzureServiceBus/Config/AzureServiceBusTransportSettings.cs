@@ -19,6 +19,7 @@ namespace Rebus.Config
         internal TimeSpan? LockDuration { get; set; }
         internal TimeSpan? AutoDeleteOnIdle { get; set; }
         internal TimeSpan? DuplicateDetectionHistoryTimeWindow { get; set; }
+        internal TimeSpan ReceiveOperationTimeout { get; set; } = TimeSpan.FromSeconds(5);
 
         /// <summary>
         /// Enables partitioning whereby Azure Service Bus will be able to distribute messages between message stores and this way increase throughput.
@@ -145,6 +146,17 @@ namespace Rebus.Config
         public AzureServiceBusTransportSettings DoNotCheckQueueConfiguration()
         {
             DoNotCheckQueueConfigurationEnabled = true;
+            return this;
+        }
+
+        /// <summary>
+        /// Sets the receive operation timeout. This is basically the time the client waits for a message to appear in the queue.
+        /// This includes the time taken to establish a connection (either during the first receive or when connection needs to be re-established).
+        /// Defaults to 5 seconds.
+        /// </summary>
+        public AzureServiceBusTransportSettings SetReceiveOperationTimeout(TimeSpan receiveOperationTimeout)
+        {
+            ReceiveOperationTimeout = receiveOperationTimeout;
             return this;
         }
     }

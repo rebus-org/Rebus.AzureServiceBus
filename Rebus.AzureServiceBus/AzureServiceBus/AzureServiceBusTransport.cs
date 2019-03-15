@@ -62,7 +62,6 @@ namespace Rebus.AzureServiceBus
         readonly CancellationToken _cancellationToken;
         readonly ManagementClient _managementClient;
         readonly string _connectionString;
-        readonly TimeSpan? _receiveTimeout;
         readonly ILog _log;
         readonly string _subscriptionName;
 
@@ -97,10 +96,6 @@ namespace Rebus.AzureServiceBus
             _cancellationToken = cancellationToken;
             _log = rebusLoggerFactory.GetLogger<AzureServiceBusTransport>();
             _managementClient = new ManagementClient(connectionString);
-
-            _receiveTimeout = _connectionString.Contains("OperationTimeout")
-                ? default(TimeSpan?)
-                : TimeSpan.FromSeconds(5);
         }
 
         /// <summary>
@@ -602,9 +597,7 @@ namespace Rebus.AzureServiceBus
             {
                 var messageReceiver = _messageReceiver;
 
-                var message = _receiveTimeout.HasValue
-                    ? await messageReceiver.ReceiveAsync(_receiveTimeout.Value).ConfigureAwait(false)
-                    : await messageReceiver.ReceiveAsync().ConfigureAwait(false);
+                var message = await messageReceiver.ReceiveAsync(ReceiveOperationTimeout).ConfigureAwait(false);
 
                 return message == null
                     ? null
@@ -711,6 +704,11 @@ namespace Rebus.AzureServiceBus
         /// Gets/sets the duplicate detection window
         /// </summary>
         public TimeSpan? DuplicateDetectionHistoryTimeWindow { get; set; }
+
+        /// <summary>
+        /// Gets/sets the receive timeout.
+        /// </summary>
+        public TimeSpan ReceiveOperationTimeout { get; set; } = TimeSpan.FromSeconds(5);
 
         /// <summary>
         /// Purges the input queue by receiving all messages as quickly as possible

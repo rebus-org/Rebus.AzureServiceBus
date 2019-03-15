@@ -23,22 +23,15 @@ namespace Rebus.AzureServiceBus.Tests
         [Test]
         [TestCase(5)]
         [TestCase(10)]
-        [Ignore("Don't think this is relevant anymore, as it doesn't seem like the new client supports specifying a receive timeout in the connection string")]
         public async Task DoesntIgnoreDefinedTimeoutWhenReceiving(int operationTimeoutInSeconds)
         {
             var operationTimeout = TimeSpan.FromSeconds(operationTimeoutInSeconds);
 
             var connString = AsbTestConfig.ConnectionString;
-            var builder = new ServiceBusConnectionStringBuilder(connString)
-            {
-                //    OperationTimeout = operationTimeout,
-            };
-
-            var newConnString = builder.ToString();
 
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
-            var transport = new AzureServiceBusTransport(newConnString, QueueName, consoleLoggerFactory, new TplAsyncTaskFactory(consoleLoggerFactory), new DefaultNameFormatter());
-
+            var transport = new AzureServiceBusTransport(connString, QueueName, consoleLoggerFactory, new TplAsyncTaskFactory(consoleLoggerFactory), new DefaultNameFormatter());
+            transport.ReceiveOperationTimeout = TimeSpan.FromSeconds(operationTimeoutInSeconds);
             Using(transport);
 
             transport.Initialize();
@@ -50,7 +43,7 @@ namespace Rebus.AzureServiceBus.Tests
             var senderActivator = new BuiltinHandlerActivator();
 
             var senderBus = Configure.With(senderActivator)
-                .Transport(t => t.UseAzureServiceBus(newConnString, "sender"))
+                .Transport(t => t.UseAzureServiceBus(connString, "sender"))
                 .Start();
 
             Using(senderBus);

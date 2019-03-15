@@ -95,6 +95,7 @@ namespace Rebus.Config
                     transport.LockDuration = settingsBuilder.LockDuration;
                     transport.AutoDeleteOnIdle = settingsBuilder.AutoDeleteOnIdle;
                     transport.DuplicateDetectionHistoryTimeWindow = settingsBuilder.DuplicateDetectionHistoryTimeWindow;
+                    transport.ReceiveOperationTimeout = settingsBuilder.ReceiveOperationTimeout;
                     
                     return transport;
                 });
