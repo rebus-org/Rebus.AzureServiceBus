@@ -17,6 +17,20 @@ namespace Rebus.AzureServiceBus.Tests.Bugs
     [TestFixture]
     public class TooBigHeadersTest : FixtureBase
     {
+        AzureServiceBusTransport errorQueueTransport;
+
+        protected override void SetUp()
+        {
+            var loggerFactory = new ConsoleLoggerFactory(false);
+
+            errorQueueTransport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, "error", loggerFactory, new TplAsyncTaskFactory(loggerFactory), new DefaultNameFormatter());
+
+            Using(errorQueueTransport);
+
+            errorQueueTransport.Initialize();
+            errorQueueTransport.PurgeInputQueue();
+        }
+
         [Test]
         public async Task ItWorks()
         {
@@ -49,7 +63,7 @@ namespace Rebus.AzureServiceBus.Tests.Bugs
 
             await activator.Bus.SendLocal("Hello World");
 
-            var nextMessage = await GetNextMessageFromQueue("error", timeoutSeconds: 10);
+            var nextMessage = await GetNextMessageFromErrorQueue(timeoutSeconds: 10);
 
             Assert.That(nextMessage.Headers, Contains.Key(Headers.ErrorDetails));
 
@@ -61,45 +75,38 @@ The following error details got attached to the message:
 {errorDetails}");
         }
 
-        async Task<TransportMessage> GetNextMessageFromQueue(string queueName, int timeoutSeconds)
+        async Task<TransportMessage> GetNextMessageFromErrorQueue(int timeoutSeconds)
         {
-            var loggerFactory = new ConsoleLoggerFactory(false);
+            var cancellationTokenSource = new CancellationTokenSource();
+            var cancellationToken = cancellationTokenSource.Token;
+            var timeout = TimeSpan.FromSeconds(timeoutSeconds);
 
-            using (var transport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, queueName, loggerFactory, new TplAsyncTaskFactory(loggerFactory), new DefaultNameFormatter()))
+            cancellationTokenSource.CancelAfter(timeout);
+
+            try
             {
-                transport.Initialize();
-
-                var cancellationTokenSource = new CancellationTokenSource();
-                var cancellationToken = cancellationTokenSource.Token;
-                var timeout = TimeSpan.FromSeconds(timeoutSeconds);
-
-                cancellationTokenSource.CancelAfter(timeout);
-
-                try
+                while (true)
                 {
-                    while (true)
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    using (var scope = new RebusTransactionScope())
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
+                        var message = await errorQueueTransport.Receive(scope.TransactionContext, cancellationToken);
 
-                        using (var scope = new RebusTransactionScope())
+                        try
                         {
-                            var message = await transport.Receive(scope.TransactionContext, cancellationToken);
-
-                            try
-                            {
-                                if (message != null) return message;
-                            }
-                            finally
-                            {
-                                await scope.CompleteAsync();
-                            }
+                            if (message != null) return message;
+                        }
+                        finally
+                        {
+                            await scope.CompleteAsync();
                         }
                     }
                 }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                {
-                    throw new TimeoutException($"Did not receive message in queue '{queueName}' within timeout of {timeout}");
-                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw new TimeoutException($"Did not receive message in queue '{errorQueueTransport.Address}' within timeout of {timeout}");
             }
         }
     }
