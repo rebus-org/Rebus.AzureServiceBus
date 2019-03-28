@@ -449,6 +449,12 @@ namespace Rebus.AzureServiceBus
 
             message.Label = transportMessage.GetMessageLabel();
 
+            if (headers.TryGetValue(Headers.ErrorDetails, out var errorDetails))
+            {
+                // this particular header has a tendency to grow out of hand
+                headers[Headers.ErrorDetails] = errorDetails.TrimTo(32000);
+            }
+
             foreach (var kvp in headers)
             {
                 message.UserProperties[kvp.Key] = kvp.Value;
