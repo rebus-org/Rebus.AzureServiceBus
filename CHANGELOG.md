@@ -73,7 +73,7 @@
 * Fix bug that would result in always require a manage permission in the shared access policy, even if the queues were already created - thanks [ehabelgindy]
 
 
-## 7.0.0-a13
+## 7.0.0-a14
 
 * Several adjustments to how queue names are validated and how topic names are generated. Please note that this is a BREAKING CHANGE, because queue names and topic names are no longer automatically lowercased (because it's not necessary), and topic names can now have . in them (because that has always been possible). If you update to 7, you must update ALL of your endpoints, otherwise pub/sub will not work!
 * Fix bug that would "forget" to stop automatic peek lock renewal in cases where message handler throws an exception, generating unnecessary noise in the log
@@ -83,6 +83,7 @@
 * Default to using topics nested beneath their assemblies, so e.g. `await bus.Subscribe<string>()` will result in the creation of a topic named `mscorlib/System.String`, which will be formatted as a topic named `System.String` nested beneat `mscorlib` in tool that support it
 * Pluggable naming strategy via `INameFormatter`, allowing for customizing all aspects of how e.g. .NET types are named when creating topics from them, how queue names are normalized/sanitized, etc. - thanks [jr01]
 * Added transport setting for overriding the Receive OperationTimeout - thanks [jr01]
+* Require Microsoft.Azure.Amqp version 2.4.2 explicitly to avoid reconnection bug described here: https://github.com/Azure/azure-service-bus-dotnet/issues/639
 
 [ehabelgindy]: https://github.com/ehabelgindy
 [jr01]: https://github.com/jr01
