@@ -83,7 +83,7 @@
 * Default to using topics nested beneath their assemblies, so e.g. `await bus.Subscribe<string>()` will result in the creation of a topic named `mscorlib/System.String`, which will be formatted as a topic named `System.String` nested beneat `mscorlib` in tool that support it
 * Pluggable naming strategy via `INameFormatter`, allowing for customizing all aspects of how e.g. .NET types are named when creating topics from them, how queue names are normalized/sanitized, etc. - thanks [jr01]
 * Added transport setting for overriding the Receive OperationTimeout - thanks [jr01]
-* Require Microsoft.Azure.Amqp version 2.4.2 explicitly to avoid reconnection bug described here: https://github.com/Azure/azure-service-bus-dotnet/issues/639
+* Update Microsoft.Azure.ServiceBus to version 3.4.0 to avoid reconnection bug described here: https://github.com/Azure/azure-service-bus-dotnet/issues/639
 
 [ehabelgindy]: https://github.com/ehabelgindy
 [jr01]: https://github.com/jr01
