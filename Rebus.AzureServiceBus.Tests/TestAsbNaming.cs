@@ -175,7 +175,7 @@ namespace Rebus.AzureServiceBus.Tests
 
 		    await activator.Bus.Advanced.Topics.Publish("group/some.interesting topic", new object{ });
 
-		    gotString1.WaitOrDie(TimeSpan.FromSeconds(4));
+		    gotString1.WaitOrDie(TimeSpan.FromSeconds(7));
 
             Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some.inputqueue"));
             Assert.IsTrue(await _managementClient.TopicExistsAsync("group/some_interesting_topic"));
