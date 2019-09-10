@@ -8,21 +8,46 @@ namespace Rebus.AzureServiceBus.Tests
     {
         static AsbTestConfig()
         {
-            ConnectionString = ConnectionStringFromFileOrNull(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "asb_connection_string.txt"))
-                               ?? ConnectionStringFromEnvironmentVariable("rebus2_asb_connection_string")
-                               ?? throw new ConfigurationErrorsException("Could not find Azure Service Bus connection string!");
+            ConnectionString = GetConnectionString();
+            
+            //ConnectionStringFromFileOrNull(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "asb_connection_string.txt"))
+            //                   ?? ConnectionStringFromEnvironmentVariable("rebus2_asb_connection_string")
+            //                   ?? throw new ConfigurationErrorsException("Could not find Azure Service Bus connection string!");
+        }
+
+        static string GetConnectionString()
+        {
+            var filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "asb_connection_string.txt");
+
+            if (File.Exists(filePath))
+            {
+                return ConnectionStringFromFile(filePath);
+            }
+
+            const string variableName = "rebus2_asb_connection_string";
+            var environmentVariable = Environment.GetEnvironmentVariable(variableName);
+
+            if (!string.IsNullOrWhiteSpace(environmentVariable)) return ConnectionStringFromEnvironmentVariable(variableName);
+
+            throw new ConfigurationErrorsException($@"Could not get Azure Service Bus connection string. Tried to load from file
+
+    {filePath}
+
+but the file did not exist. Also tried to get the environment variable named
+
+    {variableName}
+
+but it was empty (or didn't exist).
+
+Please provide a connection string through one of the methods mentioned above.
+
+");
         }
 
         public static string ConnectionString { get; }
 
-        static string ConnectionStringFromFileOrNull(string filePath)
+        static string ConnectionStringFromFile(string filePath)
         {
-            if (!File.Exists(filePath))
-            {
-                Console.WriteLine("Could not find file {0}", filePath);
-                return null;
-            }
-
             Console.WriteLine("Using Azure Service Bus connection string from file {0}", filePath);
             return File.ReadAllText(filePath);
         }
@@ -30,12 +55,6 @@ namespace Rebus.AzureServiceBus.Tests
         static string ConnectionStringFromEnvironmentVariable(string environmentVariableName)
         {
             var value = Environment.GetEnvironmentVariable(environmentVariableName);
-
-            if (value == null)
-            {
-                Console.WriteLine("Could not find env variable {0}", environmentVariableName);
-                return null;
-            }
 
             Console.WriteLine("Using Azure Service Bus connection string from env variable {0}", environmentVariableName);
 
