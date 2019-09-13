@@ -22,6 +22,7 @@ using Message = Microsoft.Azure.ServiceBus.Message;
 // ReSharper disable ArgumentsStyleNamedExpression
 // ReSharper disable ArgumentsStyleOther
 // ReSharper disable ArgumentsStyleLiteral
+// ReSharper disable ArgumentsStyleAnonymousFunction
 #pragma warning disable 1998
 
 namespace Rebus.AzureServiceBus
@@ -548,18 +549,26 @@ namespace Rebus.AzureServiceBus
             {
                 var now = DateTime.UtcNow;
                 var leaseDuration = message.SystemProperties.LockedUntilUtc - now;
-                var lockRenewalInterval = TimeSpan.FromMinutes(0.7 * leaseDuration.TotalMinutes);
+                var lockRenewalInterval = TimeSpan.FromMinutes(0.5 * leaseDuration.TotalMinutes);
 
+                var cancellationTokenSource = new CancellationTokenSource();
                 var renewalTask = _asyncTaskFactory
-                    .Create($"RenewPeekLock-{messageId}",
-                        () => RenewPeekLock(messageReceiver, messageId, lockToken),
-                        intervalSeconds: (int)lockRenewalInterval.TotalSeconds,
-                        prettyInsignificant: true);
+                    .Create(description: $"RenewPeekLock-{messageId}",
+                        action: () => RenewPeekLock(messageReceiver, messageId, lockToken, cancellationTokenSource),
+                        intervalSeconds: (int) lockRenewalInterval.TotalSeconds,
+                        prettyInsignificant: true
+                    );
 
                 // be sure to stop the renewal task regardless of whether we're committing or aborting
                 context.OnCommitted(async () => renewalTask.Dispose());
                 context.OnAborted(() => renewalTask.Dispose());
-                context.OnDisposed(() => renewalTask.Dispose());
+                context.OnDisposed(() =>
+                {
+                    renewalTask.Dispose();
+                    cancellationTokenSource.Dispose();
+                });
+
+                cancellationTokenSource.Token.Register(renewalTask.Dispose);
 
                 renewalTask.Start();
             }
@@ -615,7 +624,7 @@ namespace Rebus.AzureServiceBus
             }
         }
 
-        async Task RenewPeekLock(IMessageReceiver messageReceiver, string messageId, string lockToken)
+        async Task RenewPeekLock(IMessageReceiver messageReceiver, string messageId, string lockToken, CancellationTokenSource cancellationTokenSource)
         {
             _log.Info("Renewing peek lock for message with ID {messageId}", messageId);
 
@@ -626,7 +635,17 @@ namespace Rebus.AzureServiceBus
             catch (MessageLockLostException exception)
             {
                 // if we get this, it is probably because the message has been handled
-                _log.Error(exception, "Could not renew lock for message with ID {messageId} and lock token {lockToken}", messageId, lockToken);
+                _log.Error(exception, "Could not renew lock for message with ID {messageId} and lock token {lockToken} - cancelling peek lock renewal task",
+                    messageId, lockToken);
+
+                // NOTE: Cancel after this symbolic delay to avoid deadlocking
+                cancellationTokenSource.CancelAfter(millisecondsDelay: 1);
+
+                _log.Error("AND SO IT WAS CANCELLED");
+            }
+            catch (Exception exception)
+            {
+                throw new RebusApplicationException(exception, $"Could not renew lock for message with ID {messageId} and lock token {lockToken}");
             }
         }
 

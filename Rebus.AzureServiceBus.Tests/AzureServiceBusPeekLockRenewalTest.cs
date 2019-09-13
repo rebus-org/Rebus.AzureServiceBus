@@ -11,8 +11,10 @@ using Rebus.Logging;
 using Rebus.Messages;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
+using Rebus.Tests.Contracts.Utilities;
 using Rebus.Threading.TaskParallelLibrary;
 using Rebus.Transport;
+// ReSharper disable ArgumentsStyleLiteral
 
 namespace Rebus.AzureServiceBus.Tests
 {
@@ -40,6 +42,7 @@ namespace Rebus.AzureServiceBus.Tests
             _activator = new BuiltinHandlerActivator();
 
             _bus = Configure.With(_activator)
+                .Logging(l => l.Use(new ListLoggerFactory(outputToConsole: true, detailed: true)))
                 .Transport(t => t.UseAzureServiceBus(ConnectionString, QueueName).AutomaticallyRenewPeekLock())
                 .Options(o =>
                 {
