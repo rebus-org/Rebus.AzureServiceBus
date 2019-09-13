@@ -57,7 +57,7 @@ namespace Rebus.AzureServiceBus
         readonly INameFormatter _nameFormatter;
         readonly ConcurrentStack<IDisposable> _disposables = new ConcurrentStack<IDisposable>();
         readonly ConcurrentDictionary<string, MessageSender> _messageSenders = new ConcurrentDictionary<string, MessageSender>();
-        readonly ConcurrentDictionary<string, TopicClient> _topicClients = new ConcurrentDictionary<string, TopicClient>();
+        readonly ConcurrentDictionary<string, Lazy<Task<TopicClient>>> _topicClients = new ConcurrentDictionary<string, Lazy<Task<TopicClient>>>();
         readonly ConcurrentDictionary<string, string[]> _cachedSubscriberAddresses = new ConcurrentDictionary<string, string[]>();
         readonly IAsyncTaskFactory _asyncTaskFactory;
         readonly CancellationToken _cancellationToken;
@@ -489,11 +489,7 @@ namespace Rebus.AzureServiceBus
 
                                 try
                                 {
-                                    await GetTopicClient(topicName).SendAsync(list).ConfigureAwait(false);
-                                }
-                                catch (MessagingEntityNotFoundException)
-                                {
-                                    // if the topic does not exist, it's allright
+                                    await (await GetTopicClient(topicName)).SendAsync(list).ConfigureAwait(false);
                                 }
                                 catch (Exception exception)
                                 {
@@ -555,7 +551,7 @@ namespace Rebus.AzureServiceBus
                 var renewalTask = _asyncTaskFactory
                     .Create(description: $"RenewPeekLock-{messageId}",
                         action: () => RenewPeekLock(messageReceiver, messageId, lockToken, cancellationTokenSource),
-                        intervalSeconds: (int) lockRenewalInterval.TotalSeconds,
+                        intervalSeconds: (int)lockRenewalInterval.TotalSeconds,
                         prettyInsignificant: true
                     );
 
@@ -807,18 +803,20 @@ namespace Rebus.AzureServiceBus
             });
         }
 
-        ITopicClient GetTopicClient(string topic)
+        async Task<ITopicClient> GetTopicClient(string topic)
         {
-            return _topicClients.GetOrAdd(topic, _ =>
+            async Task<TopicClient> InitializeTopicClient()
             {
-                var topicClient = new TopicClient(
-                    _connectionString,
-                    topic,
-                    retryPolicy: DefaultRetryStrategy
-                );
+                await EnsureTopicExists(topic);
+
+                var topicClient = new TopicClient(_connectionString, topic, retryPolicy: DefaultRetryStrategy);
                 _disposables.Push(topicClient.AsDisposable(t => AsyncHelpers.RunSync(async () => await t.CloseAsync().ConfigureAwait(false))));
                 return topicClient;
-            });
+            }
+
+            var lazy = _topicClients.GetOrAdd(topic, _ => new Lazy<Task<TopicClient>>(InitializeTopicClient));
+            var task = lazy.Value;
+            return await task;
         }
     }
 }
