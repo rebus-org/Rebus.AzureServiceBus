@@ -261,6 +261,8 @@ namespace Rebus.AzureServiceBus
                     {
                         queueDescription.AutoDeleteOnIdle = AutoDeleteOnIdle.Value;
                     }
+
+                    queueDescription.MaxDeliveryCount = 100;
                 }
 
                 return queueDescription;
