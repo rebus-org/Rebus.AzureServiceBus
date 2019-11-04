@@ -531,7 +531,7 @@ namespace Rebus.AzureServiceBus
             var receivedMessage = await ReceiveInternal().ConfigureAwait(false);
 
             if (receivedMessage == null) return null;
-
+            
             var message = receivedMessage.Message;
             var messageReceiver = receivedMessage.MessageReceiver;
 
@@ -611,7 +611,7 @@ namespace Rebus.AzureServiceBus
                 var messageReceiver = _messageReceiver;
 
                 var message = await messageReceiver.ReceiveAsync(ReceiveOperationTimeout).ConfigureAwait(false);
-
+                
                 return message == null
                     ? null
                     : new ReceivedMessage(message, messageReceiver);

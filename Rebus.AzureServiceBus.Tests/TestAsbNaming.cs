@@ -139,7 +139,7 @@ namespace Rebus.AzureServiceBus.Tests
 
 		    await activator.Bus.Publish(new object{ });
 
-		    gotString1.WaitOrDie(TimeSpan.FromSeconds(4));
+		    gotString1.WaitOrDie(TimeSpan.FromSeconds(5));
 
             Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some_inputqueue"));
             Assert.IsTrue(await _managementClient.TopicExistsAsync("system_object__mscorlib"));
@@ -175,7 +175,7 @@ namespace Rebus.AzureServiceBus.Tests
 
 		    await activator.Bus.Advanced.Topics.Publish("group/some.interesting topic", new object{ });
 
-		    gotString1.WaitOrDie(TimeSpan.FromSeconds(7));
+		    gotString1.WaitOrDie(TimeSpan.FromSeconds(8));
 
             Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some.inputqueue"));
             Assert.IsTrue(await _managementClient.TopicExistsAsync("group/some_interesting_topic"));
