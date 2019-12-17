@@ -543,28 +543,21 @@ namespace Rebus.AzureServiceBus
             var lockToken = message.SystemProperties.LockToken;
             var messageId = message.MessageId;
 
+            CancellationTokenSource cancellationTokenSource = null;
+            IAsyncTask renewalTask = null;
             if (AutomaticallyRenewPeekLock && !_prefetchingEnabled)
             {
                 var now = DateTime.UtcNow;
                 var leaseDuration = message.SystemProperties.LockedUntilUtc - now;
                 var lockRenewalInterval = TimeSpan.FromMinutes(0.5 * leaseDuration.TotalMinutes);
 
-                var cancellationTokenSource = new CancellationTokenSource();
-                var renewalTask = _asyncTaskFactory
+                cancellationTokenSource = new CancellationTokenSource();
+                renewalTask = _asyncTaskFactory
                     .Create(description: $"RenewPeekLock-{messageId}",
                         action: () => RenewPeekLock(messageReceiver, messageId, lockToken, cancellationTokenSource),
                         intervalSeconds: (int)lockRenewalInterval.TotalSeconds,
                         prettyInsignificant: true
                     );
-
-                // be sure to stop the renewal task regardless of whether we're committing or aborting
-                context.OnCommitted(async () => renewalTask.Dispose());
-                context.OnAborted(() => renewalTask.Dispose());
-                context.OnDisposed(() =>
-                {
-                    renewalTask.Dispose();
-                    cancellationTokenSource.Dispose();
-                });
 
                 cancellationTokenSource.Token.Register(renewalTask.Dispose);
 
@@ -582,19 +575,33 @@ namespace Rebus.AzureServiceBus
                     throw new RebusApplicationException(exception,
                         $"Could not complete message with ID {message.MessageId} and lock token {lockToken}");
                 }
+
+                // Dispose the renewal task after the message has been removed.
+                // Note that we could get a MessageLockLostException and log an error in RenewPeekLock in the off chance that renewal runs between CompleteAsync and Dispose here,
+                // but that's better than disposing the renewal first and potentially loosing the lock before calling complete.
+                renewalTask?.Dispose();
             });
 
-            context.OnAborted(() =>
+            context.OnAborted(async () =>
             {
+                // Dispose the renewal before abandoning the message, otherwise renewal could grab the lock again.
+                renewalTask?.Dispose();
+
                 try
                 {
-                    AsyncHelpers.RunSync(async () => await messageReceiver.AbandonAsync(lockToken).ConfigureAwait(false));
+                    await messageReceiver.AbandonAsync(lockToken).ConfigureAwait(false);
                 }
                 catch (Exception exception)
                 {
                     throw new RebusApplicationException(exception,
                         $"Could not abandon message with ID {message.MessageId} and lock token {lockToken}");
                 }
+            });
+
+            context.OnDisposed(() =>
+            {
+                renewalTask?.Dispose();
+                cancellationTokenSource?.Dispose();
             });
 
             var userProperties = message.UserProperties;
