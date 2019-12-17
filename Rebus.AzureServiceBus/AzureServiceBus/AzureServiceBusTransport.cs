@@ -173,12 +173,18 @@ namespace Rebus.AzureServiceBus
 
         async Task<SubscriptionDescription> GetOrCreateSubscription(string topicPath, string subscriptionName)
         {
+            if (await _managementClient.SubscriptionExistsAsync(topicPath, subscriptionName, _cancellationToken).ConfigureAwait(false))
+            {
+                return await _managementClient.GetSubscriptionAsync(topicPath, subscriptionName, _cancellationToken).ConfigureAwait(false);
+            }
+
             try
             {
                 return await _managementClient.CreateSubscriptionAsync(topicPath, subscriptionName, _cancellationToken).ConfigureAwait(false);
             }
             catch (MessagingEntityAlreadyExistsException)
             {
+                // most likely a race between two competing consumers - we should be able to get it now
                 return await _managementClient.GetSubscriptionAsync(topicPath, subscriptionName, _cancellationToken).ConfigureAwait(false);
             }
         }
@@ -196,13 +202,9 @@ namespace Rebus.AzureServiceBus
 
         async Task<TopicDescription> EnsureTopicExists(string normalizedTopic)
         {
-            try
+            if (await _managementClient.TopicExistsAsync(normalizedTopic, _cancellationToken).ConfigureAwait(false))
             {
                 return await _managementClient.GetTopicAsync(normalizedTopic, _cancellationToken).ConfigureAwait(false);
-            }
-            catch (MessagingEntityNotFoundException)
-            {
-                // it's OK... try and create it instead
             }
 
             try
@@ -211,6 +213,7 @@ namespace Rebus.AzureServiceBus
             }
             catch (MessagingEntityAlreadyExistsException)
             {
+                // most likely a race between two clients trying to create the same topic - we should be able to get it now
                 return await _managementClient.GetTopicAsync(normalizedTopic, _cancellationToken).ConfigureAwait(false);
             }
             catch (Exception exception)
@@ -531,7 +534,7 @@ namespace Rebus.AzureServiceBus
             var receivedMessage = await ReceiveInternal().ConfigureAwait(false);
 
             if (receivedMessage == null) return null;
-            
+
             var message = receivedMessage.Message;
             var messageReceiver = receivedMessage.MessageReceiver;
 
@@ -618,7 +621,7 @@ namespace Rebus.AzureServiceBus
                 var messageReceiver = _messageReceiver;
 
                 var message = await messageReceiver.ReceiveAsync(ReceiveOperationTimeout).ConfigureAwait(false);
-                
+
                 return message == null
                     ? null
                     : new ReceivedMessage(message, messageReceiver);
