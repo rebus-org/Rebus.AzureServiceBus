@@ -826,7 +826,8 @@ namespace Rebus.AzureServiceBus
                 return topicClient;
             }
 
-            var lazy = _topicClients.GetOrAdd(topic, _ => new Lazy<Task<TopicClient>>(InitializeTopicClient));
+            // Task.Run executes InitializeTopicClient on a threadpool thread, this avoids a potential deadlock in legacy ASP.net
+            var lazy = _topicClients.GetOrAdd(topic, _ => new Lazy<Task<TopicClient>>(() => Task.Run(InitializeTopicClient)));
             var task = lazy.Value;
             return await task;
         }
