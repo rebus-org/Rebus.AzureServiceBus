@@ -827,7 +827,7 @@ namespace Rebus.AzureServiceBus
             }
 
             // Task.Run executes InitializeTopicClient on a threadpool thread, this avoids a potential deadlock in legacy ASP.net
-            var lazy = _topicClients.GetOrAdd(topic, _ => new Lazy<Task<TopicClient>>(() => Task.Run(InitializeTopicClient)));
+            var lazy = _topicClients.GetOrAdd(topic, _ => new Lazy<Task<TopicClient>>(() => Task.Run(InitializeTopicClient, _cancellationToken)));
             var task = lazy.Value;
             return await task;
         }
