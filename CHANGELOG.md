@@ -73,7 +73,7 @@
 * Fix bug that would result in always require a manage permission in the shared access policy, even if the queues were already created - thanks [ehabelgindy]
 
 
-## 7.0.0-a19
+## 7.0.0-a20
 
 * Several adjustments to how queue names are validated and how topic names are generated. Please note that this is a BREAKING CHANGE, because queue names and topic names are no longer automatically lowercased (because it's not necessary), and topic names can now have . in them (because that has always been possible). If you update to 7, you must update ALL of your endpoints, otherwise pub/sub will not work!
 * Fix bug that would "forget" to stop automatic peek lock renewal in cases where message handler throws an exception, generating unnecessary noise in the log
@@ -88,6 +88,7 @@
 * Ensure that the sequence of operations is bulletproof when renewing peek locks - thanks [jr01]
 * Change topic and subscription creation to be more defensive to avoid exceptions as part of normal program flow
 * Fix potential deadlock in initialization of topic clients - thanks [jr01]
+* Update to Rebus 6
 
 [ehabelgindy]: https://github.com/ehabelgindy
 [jr01]: https://github.com/jr01

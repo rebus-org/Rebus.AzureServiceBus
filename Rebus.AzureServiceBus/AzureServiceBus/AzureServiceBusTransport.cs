@@ -475,7 +475,7 @@ namespace Rebus.AzureServiceBus
             {
                 var messagesToSend = new ConcurrentQueue<OutgoingMessage>();
 
-                context.OnCommitted(async () =>
+                context.OnCommitted(async ctx =>
                 {
                     var messagesByDestinationQueue = messagesToSend.GroupBy(m => m.DestinationAddress);
 
@@ -567,7 +567,7 @@ namespace Rebus.AzureServiceBus
                 renewalTask.Start();
             }
 
-            context.OnCompleted(async () =>
+            context.OnCompleted(async ctx =>
             {
                 try
                 {
@@ -585,7 +585,7 @@ namespace Rebus.AzureServiceBus
                 renewalTask?.Dispose();
             });
 
-            context.OnAborted(async () =>
+            context.OnAborted(async ctx =>
             {
                 // Dispose the renewal before abandoning the message, otherwise renewal could grab the lock again.
                 renewalTask?.Dispose();
@@ -601,7 +601,7 @@ namespace Rebus.AzureServiceBus
                 }
             });
 
-            context.OnDisposed(() =>
+            context.OnDisposed(ctx =>
             {
                 renewalTask?.Dispose();
                 cancellationTokenSource?.Dispose();

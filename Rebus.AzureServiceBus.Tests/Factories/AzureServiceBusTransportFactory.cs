@@ -49,9 +49,15 @@ namespace Rebus.AzureServiceBus.Tests.Factories
 
         public void CleanUp()
         {
-            _queuesToDelete.Keys.ForEach(DeleteQueue);
+            foreach (var key in _queuesToDelete.Keys)
+            {
+                DeleteQueue(key);
+            }
 
-            _queuesToDelete.Values.ForEach(t => t.Dispose());
+            foreach (var value in _queuesToDelete.Values)
+            {
+                value.Dispose();
+            }
         }
 
         public static void DeleteQueue(string queueName)
