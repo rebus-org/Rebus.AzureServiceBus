@@ -40,7 +40,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Rebus.AzureServiceBus\Rebus.AzureServiceBus.csproj" />
-    <PackageReference Include="Microsoft.Azure.ServiceBus" Version="3.4.0" />
+    <PackageReference Include="Microsoft.Azure.ServiceBus" Version="4.1.1" />
     <PackageReference Include="rebus" Version="6.0.0" />
     <PackageReference Include="rebus.tests.contracts" Version="6.0.0" />
   </ItemGroup>

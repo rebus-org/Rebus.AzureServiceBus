@@ -10,8 +10,10 @@ using Rebus.Threading;
 using Rebus.Timeouts;
 using Rebus.Topic;
 using Rebus.Transport;
-
+// ReSharper disable ArgumentsStyleNamedExpression
+// ReSharper disable ArgumentsStyleLiteral
 // ReSharper disable once CheckNamespace
+
 namespace Rebus.Config
 {
     /// <summary>
@@ -28,6 +30,13 @@ namespace Rebus.Config
         public static AzureServiceBusTransportClientSettings UseAzureServiceBusAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionString)
         {
             var settingsBuilder = new AzureServiceBusTransportClientSettings();
+
+            configurer.OtherService<Options>().Decorate(c =>
+            {
+                var options = c.Get<Options>();
+                options.ExternalTimeoutManagerAddressOrNull = AzureServiceBusTransport.MagicDeferredMessagesAddress;
+                return options;
+            });
 
             configurer
                 .OtherService<AzureServiceBusTransport>()

@@ -41,6 +41,11 @@ namespace Rebus.AzureServiceBus
         /// Subscriber "addresses" are prefixed with this bad boy so we can recognize them and publish to a topic client instead
         /// </summary>
         const string MagicSubscriptionPrefix = "***Topic***: ";
+        
+        /// <summary>
+        /// External timeout manager address set to this magic address will be routed to the destination address specified by the <see cref="Headers.DeferredRecipient"/> header
+        /// </summary>
+        public const string MagicDeferredMessagesAddress = "***Deferred***";
 
         /// <summary>
         /// Defines the maximum number of outgoing messages to batch together when sending/publishing
@@ -412,6 +417,18 @@ namespace Rebus.AzureServiceBus
                 destinationAddress = _nameFormatter.FormatQueueName(destinationAddress);
             }
 
+            if (destinationAddress == MagicDeferredMessagesAddress)
+            {
+                try
+                {
+                    destinationAddress = message.Headers.GetValue(Headers.DeferredRecipient);
+                }
+                catch (Exception exception)
+                {
+                    throw new ArgumentException($"The destination address was set to '{MagicDeferredMessagesAddress}', but no '{Headers.DeferredRecipient}' header could be found on the message", exception);
+                }
+            }
+
             var outgoingMessages = GetOutgoingMessages(context);
 
             outgoingMessages.Enqueue(new OutgoingMessage(destinationAddress, message));
@@ -471,15 +488,15 @@ namespace Rebus.AzureServiceBus
 
         ConcurrentQueue<OutgoingMessage> GetOutgoingMessages(ITransactionContext context)
         {
-            return context.GetOrAdd(OutgoingMessagesKey, () =>
+            ConcurrentQueue<OutgoingMessage> CreateNewOutgoingMessagesQueue()
             {
                 var messagesToSend = new ConcurrentQueue<OutgoingMessage>();
 
-                context.OnCommitted(async ctx =>
+                async Task SendOutgoingMessages(ITransactionContext ctx)
                 {
                     var messagesByDestinationQueue = messagesToSend.GroupBy(m => m.DestinationAddress);
 
-                    await Task.WhenAll(messagesByDestinationQueue.Select(async group =>
+                    async Task SendOutgoingMessagesToDestination(IGrouping<string, OutgoingMessage> group)
                     {
                         var destinationQueue = group.Key;
                         var messages = group;
@@ -518,12 +535,19 @@ namespace Rebus.AzureServiceBus
                                 }
                             }
                         }
+                    }
 
-                    })).ConfigureAwait(false);
-                });
+                    await Task.WhenAll(messagesByDestinationQueue
+                        .Select(SendOutgoingMessagesToDestination))
+                        .ConfigureAwait(false);
+                }
+
+                context.OnCommitted(SendOutgoingMessages);
 
                 return messagesToSend;
-            });
+            }
+
+            return context.GetOrAdd(OutgoingMessagesKey, CreateNewOutgoingMessagesQueue);
         }
 
         /// <summary>
