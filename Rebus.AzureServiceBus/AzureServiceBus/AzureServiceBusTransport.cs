@@ -45,7 +45,7 @@ namespace Rebus.AzureServiceBus
         /// <summary>
         /// External timeout manager address set to this magic address will be routed to the destination address specified by the <see cref="Headers.DeferredRecipient"/> header
         /// </summary>
-        public const string MagicDeferredMessagesAddress = "***Deferred***";
+        public const string MagicDeferredMessagesAddress = "___deferred___";
 
         /// <summary>
         /// Defines the maximum number of outgoing messages to batch together when sending/publishing
@@ -59,7 +59,6 @@ namespace Rebus.AzureServiceBus
         );
 
         readonly ExceptionIgnorant _subscriptionExceptionIgnorant = new ExceptionIgnorant(maxAttemps: 10).Ignore<ServiceBusException>(ex => ex.IsTransient);
-        readonly INameFormatter _nameFormatter;
         readonly ConcurrentStack<IDisposable> _disposables = new ConcurrentStack<IDisposable>();
         readonly ConcurrentDictionary<string, MessageSender> _messageSenders = new ConcurrentDictionary<string, MessageSender>();
         readonly ConcurrentDictionary<string, Lazy<Task<TopicClient>>> _topicClients = new ConcurrentDictionary<string, Lazy<Task<TopicClient>>>();
@@ -67,6 +66,7 @@ namespace Rebus.AzureServiceBus
         readonly IAsyncTaskFactory _asyncTaskFactory;
         readonly CancellationToken _cancellationToken;
         readonly ManagementClient _managementClient;
+        readonly INameFormatter _nameFormatter;
         readonly string _connectionString;
         readonly ILog _log;
         readonly string _subscriptionName;
