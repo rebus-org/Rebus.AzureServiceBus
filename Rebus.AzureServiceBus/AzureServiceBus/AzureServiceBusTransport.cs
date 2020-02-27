@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.ServiceBus.Core;
 using Microsoft.Azure.ServiceBus.Management;
+using Microsoft.Azure.ServiceBus.Primitives;
 using Rebus.AzureServiceBus.NameFormat;
 using Rebus.Bus;
 using Rebus.Exceptions;
@@ -75,11 +76,14 @@ namespace Rebus.AzureServiceBus
         int _prefetchCount;
 
         MessageReceiver _messageReceiver;
+        private readonly ITokenProvider _tokenProvider;
+        private readonly string _endpoint;
 
         /// <summary>
         /// Constructs the transport, connecting to the service bus pointed to by the connection string.
         /// </summary>
-        public AzureServiceBusTransport(string connectionString, string queueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory, INameFormatter nameFormatter, CancellationToken cancellationToken = default(CancellationToken))
+        [CLSCompliant(false)]
+        public AzureServiceBusTransport(string connectionString, string queueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory, INameFormatter nameFormatter, CancellationToken cancellationToken = default(CancellationToken), ITokenProvider tokenProvider = null)
         {
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
 
@@ -101,7 +105,19 @@ namespace Rebus.AzureServiceBus
             _asyncTaskFactory = asyncTaskFactory ?? throw new ArgumentNullException(nameof(asyncTaskFactory));
             _cancellationToken = cancellationToken;
             _log = rebusLoggerFactory.GetLogger<AzureServiceBusTransport>();
-            _managementClient = new ManagementClient(connectionString);
+
+            if (tokenProvider != null)
+            {
+                var connectionStringBuilder = new ServiceBusConnectionStringBuilder(connectionString);
+                _managementClient = new ManagementClient(connectionStringBuilder, tokenProvider);
+                _endpoint = connectionStringBuilder.Endpoint;
+            }
+            else
+            {
+                _managementClient = new ManagementClient(connectionString);
+            }
+
+            _tokenProvider = tokenProvider;
         }
 
         /// <summary>
@@ -700,13 +716,24 @@ namespace Rebus.AzureServiceBus
 
                 CheckInputQueueConfiguration(Address);
 
-                _messageReceiver = new MessageReceiver(
-                    _connectionString,
-                    Address,
-                    receiveMode: ReceiveMode.PeekLock,
-                    retryPolicy: DefaultRetryStrategy,
-                    prefetchCount: _prefetchCount
-                );
+                _messageReceiver = _tokenProvider == null
+                    ?
+                        new MessageReceiver(
+                            _connectionString,
+                            Address,
+                            receiveMode: ReceiveMode.PeekLock,
+                            retryPolicy: DefaultRetryStrategy,
+                            prefetchCount: _prefetchCount
+                        )
+                    :
+                        new MessageReceiver(
+                            _endpoint,
+                            Address,
+                            _tokenProvider,
+                            receiveMode: ReceiveMode.PeekLock,
+                            retryPolicy: DefaultRetryStrategy,
+                            prefetchCount: _prefetchCount
+                        );
 
                 _disposables.Push(_messageReceiver.AsDisposable(m => AsyncHelpers.RunSync(async () => await m.CloseAsync().ConfigureAwait(false))));
 
@@ -827,11 +854,20 @@ namespace Rebus.AzureServiceBus
                 var connectionStringParser = new ConnectionStringParser(_connectionString);
                 var connectionString = connectionStringParser.GetConnectionStringWithoutEntityPath();
 
-                var messageSender = new MessageSender(
-                    connectionString,
-                    queue,
-                    retryPolicy: DefaultRetryStrategy
-                );
+                var messageSender = _tokenProvider == null
+                    ?
+                        new MessageSender(
+                            connectionString,
+                            queue,
+                            retryPolicy: DefaultRetryStrategy
+                        )
+                    :
+                        new MessageSender(
+                            _endpoint,
+                            queue,
+                            _tokenProvider,
+                            retryPolicy: DefaultRetryStrategy
+                        );
 
                 _disposables.Push(messageSender.AsDisposable(t => AsyncHelpers.RunSync(async () => await t.CloseAsync().ConfigureAwait(false))));
 
@@ -845,7 +881,7 @@ namespace Rebus.AzureServiceBus
             {
                 await EnsureTopicExists(topic);
 
-                var topicClient = new TopicClient(_connectionString, topic, retryPolicy: DefaultRetryStrategy);
+                var topicClient = _tokenProvider == null ? new TopicClient(_connectionString, topic, retryPolicy: DefaultRetryStrategy) : new TopicClient(_endpoint, topic, _tokenProvider, retryPolicy: DefaultRetryStrategy);
                 _disposables.Push(topicClient.AsDisposable(t => AsyncHelpers.RunSync(async () => await t.CloseAsync().ConfigureAwait(false))));
                 return topicClient;
             }

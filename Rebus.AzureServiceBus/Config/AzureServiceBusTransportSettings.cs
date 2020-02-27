@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Azure.ServiceBus.Primitives;
+using System;
 // ReSharper disable UnusedMember.Global
 
 namespace Rebus.Config
