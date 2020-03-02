@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using Microsoft.Azure.ServiceBus.Primitives;
 using Rebus.AzureServiceBus;
 using Rebus.AzureServiceBus.NameFormat;
 using Rebus.Logging;
@@ -27,7 +28,7 @@ namespace Rebus.Config
         /// <summary>
         /// Configures Rebus to use Azure Service Bus to transport messages as a one-way client (i.e. will not be able to receive any messages)
         /// </summary>
-        public static AzureServiceBusTransportClientSettings UseAzureServiceBusAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionString)
+        public static AzureServiceBusTransportClientSettings UseAzureServiceBusAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionString, ITokenProvider tokenProvider = null)
         {
             var settingsBuilder = new AzureServiceBusTransportClientSettings();
 
@@ -53,7 +54,8 @@ namespace Rebus.Config
                         rebusLoggerFactory: rebusLoggerFactory,
                         asyncTaskFactory: asyncTaskFactory,
                         nameFormatter: nameFormatter,
-                        cancellationToken: cancellationToken
+                        cancellationToken: cancellationToken,
+                        tokenProvider: tokenProvider
                     );
                 });
 
@@ -68,7 +70,7 @@ namespace Rebus.Config
         /// Configures Rebus to use Azure Service Bus queues to transport messages, connecting to the service bus instance pointed to by the connection string
         /// (or the connection string with the specified name from the current app.config)
         /// </summary>
-        public static AzureServiceBusTransportSettings UseAzureServiceBus(this StandardConfigurer<ITransport> configurer, string connectionString, string inputQueueAddress)
+        public static AzureServiceBusTransportSettings UseAzureServiceBus(this StandardConfigurer<ITransport> configurer, string connectionString, string inputQueueAddress, ITokenProvider tokenProvider = null)
         {
             var settingsBuilder = new AzureServiceBusTransportSettings();
 
@@ -88,7 +90,8 @@ namespace Rebus.Config
                         rebusLoggerFactory: rebusLoggerFactory,
                         asyncTaskFactory: asyncTaskFactory,
                         nameFormatter: nameFormatter,
-                        cancellationToken: cancellationToken
+                        cancellationToken: cancellationToken,
+                        tokenProvider: tokenProvider
                     );
 
                     if (settingsBuilder.PrefetchingEnabled)
