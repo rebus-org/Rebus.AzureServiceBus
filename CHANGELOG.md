@@ -72,6 +72,10 @@
 * Fix bug that prevented one-way clients from deferring messages
 * Update to Rebus 6
 
+## 7.1.0
+* Add ability to authenticate by prioviding an `ITokenProvider`, enabling much more fine-grained access control - thanks [eeskildsen]
+
+[eeskildsen]: https://github.com/eeskildsen
 [ehabelgindy]: https://github.com/ehabelgindy
 [jr01]: https://github.com/jr01
 [lezzi]: https://github.com/lezzi
