@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 namespace Rebus.AzureServiceBus.Tests
 {
     [TestFixture]
+    [Ignore("Requires some manual setup")]
     public class TokenProviderTest : FixtureBase
     {
         const string QueueName = "token-provider-server";
