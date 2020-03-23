@@ -78,6 +78,9 @@
 ## 7.1.1
 * Fix bug that would make the transport unable to receive a message with a NULL value present in the headers dictionary
 
+## 7.1.2
+* Make peek lock renewal more robust and less resource-intensive
+
 [eeskildsen]: https://github.com/eeskildsen
 [ehabelgindy]: https://github.com/ehabelgindy
 [jr01]: https://github.com/jr01
