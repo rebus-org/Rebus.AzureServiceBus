@@ -75,6 +75,9 @@
 ## 7.1.0
 * Add ability to authenticate by prioviding an `ITokenProvider`, enabling much more fine-grained access control - thanks [eeskildsen]
 
+## 7.1.1
+* Fix bug that would make the transport unable to receive a message with a NULL value present in the headers dictionary
+
 [eeskildsen]: https://github.com/eeskildsen
 [ehabelgindy]: https://github.com/ehabelgindy
 [jr01]: https://github.com/jr01

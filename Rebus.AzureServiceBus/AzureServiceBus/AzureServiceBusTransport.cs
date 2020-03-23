@@ -647,7 +647,7 @@ namespace Rebus.AzureServiceBus
             });
 
             var userProperties = message.UserProperties;
-            var headers = userProperties.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ToString());
+            var headers = userProperties.ToDictionary(kvp => kvp.Key, kvp => kvp.Value?.ToString());
             var body = message.Body;
 
             return new TransportMessage(headers, body);
