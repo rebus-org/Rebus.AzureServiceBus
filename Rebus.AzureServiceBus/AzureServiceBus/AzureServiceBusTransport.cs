@@ -608,19 +608,22 @@ namespace Rebus.AzureServiceBus
                 _messageLockRenewers.TryRemove(messageId, out _);
             });
 
-            context.OnAborted(async ctx =>
+            context.OnAborted(ctx =>
             {
                 _messageLockRenewers.TryRemove(messageId, out _);
 
-                try
+                AsyncHelpers.RunSync(async () =>
                 {
-                    await messageReceiver.AbandonAsync(lockToken).ConfigureAwait(false);
-                }
-                catch (Exception exception)
-                {
-                    throw new RebusApplicationException(exception,
-                        $"Could not abandon message with ID {message.MessageId} and lock token {lockToken}");
-                }
+                    try
+                    {
+                        await messageReceiver.AbandonAsync(lockToken).ConfigureAwait(false);
+                    }
+                    catch (Exception exception)
+                    {
+                        throw new RebusApplicationException(exception,
+                            $"Could not abandon message with ID {message.MessageId} and lock token {lockToken}");
+                    }
+                });
             });
 
             context.OnDisposed(ctx => _messageLockRenewers.TryRemove(messageId, out _));

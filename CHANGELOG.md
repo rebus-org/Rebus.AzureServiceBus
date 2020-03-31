@@ -81,6 +81,9 @@
 ## 7.1.2
 * Make peek lock renewal more robust and less resource-intensive
 
+## 7.1.3
+* Update Microsoft.Azure.ServiceBus dependency to 4.1.2
+
 [eeskildsen]: https://github.com/eeskildsen
 [ehabelgindy]: https://github.com/ehabelgindy
 [jr01]: https://github.com/jr01
