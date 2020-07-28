@@ -73,6 +73,7 @@ namespace Rebus.AzureServiceBus
         readonly string _connectionString;
         readonly string _subscriptionName;
         readonly string _endpoint;
+        readonly TransportType _transportType;
         readonly ILog _log;
 
         bool _prefetchingEnabled;
@@ -111,6 +112,7 @@ namespace Rebus.AzureServiceBus
                 var connectionStringBuilder = new ServiceBusConnectionStringBuilder(connectionString);
                 _managementClient = new ManagementClient(connectionStringBuilder, tokenProvider);
                 _endpoint = connectionStringBuilder.Endpoint;
+                _transportType = connectionStringBuilder.TransportType;
             }
             else
             {
@@ -688,6 +690,7 @@ namespace Rebus.AzureServiceBus
                             _endpoint,
                             Address,
                             _tokenProvider,
+                            transportType: _transportType,
                             receiveMode: ReceiveMode.PeekLock,
                             retryPolicy: DefaultRetryStrategy,
                             prefetchCount: _prefetchCount
@@ -829,6 +832,7 @@ namespace Rebus.AzureServiceBus
                             _endpoint,
                             queue,
                             _tokenProvider,
+                            transportType: _transportType,
                             retryPolicy: DefaultRetryStrategy
                         );
 
@@ -844,7 +848,7 @@ namespace Rebus.AzureServiceBus
             {
                 await EnsureTopicExists(topic);
 
-                var topicClient = _tokenProvider == null ? new TopicClient(_connectionString, topic, retryPolicy: DefaultRetryStrategy) : new TopicClient(_endpoint, topic, _tokenProvider, retryPolicy: DefaultRetryStrategy);
+                var topicClient = _tokenProvider == null ? new TopicClient(_connectionString, topic, retryPolicy: DefaultRetryStrategy) : new TopicClient(_endpoint, topic, _tokenProvider, transportType: _transportType, retryPolicy: DefaultRetryStrategy);
                 _disposables.Push(topicClient.AsDisposable(t => AsyncHelpers.RunSync(async () => await t.CloseAsync().ConfigureAwait(false))));
                 return topicClient;
             }
