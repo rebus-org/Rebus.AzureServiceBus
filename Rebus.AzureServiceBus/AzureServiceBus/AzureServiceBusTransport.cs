@@ -432,16 +432,19 @@ namespace Rebus.AzureServiceBus
         /// </summary>
         public async Task Send(string destinationAddress, TransportMessage message, ITransactionContext context)
         {
-            if (!destinationAddress.StartsWith(MagicSubscriptionPrefix))
-            {
-                destinationAddress = _nameFormatter.FormatQueueName(destinationAddress);
-            }
+            var actualDestinationAddress = GetActualDestinationAddress(destinationAddress, message);
+            var outgoingMessages = GetOutgoingMessages(context);
 
+            outgoingMessages.Enqueue(new OutgoingMessage(actualDestinationAddress, message));
+        }
+
+        string GetActualDestinationAddress(string destinationAddress, TransportMessage message)
+        {
             if (destinationAddress == MagicDeferredMessagesAddress)
             {
                 try
                 {
-                    destinationAddress = message.Headers.GetValue(Headers.DeferredRecipient);
+                    return message.Headers.GetValue(Headers.DeferredRecipient);
                 }
                 catch (Exception exception)
                 {
@@ -449,9 +452,12 @@ namespace Rebus.AzureServiceBus
                 }
             }
 
-            var outgoingMessages = GetOutgoingMessages(context);
+            if (!destinationAddress.StartsWith(MagicSubscriptionPrefix))
+            {
+                return _nameFormatter.FormatQueueName(destinationAddress);
+            }
 
-            outgoingMessages.Enqueue(new OutgoingMessage(destinationAddress, message));
+            return destinationAddress;
         }
 
         static Message GetMessage(OutgoingMessage outgoingMessage)
@@ -462,7 +468,6 @@ namespace Rebus.AzureServiceBus
 
             if (headers.TryGetValue(Headers.TimeToBeReceived, out var timeToBeReceivedStr))
             {
-                timeToBeReceivedStr = headers[Headers.TimeToBeReceived];
                 var timeToBeReceived = TimeSpan.Parse(timeToBeReceivedStr);
                 message.TimeToLive = timeToBeReceived;
                 headers.Remove(Headers.TimeToBeReceived);
