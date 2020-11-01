@@ -24,23 +24,17 @@ namespace Rebus.AzureServiceBus
         /// </summary>
         public string GetTopic(Type eventType)
         {
-            string topicName = null;
-
             if (!_useLegacyNaming)
             {
                 var assemblyName = eventType.Assembly.GetName().Name;
                 var typeName = eventType.FullName;
 
-                topicName = $"{assemblyName}/{typeName}";
-            } 
-            else 
-            {
-                var simpleAssemblyQualifiedName = eventType.GetSimpleAssemblyQualifiedName();
-
-                topicName = simpleAssemblyQualifiedName;
+                return $"{assemblyName}/{typeName}";
             }
 
-            return topicName;
+            var simpleAssemblyQualifiedName = eventType.GetSimpleAssemblyQualifiedName();
+
+            return simpleAssemblyQualifiedName;
         }
     }
 }
