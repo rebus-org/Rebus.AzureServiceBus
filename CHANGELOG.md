@@ -90,6 +90,9 @@
 ## 7.1.5
 * Fix bug that would cause deferred messages to be sent to the wrong queue in cases where a custom queue naming convention was used that would somehow mess with the magic deferred messages queue name
 
+## 8.0.0
+* Update Microsoft.Azure.ServiceBus dependency to 5.0.0 
+
 [benne]: https://github.com/benne
 [eeskildsen]: https://github.com/eeskildsen
 [ehabelgindy]: https://github.com/ehabelgindy

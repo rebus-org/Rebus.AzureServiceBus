@@ -40,7 +40,7 @@
     <DocumentationFile>bin\Release\Rebus.AzureServiceBus.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.ServiceBus" Version="4.1.2" />
+    <PackageReference Include="Microsoft.Azure.ServiceBus" Version="5.0.0" />
     <PackageReference Include="Rebus" Version="6.0.0" />
   </ItemGroup>
   <ItemGroup>

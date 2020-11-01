@@ -452,6 +452,11 @@ namespace Rebus.AzureServiceBus
                 }
             }
 
+            if (message.Headers.TryGetValue(Headers.DeferredRecipient, out var deferredRecipient))
+            {
+                return _nameFormatter.FormatQueueName(deferredRecipient);
+            }
+
             if (!destinationAddress.StartsWith(MagicSubscriptionPrefix))
             {
                 return _nameFormatter.FormatQueueName(destinationAddress);
@@ -879,7 +884,7 @@ namespace Rebus.AzureServiceBus
                 try
                 {
                     await r.Renew().ConfigureAwait(false);
-                    
+
                     _log.Debug("Successfully renewed peek lock for message with ID {messageId}", r.MessageId);
                 }
                 catch (Exception exception)
