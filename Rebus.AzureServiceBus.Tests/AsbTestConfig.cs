@@ -29,7 +29,7 @@ namespace Rebus.AzureServiceBus.Tests
 
             if (!string.IsNullOrWhiteSpace(environmentVariable)) return ConnectionStringFromEnvironmentVariable(variableName);
 
-            throw new ConfigurationErrorsException($@"Could not get Azure Service Bus connection string. Tried to load from file
+            throw new ApplicationException($@"Could not get Azure Service Bus connection string. Tried to load from file
 
     {filePath}
 

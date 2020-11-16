@@ -8,6 +8,7 @@ using Rebus.Activation;
 using Rebus.Config;
 using Rebus.Logging;
 using Rebus.Tests.Contracts;
+#pragma warning disable 1998
 
 namespace Rebus.AzureServiceBus.Tests.Bugs
 {

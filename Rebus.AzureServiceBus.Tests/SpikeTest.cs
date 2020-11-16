@@ -10,6 +10,7 @@ using Rebus.AzureServiceBus.Tests.Factories;
 using Rebus.Internals;
 using Rebus.Tests.Contracts;
 // ReSharper disable RedundantArgumentDefaultValue
+#pragma warning disable 1998
 
 namespace Rebus.AzureServiceBus.Tests
 {

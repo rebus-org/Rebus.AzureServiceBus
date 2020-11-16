@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Rebus.Logging;
 using Rebus.Tests.Contracts;
 using Rebus.Threading.TaskParallelLibrary;
+#pragma warning disable 1998
 
 namespace Rebus.AzureServiceBus.Tests.Bugs
 {

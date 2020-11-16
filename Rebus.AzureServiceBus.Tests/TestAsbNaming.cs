@@ -8,6 +8,7 @@ using Rebus.Activation;
 using Rebus.AzureServiceBus.NameFormat;
 using Rebus.AzureServiceBus.Tests.Bugs;
 using Rebus.Config;
+using Rebus.Extensions;
 using Rebus.Internals;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
@@ -60,7 +61,7 @@ namespace Rebus.AzureServiceBus.Tests
         public async Task DefaultTopicNameConvention()
         {
             Using(new QueueDeleter("group/some.inputqueue"));
-            Using(new TopicDeleter("mscorlib/system.object"));
+            Using(new TopicDeleter("system.private.corelib/system.object"));
 
             var activator = Using(new BuiltinHandlerActivator());
 		    Configure.With(activator)
@@ -73,15 +74,15 @@ namespace Rebus.AzureServiceBus.Tests
 
 		    await activator.Bus.Subscribe<object>();
 
-		    await Task.Delay(500);
+		    await Task.Delay(1000);
 
 		    await activator.Bus.Publish(new object{ });
 
 		    gotString1.WaitOrDie(TimeSpan.FromSeconds(4));
             
             Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some.inputqueue"));
-            Assert.IsTrue(await _managementClient.TopicExistsAsync("mscorlib/system.object"));
-            var subscription = await _managementClient.GetSubscriptionAsync("mscorlib/system.object", "group_some.inputqueue");
+            Assert.IsTrue(await _managementClient.TopicExistsAsync("system.private.corelib/system.object"));
+            var subscription = await _managementClient.GetSubscriptionAsync("system.private.corelib/system.object", "group_some.inputqueue");
             Assert.AreEqual(_endpoint + "/group/some.inputqueue", subscription.ForwardTo);
         }
 

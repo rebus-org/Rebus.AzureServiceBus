@@ -61,7 +61,7 @@
 * Add ability to run in "legacy naming mode", meaning that topics are more conservatively sanitized to work the same way as all versions of the transport prior to version 7
 * Fix bug that accidentally replaced `/` in topic names when publishing, which would cause topics with `/` to be unreachable
 * Fix one-way client legacy naming bug (one-way client would not adhere to legacy naming convention, even when `.UseLegacyNaming()` was called on the configuration builder)
-* Default to using topics nested beneath their assemblies, so e.g. `await bus.Subscribe<string>()` will result in the creation of a topic named `mscorlib/System.String`, which will be formatted as a topic named `System.String` nested beneat `mscorlib` in tools that support it
+* Default to using topics nested beneath their assemblies, so e.g. `await bus.Subscribe<string>()` will result in the creation of a topic named `mscorlib/System.String`, which will be formatted as a topic named `System.String` nested beneath `mscorlib` in tools that support it
 * Pluggable naming strategy via `INameFormatter`, allowing for customizing all aspects of how e.g. .NET types are named when creating topics from them, how queue names are normalized/sanitized, etc. - thanks [jr01]
 * Added transport setting for overriding the Receive OperationTimeout - thanks [jr01]
 * Update Microsoft.Azure.ServiceBus to version 4.1.1 to avoid reconnection bug described here: https://github.com/Azure/azure-service-bus-dotnet/issues/639
@@ -92,6 +92,10 @@
 
 ## 7.1.6
 * Actually fix bug described in previous entry
+
+## 8.0.0-a1
+* Update Microsoft.Azure.ServiceBus dependency to 5.0.0
+* Update Microsoft.Identity.Client dependency to 4.22.0
 
 
 [benne]: https://github.com/benne
