@@ -93,8 +93,8 @@
 ## 7.1.6
 * Actually fix bug described in previous entry
 
-## 8.0.0-a1
-* Update Microsoft.Azure.ServiceBus dependency to 5.0.0
+## 8.0.0
+* Update Microsoft.Azure.ServiceBus dependency to 5.1.0
 * Update Microsoft.Identity.Client dependency to 4.22.0
 
 
