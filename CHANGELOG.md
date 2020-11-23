@@ -97,6 +97,9 @@
 * Update Microsoft.Azure.ServiceBus dependency to 5.1.0
 * Update Microsoft.Identity.Client dependency to 4.22.0
 
+## 8.0.1
+* Fix bug that would result in inability to dead-letter a deferred message
+
 
 [benne]: https://github.com/benne
 [eeskildsen]: https://github.com/eeskildsen

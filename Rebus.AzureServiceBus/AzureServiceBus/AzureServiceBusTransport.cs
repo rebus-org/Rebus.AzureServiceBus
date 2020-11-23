@@ -440,21 +440,24 @@ namespace Rebus.AzureServiceBus
 
         string GetActualDestinationAddress(string destinationAddress, TransportMessage message)
         {
-            if (destinationAddress == MagicDeferredMessagesAddress)
+            if (message.Headers.ContainsKey(Headers.DeferredUntil))
             {
-                try
+                if (destinationAddress == MagicDeferredMessagesAddress)
                 {
-                    return message.Headers.GetValue(Headers.DeferredRecipient);
+                    try
+                    {
+                        return message.Headers.GetValue(Headers.DeferredRecipient);
+                    }
+                    catch (Exception exception)
+                    {
+                        throw new ArgumentException($"The destination address was set to '{MagicDeferredMessagesAddress}', but no '{Headers.DeferredRecipient}' header could be found on the message", exception);
+                    }
                 }
-                catch (Exception exception)
-                {
-                    throw new ArgumentException($"The destination address was set to '{MagicDeferredMessagesAddress}', but no '{Headers.DeferredRecipient}' header could be found on the message", exception);
-                }
-            }
 
-            if (message.Headers.TryGetValue(Headers.DeferredRecipient, out var deferredRecipient))
-            {
-                return _nameFormatter.FormatQueueName(deferredRecipient);
+                if (message.Headers.TryGetValue(Headers.DeferredRecipient, out var deferredRecipient))
+                {
+                    return _nameFormatter.FormatQueueName(deferredRecipient);
+                }
             }
 
             if (!destinationAddress.StartsWith(MagicSubscriptionPrefix))
