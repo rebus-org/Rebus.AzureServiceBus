@@ -16,17 +16,17 @@ namespace Rebus.AzureServiceBus.Tests.Bugs
     public class VerifyTopicsAreCreatedAsNeeded : FixtureBase
     {
         BuiltinHandlerActivator _activator;
+        IBusStarter _busStarter;
 
         protected override void SetUp()
         {
-
             _activator = new BuiltinHandlerActivator();
-            
+
             Using(_activator);
-            
-            Configure.With(_activator)
+
+            _busStarter = Configure.With(_activator)
                 .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, TestConfig.GetName("topictest")))
-                .Start();
+                .Create();
         }
 
         [Test]
@@ -43,6 +43,8 @@ namespace Rebus.AzureServiceBus.Tests.Bugs
 
             _activator.Handle<string>(async str => eventWasReceived.Set());
 
+            _busStarter.Start();
+
             var bus = _activator.Bus;
 
             await bus.Advanced.Topics.Subscribe(topicName);
@@ -55,6 +57,8 @@ namespace Rebus.AzureServiceBus.Tests.Bugs
         [Test]
         public async Task CanPublishToTopicThatDoesNotExist()
         {
+            _busStarter.Start();
+
             await DeleteAllTopics();
 
             var topicName = Guid.NewGuid().ToString("N");
