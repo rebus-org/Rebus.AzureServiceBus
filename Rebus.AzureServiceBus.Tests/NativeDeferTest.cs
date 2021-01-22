@@ -23,6 +23,7 @@ namespace Rebus.AzureServiceBus.Tests
         static readonly string QueueName = TestConfig.GetName("input");
         BuiltinHandlerActivator _activator;
         IBus _bus;
+        IBusStarter _busStarter;
 
         protected override void SetUp()
         {
@@ -37,14 +38,16 @@ namespace Rebus.AzureServiceBus.Tests
 
             _activator = new BuiltinHandlerActivator();
 
-            _bus = Configure.With(_activator)
+            _busStarter = Configure.With(_activator)
                 .Transport(t => t.UseAzureServiceBus(connectionString, QueueName))
                 .Routing(r => r.TypeBased().Map<TimedMessage>(QueueName))
                 .Options(o =>
                 {
                     o.LogPipeline();
                 })
-                .Start();
+                .Create();
+
+            _bus = _busStarter.Bus;
 
             Using(_bus);
         }
@@ -64,6 +67,8 @@ namespace Rebus.AzureServiceBus.Tests
 
                 done.Set();
             });
+
+            _busStarter.Start();
 
             var sendTime = DateTimeOffset.Now;
 

@@ -29,6 +29,7 @@ namespace Rebus.AzureServiceBus.Tests
         BuiltinHandlerActivator _activator;
         AzureServiceBusTransport _transport;
         IBus _bus;
+        IBusStarter _busStarter;
 
         protected override void SetUp()
         {
@@ -41,7 +42,7 @@ namespace Rebus.AzureServiceBus.Tests
 
             _activator = new BuiltinHandlerActivator();
 
-            _bus = Configure.With(_activator)
+            _busStarter = Configure.With(_activator)
                 .Logging(l => l.Use(new ListLoggerFactory(outputToConsole: true, detailed: true)))
                 .Transport(t => t.UseAzureServiceBus(ConnectionString, QueueName).AutomaticallyRenewPeekLock())
                 .Options(o =>
@@ -49,7 +50,9 @@ namespace Rebus.AzureServiceBus.Tests
                     o.SetNumberOfWorkers(1);
                     o.SetMaxParallelism(1);
                 })
-                .Start();
+                .Create();
+
+            _bus = _busStarter.Bus;
 
             Using(_bus);
         }
@@ -80,6 +83,8 @@ namespace Rebus.AzureServiceBus.Tests
                 gotMessage.Set();
             });
 
+            _busStarter.Start();
+
             await _bus.SendLocal("hej med dig min ven!");
 
             gotMessage.WaitOrDie(TimeSpan.FromMinutes(6.5));
@@ -88,17 +93,16 @@ namespace Rebus.AzureServiceBus.Tests
             _bus.Dispose();
 
             // see if queue is empty
-            using (var scope = new RebusTransactionScope())
+            using var scope = new RebusTransactionScope();
+            
+            var message = await _transport.Receive(scope.TransactionContext, CancellationToken.None);
+
+            await scope.CompleteAsync();
+
+            if (message != null)
             {
-                var message = await _transport.Receive(scope.TransactionContext, CancellationToken.None);
-
-                await scope.CompleteAsync();
-
-                if (message != null)
-                {
-                    throw new AssertionException(
-                        $"Did not expect to receive a message - got one with ID {message.Headers.GetValue(Headers.MessageId)}");
-                }
+                throw new AssertionException(
+                    $"Did not expect to receive a message - got one with ID {message.Headers.GetValue(Headers.MessageId)}");
             }
         }
     }

@@ -20,16 +20,26 @@ namespace Rebus.AzureServiceBus.Tests
         readonly string _connectionString = AsbTestConfig.ConnectionString;
 
         BuiltinHandlerActivator _bus1;
+        IBusStarter _bus1Starter;
         BuiltinHandlerActivator _bus2;
+        IBusStarter _bus2Starter;
         BuiltinHandlerActivator _bus3;
+        IBusStarter _bus3Starter;
 
         protected override void SetUp()
         {
             Using(new TopicDeleter(new DefaultAzureServiceBusTopicNameConvention().GetTopic(typeof(string))));
 
-            _bus1 = StartBus(_inputQueueName1);
-            _bus2 = StartBus(_inputQueueName2);
-            _bus3 = StartBus(_inputQueueName3);
+            (_bus1, _bus1Starter) = CreateBus(_inputQueueName1);
+            (_bus2, _bus2Starter) = CreateBus(_inputQueueName2);
+            (_bus3, _bus3Starter) = CreateBus(_inputQueueName3);
+        }
+
+        void StartBuses()
+        {
+            _bus1Starter.Start();
+            _bus2Starter.Start();
+            _bus3Starter.Start();
         }
 
         [Test]
@@ -40,6 +50,8 @@ namespace Rebus.AzureServiceBus.Tests
 
             _bus1.Handle<string>(async str => gotString1.Set());
             _bus2.Handle<string>(async str => gotString2.Set());
+
+            StartBuses();
 
             await _bus1.Bus.Subscribe<string>();
             await _bus2.Bus.Subscribe<string>();
@@ -65,6 +77,8 @@ namespace Rebus.AzureServiceBus.Tests
                 subscriber2GotTheMessage = true;
             });
 
+            StartBuses();
+
             await _bus1.Bus.Subscribe<string>();
             await _bus2.Bus.Subscribe<string>();
 
@@ -81,15 +95,15 @@ namespace Rebus.AzureServiceBus.Tests
             Assert.That(subscriber2GotTheMessage, Is.False, "Didn't expect subscriber 2 to get the string since it was unsubscribed");
         }
 
-        BuiltinHandlerActivator StartBus(string inputQueue)
+        (BuiltinHandlerActivator, IBusStarter) CreateBus(string inputQueue)
         {
-            var bus = Using(new BuiltinHandlerActivator());
+            var activator = Using(new BuiltinHandlerActivator());
 
-            Configure.With(bus)
+            var starter = Configure.With(activator)
                 .Transport(t => t.UseAzureServiceBus(_connectionString, inputQueue))
-                .Start();
+                .Create();
 
-            return bus;
+            return (activator, starter);
         }
     }
 }

@@ -145,6 +145,14 @@ namespace Rebus.AzureServiceBus.Tests
             var recieverActivator = new BuiltinHandlerActivator();
             var senderActivator = new BuiltinHandlerActivator();
 
+            var gotMessage = new ManualResetEvent(false);
+
+            recieverActivator.Handle<string>(async (bus, context, message) =>
+            {
+                gotMessage.Set();
+                Console.WriteLine("got message in readonly mode");
+            });
+
             var receiverBus = Configure.With(recieverActivator)
                 .Logging(l => l.ColoredConsole())
                 .Transport(t =>
@@ -159,13 +167,6 @@ namespace Rebus.AzureServiceBus.Tests
             Using(receiverBus);
             Using(senderBus);
 
-            var gotMessage = new ManualResetEvent(false);
-
-            recieverActivator.Handle<string>(async (bus, context, message) =>
-            {
-                gotMessage.Set();
-                Console.WriteLine("got message in readonly mode");
-            });
             await senderBus.Advanced.Routing.Send(QueueName, "message to receiver");
 
             gotMessage.WaitOrDie(TimeSpan.FromSeconds(10));
