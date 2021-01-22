@@ -595,12 +595,17 @@ namespace Rebus.AzureServiceBus
             var message = receivedMessage.Message;
             var messageReceiver = receivedMessage.MessageReceiver;
 
+            var items = context.Items;
+
+            // add the message and its receiver to the context
+            items["asb-message"] = message;
+            items["asb-message-receiver"] = messageReceiver;
+
             if (!message.SystemProperties.IsLockTokenSet)
             {
                 throw new RebusApplicationException($"OMG that's weird - message with ID {message.MessageId} does not have a lock token!");
             }
 
-            var lockToken = message.SystemProperties.LockToken;
             var messageId = message.MessageId;
 
             if (AutomaticallyRenewPeekLock && !_prefetchingEnabled)
@@ -610,14 +615,24 @@ namespace Rebus.AzureServiceBus
 
             context.OnCompleted(async ctx =>
             {
-                try
+                // only ACK the message if it's still in the context - this way, carefully crafted
+                // user code can take over responsibility for the message by removing it from the transaction context
+                if (ctx.Items.TryGetValue("asb-message", out var messageObject)
+                    && messageObject is Message asbMessage)
                 {
-                    await messageReceiver.CompleteAsync(lockToken).ConfigureAwait(false);
-                }
-                catch (Exception exception)
-                {
-                    throw new RebusApplicationException(exception,
-                        $"Could not complete message with ID {message.MessageId} and lock token {lockToken}");
+                    var lockToken = asbMessage.SystemProperties.LockToken;
+
+                    try
+                    {
+                        await messageReceiver
+                            .CompleteAsync(lockToken)
+                            .ConfigureAwait(false);
+                    }
+                    catch (Exception exception)
+                    {
+                        throw new RebusApplicationException(exception,
+                            $"Could not complete message with ID {messageId} and lock token {lockToken}");
+                    }
                 }
 
                 _messageLockRenewers.TryRemove(messageId, out _);
@@ -629,14 +644,22 @@ namespace Rebus.AzureServiceBus
 
                 AsyncHelpers.RunSync(async () =>
                 {
-                    try
+                    // only NACK the message if it's still in the context - this way, carefully crafted
+                    // user code can take over responsibility for the message by removing it from the transaction context
+                    if (ctx.Items.TryGetValue("asb-message", out var messageObject)
+                        && messageObject is Message asbMessage)
                     {
-                        await messageReceiver.AbandonAsync(lockToken).ConfigureAwait(false);
-                    }
-                    catch (Exception exception)
-                    {
-                        throw new RebusApplicationException(exception,
-                            $"Could not abandon message with ID {message.MessageId} and lock token {lockToken}");
+                        var lockToken = asbMessage.SystemProperties.LockToken;
+                        
+                        try
+                        {
+                            await messageReceiver.AbandonAsync(lockToken).ConfigureAwait(false);
+                        }
+                        catch (Exception exception)
+                        {
+                            throw new RebusApplicationException(exception,
+                                $"Could not abandon message with ID {messageId} and lock token {lockToken}");
+                        }
                     }
                 });
             });

@@ -100,6 +100,9 @@
 ## 8.0.1
 * Fix bug that would result in inability to dead-letter a deferred message
 
+## 8.1.0
+* Add ability to use native dead-lettering by calling `t => t.UseNativeDeadlettering()` on the transport configurer. The basic of this functionality is the addition of `Message` and `MessageReceiver` to the transaction context, which makes it possible for user code to take over the responsibility for ACK/NACK/Dead-lettering the message
+
 
 [benne]: https://github.com/benne
 [eeskildsen]: https://github.com/eeskildsen
