@@ -103,6 +103,9 @@
 ## 8.1.0
 * Add ability to use native dead-lettering by calling `t => t.UseNativeDeadlettering()` on the transport configurer. The basic of this functionality is the addition of `Message` and `MessageReceiver` to the transaction context, which makes it possible for user code to take over the responsibility for ACK/NACK/Dead-lettering the message
 
+## 8.1.1
+* Trim dead letter reason/description to not exceed 4096 characters, which is the maximum length of an ASB header value
+
 
 [benne]: https://github.com/benne
 [eeskildsen]: https://github.com/eeskildsen

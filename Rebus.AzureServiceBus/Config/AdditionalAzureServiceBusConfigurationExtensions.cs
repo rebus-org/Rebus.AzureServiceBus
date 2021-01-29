@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.ServiceBus.Core;
+using Rebus.Internals;
 using Rebus.Messages;
 using Rebus.Retry;
 using Rebus.Transport;
@@ -36,7 +37,13 @@ namespace Rebus.Config
                     && transactionContext.Items.TryGetValue("asb-message-receiver", out var messageReceiverObject)
                     && messageReceiverObject is IMessageReceiver messageReceiver)
                 {
-                    await messageReceiver.DeadLetterAsync(message.SystemProperties.LockToken, exception.Message, exception.ToString());
+                    const int headerValueMaxLength = 4096;
+
+                    var deadLetterReason = exception.Message.TrimTo(maxLength: headerValueMaxLength);
+                    var deadLetterErrorDescription = exception.ToString().TrimTo(maxLength: headerValueMaxLength);
+                    var lockToken = message.SystemProperties.LockToken;
+
+                    await messageReceiver.DeadLetterAsync(lockToken, deadLetterReason, deadLetterErrorDescription);
 
                     // remove the message from the context, so the transport doesn't try to complete the message
                     transactionContext.Items.TryRemove("asb-message", out _);
