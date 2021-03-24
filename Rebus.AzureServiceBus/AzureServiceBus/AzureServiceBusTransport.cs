@@ -530,7 +530,7 @@ namespace Rebus.AzureServiceBus
                         var messages = group;
 
                         // create request payload limit with a liiiitle bit of leeway
-                        const int requestPayloadLimitBytes = 256 * 1020;
+                        const int requestPayloadLimitBytes = 240 * 1024;
 
                         if (destinationQueue.StartsWith(MagicSubscriptionPrefix))
                         {
