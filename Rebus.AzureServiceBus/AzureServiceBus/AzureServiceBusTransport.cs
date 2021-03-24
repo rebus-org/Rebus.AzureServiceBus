@@ -75,7 +75,7 @@ namespace Rebus.AzureServiceBus
         int _prefetchCount;
 
         MessageReceiver _messageReceiver;
-
+        
         /// <summary>
         /// Constructs the transport, connecting to the service bus pointed to by the connection string.
         /// </summary>
@@ -529,15 +529,12 @@ namespace Rebus.AzureServiceBus
                         var destinationQueue = group.Key;
                         var messages = group;
 
-                        // create request payload limit with a liiiitle bit of leeway
-                        const int requestPayloadLimitBytes = 240 * 1024;
-
                         if (destinationQueue.StartsWith(MagicSubscriptionPrefix))
                         {
                             var topicName = _nameFormatter.FormatTopicName(destinationQueue.Substring(MagicSubscriptionPrefix.Length));
                             var topicClient = await GetTopicClient(topicName);
 
-                            foreach (var batch in messages.Select(GetMessage).BatchWeighted(m => m.Size, maxWeight: requestPayloadLimitBytes))
+                            foreach (var batch in messages.Select(GetMessage).BatchWeighted(m => m.Size, maxWeight: MaximumMessagePayloadBytes))
                             {
                                 try
                                 {
@@ -553,7 +550,7 @@ namespace Rebus.AzureServiceBus
                         {
                             var messageSender = GetMessageSender(destinationQueue);
 
-                            foreach (var batch in messages.Select(GetMessage).BatchWeighted(m => m.Size, maxWeight: requestPayloadLimitBytes))
+                            foreach (var batch in messages.Select(GetMessage).BatchWeighted(m => m.Size, maxWeight: MaximumMessagePayloadBytes))
                             {
                                 try
                                 {
@@ -792,6 +789,12 @@ namespace Rebus.AzureServiceBus
         /// Gets/sets the receive timeout.
         /// </summary>
         public TimeSpan ReceiveOperationTimeout { get; set; } = TimeSpan.FromSeconds(5);
+
+        /// <summary>
+        /// Configures the maximum total message payload in bytes when auto-batching outgoing messages. Should probably only be modified if the SKU allows for greater payload sizes
+        /// (e.g. 'Premium' at the time of writing allows for 1 MB) Please add some leeway, because Rebus' payload size estimation is not entirely precise
+        /// </summary>
+        public int MaximumMessagePayloadBytes { get; set; }
 
         /// <summary>
         /// Purges the input queue by receiving all messages as quickly as possible

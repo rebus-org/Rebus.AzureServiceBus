@@ -22,6 +22,8 @@ namespace Rebus.Config
         internal TimeSpan? DuplicateDetectionHistoryTimeWindow { get; set; }
         internal TimeSpan ReceiveOperationTimeout { get; set; } = TimeSpan.FromSeconds(5);
 
+        internal int MaximumMessagePayloadBytes { get; set; } = 210 * 1024;
+
         /// <summary>
         /// Enables partitioning whereby Azure Service Bus will be able to distribute messages between message stores and this way increase throughput.
         /// Partitioning cannot be enabled after a queue is created, so it must be enabled before Rebus creates the input queue.
@@ -29,6 +31,22 @@ namespace Rebus.Config
         public AzureServiceBusTransportSettings EnablePartitioning()
         {
             PartitioningEnabled = true;
+            return this;
+        }
+
+        /// <summary>
+        /// Configures the maxiumum payload request limit. Relevant, when Rebus auto-batches sent messages, keeping the size of each individual batch below 256 kB.
+        /// If the SKU allows more than the default 256 kB, it can be increased by calling this method.
+        /// </summary>
+        public AzureServiceBusTransportSettings SetMessagePayloadSizeLimit(int maximumMessagePayloadBytes)
+        {
+            if (maximumMessagePayloadBytes <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(maximumMessagePayloadBytes), maximumMessagePayloadBytes, "Please provide a value greater than 0");
+            }
+
+            MaximumMessagePayloadBytes = maximumMessagePayloadBytes;
+
             return this;
         }
 
