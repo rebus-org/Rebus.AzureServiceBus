@@ -29,9 +29,10 @@
     <WarningsAsErrors />
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\Rebus.AzureServiceBus\Internals\AsyncHelpers.cs" Link="Extensions\AsyncHelpers.cs" />
+    <Compile Include="..\Rebus.AzureServiceBus\Internals\AsyncHelpers.cs" Link="Links\AsyncHelpers.cs" />
+    <Compile Include="..\Rebus.AzureServiceBus\Internals\EnumerableExtensions.cs" Link="Links\EnumerableExtensions.cs" />
     <Compile Include="..\Rebus.AzureServiceBus\Internals\ExceptionIgnorant.cs" Link="Links\ExceptionIgnorant.cs" />
-    <Compile Include="..\Rebus.AzureServiceBus\Internals\ManagementExtensions.cs" Link="Extensions\ManagementExtensions.cs" />
+    <Compile Include="..\Rebus.AzureServiceBus\Internals\ManagementExtensions.cs" Link="Links\ManagementExtensions.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Identity.Client" Version="4.25.0" />

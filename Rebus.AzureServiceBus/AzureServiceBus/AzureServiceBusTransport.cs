@@ -48,11 +48,6 @@ namespace Rebus.AzureServiceBus
         /// </summary>
         public const string MagicDeferredMessagesAddress = "___deferred___";
 
-        /// <summary>
-        /// Defines the maximum number of outgoing messages to batch together when sending/publishing
-        /// </summary>
-        const int DefaultOutgoingBatchSize = 50;
-
         static readonly RetryExponential DefaultRetryStrategy = new RetryExponential(
             minimumBackoff: TimeSpan.FromMilliseconds(100),
             maximumBackoff: TimeSpan.FromSeconds(10),
@@ -534,17 +529,19 @@ namespace Rebus.AzureServiceBus
                         var destinationQueue = group.Key;
                         var messages = group;
 
+                        // create request payload limit with a liiiitle bit of leeway
+                        const int requestPayloadLimitBytes = 256 * 1020;
+
                         if (destinationQueue.StartsWith(MagicSubscriptionPrefix))
                         {
                             var topicName = _nameFormatter.FormatTopicName(destinationQueue.Substring(MagicSubscriptionPrefix.Length));
+                            var topicClient = await GetTopicClient(topicName);
 
-                            foreach (var batch in messages.Batch(DefaultOutgoingBatchSize))
+                            foreach (var batch in messages.Select(GetMessage).BatchWeighted(m => m.Size, maxWeight: requestPayloadLimitBytes))
                             {
-                                var list = batch.Select(GetMessage).ToList();
-
                                 try
                                 {
-                                    await (await GetTopicClient(topicName)).SendAsync(list).ConfigureAwait(false);
+                                    await topicClient.SendAsync(batch).ConfigureAwait(false);
                                 }
                                 catch (Exception exception)
                                 {
@@ -554,13 +551,13 @@ namespace Rebus.AzureServiceBus
                         }
                         else
                         {
-                            foreach (var batch in messages.Batch(DefaultOutgoingBatchSize))
-                            {
-                                var list = batch.Select(GetMessage).ToList();
+                            var messageSender = GetMessageSender(destinationQueue);
 
+                            foreach (var batch in messages.Select(GetMessage).BatchWeighted(m => m.Size, maxWeight: requestPayloadLimitBytes))
+                            {
                                 try
                                 {
-                                    await GetMessageSender(destinationQueue).SendAsync(list).ConfigureAwait(false);
+                                    await messageSender.SendAsync(batch).ConfigureAwait(false);
                                 }
                                 catch (Exception exception)
                                 {
@@ -650,7 +647,7 @@ namespace Rebus.AzureServiceBus
                         && messageObject is Message asbMessage)
                     {
                         var lockToken = asbMessage.SystemProperties.LockToken;
-                        
+
                         try
                         {
                             await messageReceiver.AbandonAsync(lockToken).ConfigureAwait(false);
