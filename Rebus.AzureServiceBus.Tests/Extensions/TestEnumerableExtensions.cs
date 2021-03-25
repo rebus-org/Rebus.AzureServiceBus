@@ -24,6 +24,21 @@ namespace Rebus.AzureServiceBus.Tests.Extensions
         }
 
         [Test]
+        public void CanBatchWeighted_IntentionallyExceed()
+        {
+            var items = new[] { 1, 16, 10, 18 };
+
+            var batches = items.BatchWeighted(i => i, maxWeight: 15).ToList();
+
+            Assert.That(batches.Count, Is.EqualTo(4));
+
+            Assert.That(batches[0], Is.EqualTo(new[] { 1 }));
+            Assert.That(batches[1], Is.EqualTo(new[] { 16 }));
+            Assert.That(batches[2], Is.EqualTo(new[] { 10 }));
+            Assert.That(batches[3], Is.EqualTo(new[] { 18 }));
+        }
+
+        [Test]
         public void TryWithMessages()
         {
             var messages = Enumerable.Range(0, 1000)
