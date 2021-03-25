@@ -75,7 +75,7 @@ namespace Rebus.AzureServiceBus
         int _prefetchCount;
 
         MessageReceiver _messageReceiver;
-        
+
         /// <summary>
         /// Constructs the transport, connecting to the service bus pointed to by the connection string.
         /// </summary>
@@ -534,11 +534,11 @@ namespace Rebus.AzureServiceBus
                             var topicName = _nameFormatter.FormatTopicName(destinationQueue.Substring(MagicSubscriptionPrefix.Length));
                             var topicClient = await GetTopicClient(topicName);
 
-                            foreach (var batch in messages.Select(GetMessage).BatchWeighted(m => m.Size, maxWeight: MaximumMessagePayloadBytes))
+                            foreach (var batch in messages.Select(GetMessage).BatchWeighted(m => m.EstimateSize(), maxWeight: MaximumMessagePayloadBytes))
                             {
                                 try
                                 {
-                                    await topicClient.SendAsync(batch).ConfigureAwait(false);
+                                    await topicClient.SendAsync(batch.ToList()).ConfigureAwait(false);
                                 }
                                 catch (Exception exception)
                                 {
@@ -550,11 +550,11 @@ namespace Rebus.AzureServiceBus
                         {
                             var messageSender = GetMessageSender(destinationQueue);
 
-                            foreach (var batch in messages.Select(GetMessage).BatchWeighted(m => m.Size, maxWeight: MaximumMessagePayloadBytes))
+                            foreach (var batch in messages.Select(GetMessage).BatchWeighted(m => m.EstimateSize(), maxWeight: MaximumMessagePayloadBytes))
                             {
                                 try
                                 {
-                                    await messageSender.SendAsync(batch).ConfigureAwait(false);
+                                    await messageSender.SendAsync(batch.ToList()).ConfigureAwait(false);
                                 }
                                 catch (Exception exception)
                                 {

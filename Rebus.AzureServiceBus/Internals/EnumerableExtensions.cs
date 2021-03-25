@@ -6,7 +6,7 @@ namespace Rebus.Internals
 {
     static class EnumerableExtensions
     {
-        public static IEnumerable<TItem[]> Batch<TItem>(this IEnumerable<TItem> items, int maxBatchSize)
+        public static IEnumerable<IReadOnlyList<TItem>> Batch<TItem>(this IEnumerable<TItem> items, int maxBatchSize)
         {
             var list = new List<TItem>();
 
@@ -31,7 +31,7 @@ namespace Rebus.Internals
         /// Performs weighted batching of <paramref name="items"/>, delivering batches whose total weight is below <paramref name="maxWeight"/> if possible.
         /// If one of the items has a weight that exceeds the maximum weight, then nothing is done about it, it will just be returned in its own batch.
         ///  </summary>
-        public static IEnumerable<TItem[]> BatchWeighted<TItem>(this IEnumerable<TItem> items, Func<TItem, decimal> getWeight, decimal maxWeight)
+        public static IEnumerable<IReadOnlyList<TItem>> BatchWeighted<TItem>(this IEnumerable<TItem> items, Func<TItem, decimal> getWeight, decimal maxWeight)
         {
             var list = new List<TItem>();
             var sum = 0m;

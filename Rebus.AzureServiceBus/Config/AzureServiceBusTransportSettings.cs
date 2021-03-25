@@ -22,7 +22,7 @@ namespace Rebus.Config
         internal TimeSpan? DuplicateDetectionHistoryTimeWindow { get; set; }
         internal TimeSpan ReceiveOperationTimeout { get; set; } = TimeSpan.FromSeconds(5);
 
-        internal int MaximumMessagePayloadBytes { get; set; } = 210 * 1024;
+        internal int MaximumMessagePayloadBytes { get; set; } = 256 * 1024;
 
         /// <summary>
         /// Enables partitioning whereby Azure Service Bus will be able to distribute messages between message stores and this way increase throughput.

@@ -22,5 +22,18 @@ namespace Rebus.AzureServiceBus.Tests.Extensions
             Assert.That(batches[2], Is.EqualTo(new[] { 5, 6 }));
             Assert.That(batches[3], Is.EqualTo(new[] { 7 }));
         }
+
+        [Test]
+        public void TryWithMessages()
+        {
+            var messages = Enumerable.Range(0, 1000)
+                .Select(n => new MessageWithText($"message {n}"));
+
+            var batches = messages.BatchWeighted(m => m.Text.Length, 1000).ToList();
+
+            Assert.That(batches.All(b => b.Sum(m => m.Text.Length) <= 1000), Is.True);
+        }
+
+        record MessageWithText(string Text);
     }
 }

@@ -106,7 +106,7 @@
 ## 8.1.1
 * Trim dead letter reason/description to not exceed 4096 characters, which is the maximum length of an ASB header value
 
-## 8.1.4
+## 8.1.5
 * Add intelligent batching to send logic, ensuring that request payload stays below 256 kB (and make it configurable!)
 
 
