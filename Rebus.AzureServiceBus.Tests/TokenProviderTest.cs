@@ -1,6 +1,4 @@
-﻿using Microsoft.Azure.ServiceBus.Primitives;
-using Microsoft.Identity.Client;
-using NUnit.Framework;
+﻿using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.Config;
 using Rebus.Routing.TypeBased;
@@ -42,7 +40,7 @@ namespace Rebus.AzureServiceBus.Tests
 
             var configurer = Configure.With(new BuiltinHandlerActivator())
                 .Transport(t => t
-                    .UseAzureServiceBus("<insert connection string with endpoint only>", "<insert input queue>", CreateTokenProvider("<insert client ID>", "<insert client secret>", "<insert tenant ID>"))
+                    .UseAzureServiceBus("<insert connection string with endpoint only>", "<insert input queue>", new StubTokenCredential("<insert client ID>", "<insert client secret>", "<insert tenant ID>"))
                     .DoNotCheckQueueConfiguration()
                     .DoNotCreateQueues()
                 )
@@ -54,23 +52,6 @@ namespace Rebus.AzureServiceBus.Tests
             }
 
             gotTheString.WaitOrDie(TimeSpan.FromSeconds(5));
-        }
-
-        private ITokenProvider CreateTokenProvider(string clientId, string clientSecret, string tenantId)
-        {
-            return TokenProvider.CreateAzureActiveDirectoryTokenProvider(async (audience, authority, state) =>
-            {
-                IConfidentialClientApplication app = ConfidentialClientApplicationBuilder.Create(clientId)
-                    .WithAuthority(authority)
-                    .WithClientSecret(clientSecret)
-                    .Build();
-
-                var serviceBusAudience = new Uri("https://servicebus.azure.net");
-
-                var authResult = await app.AcquireTokenForClient(new string[] { $"{serviceBusAudience}/.default" }).ExecuteAsync();
-                return authResult.AccessToken;
-
-            }, $"https://login.windows.net/{tenantId}");
         }
     }
 }

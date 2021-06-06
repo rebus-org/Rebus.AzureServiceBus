@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.ServiceBus.Management;
+using Azure.Messaging.ServiceBus.Administration;
 using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.AzureServiceBus.Tests.Factories;
@@ -13,12 +13,12 @@ namespace Rebus.AzureServiceBus.Tests
     [TestFixture]
     public class CanChangeDefaultLockDuration : FixtureBase
     {
-        ManagementClient _managementClient;
+        ServiceBusAdministrationClient _managementClient;
         string _queueName;
 
         protected override void SetUp()
         {
-            _managementClient = new ManagementClient(AsbTestConfig.ConnectionString);
+            _managementClient = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
             _queueName = TestConfig.GetName("lockduration");
 
             AsyncHelpers.RunSync(() => _managementClient.DeleteQueueIfExistsAsync(_queueName));
@@ -46,8 +46,8 @@ namespace Rebus.AzureServiceBus.Tests
 
             var queueDescription = await _managementClient.GetQueueAsync(_queueName);
 
-            Assert.That(queueDescription.RequiresDuplicateDetection, Is.True);
-            Assert.That(queueDescription.DuplicateDetectionHistoryTimeWindow, Is.EqualTo(duration));
+            Assert.That(queueDescription.Value.RequiresDuplicateDetection, Is.True);
+            Assert.That(queueDescription.Value.DuplicateDetectionHistoryTimeWindow, Is.EqualTo(duration));
         }
 
         [Test]
@@ -90,9 +90,9 @@ namespace Rebus.AzureServiceBus.Tests
 
             var queueDescription = await _managementClient.GetQueueAsync(_queueName);
 
-            Assert.That(queueDescription.DefaultMessageTimeToLive, Is.EqualTo(TimeSpan.FromDays(1)));
-            Assert.That(queueDescription.LockDuration, Is.EqualTo(TimeSpan.FromMinutes(1)));
-            Assert.That(queueDescription.AutoDeleteOnIdle, Is.EqualTo(TimeSpan.FromHours(5)));
+            Assert.That(queueDescription.Value.DefaultMessageTimeToLive, Is.EqualTo(TimeSpan.FromDays(1)));
+            Assert.That(queueDescription.Value.LockDuration, Is.EqualTo(TimeSpan.FromMinutes(1)));
+            Assert.That(queueDescription.Value.AutoDeleteOnIdle, Is.EqualTo(TimeSpan.FromHours(5)));
         }
     }
 }

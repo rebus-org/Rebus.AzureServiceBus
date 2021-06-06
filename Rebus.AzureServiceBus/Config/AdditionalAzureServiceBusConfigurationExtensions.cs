@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.ServiceBus.Core;
+using Azure.Messaging.ServiceBus;
 using Rebus.Internals;
 using Rebus.Messages;
 using Rebus.Retry;
 using Rebus.Transport;
-using Message = Microsoft.Azure.ServiceBus.Message;
 
 namespace Rebus.Config
 {
@@ -33,17 +32,17 @@ namespace Rebus.Config
             public async Task HandlePoisonMessage(TransportMessage transportMessage, ITransactionContext transactionContext, Exception exception)
             {
                 if (transactionContext.Items.TryGetValue("asb-message", out var messageObject)
-                    && messageObject is Message message
+                    && messageObject is ServiceBusReceivedMessage message
                     && transactionContext.Items.TryGetValue("asb-message-receiver", out var messageReceiverObject)
-                    && messageReceiverObject is IMessageReceiver messageReceiver)
+                    && messageReceiverObject is ServiceBusReceiver messageReceiver)
                 {
                     const int headerValueMaxLength = 4096;
 
                     var deadLetterReason = exception.Message.TrimTo(maxLength: headerValueMaxLength);
                     var deadLetterErrorDescription = exception.ToString().TrimTo(maxLength: headerValueMaxLength);
-                    var lockToken = message.SystemProperties.LockToken;
+                    var lockToken = message.LockToken;
 
-                    await messageReceiver.DeadLetterAsync(lockToken, deadLetterReason, deadLetterErrorDescription);
+                    await messageReceiver.DeadLetterMessageAsync(message, deadLetterReason, deadLetterErrorDescription);
 
                     // remove the message from the context, so the transport doesn't try to complete the message
                     transactionContext.Items.TryRemove("asb-message", out _);

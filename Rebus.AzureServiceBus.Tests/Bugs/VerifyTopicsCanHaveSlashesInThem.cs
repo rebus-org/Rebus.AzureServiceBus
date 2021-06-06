@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.ServiceBus.Management;
+using Azure.Messaging.ServiceBus.Administration;
 using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.Config;
@@ -49,10 +49,10 @@ namespace Rebus.AzureServiceBus.Tests.Bugs
 
             // make a final verification: the topic has a / in it
 
-            var managementClient = new ManagementClient(AsbTestConfig.ConnectionString);
+            var managementClient = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
             var topicDescription = await managementClient.GetTopicAsync(topicNameWithSlash);
 
-            Assert.That(topicDescription.Path, Contains.Substring(topicNameWithSlash));
+            Assert.That(topicDescription.Value.Name, Contains.Substring(topicNameWithSlash));
         }
     }
 }

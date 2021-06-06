@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.ServiceBus.Management;
+using Azure.Messaging.ServiceBus.Administration;
 using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.Config;
@@ -16,7 +16,7 @@ namespace Rebus.AzureServiceBus.Tests
         public async Task ShouldNotCreateInputQueueWhenConfiguredNotTo()
         {
             var connectionString = AsbTestConfig.ConnectionString;
-            var managementClient = new ManagementClient(connectionString);
+            var managementClient = new ServiceBusAdministrationClient(connectionString);
             
             var queueName = Guid.NewGuid().ToString("N");
 

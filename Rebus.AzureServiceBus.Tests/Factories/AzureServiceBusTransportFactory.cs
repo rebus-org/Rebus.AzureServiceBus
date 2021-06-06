@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.Azure.ServiceBus;
-using Microsoft.Azure.ServiceBus.Management;
+using Azure.Messaging.ServiceBus;
+using Azure.Messaging.ServiceBus.Administration;
 using Rebus.AzureServiceBus.NameFormat;
 using Rebus.Extensions;
 using Rebus.Internals;
@@ -64,7 +64,7 @@ namespace Rebus.AzureServiceBus.Tests.Factories
         {
             AsyncHelpers.RunSync(async () =>
             {
-                var managementClient = new ManagementClient(AsbTestConfig.ConnectionString);
+                var managementClient = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
 
                 try
                 {
@@ -72,7 +72,7 @@ namespace Rebus.AzureServiceBus.Tests.Factories
                     await managementClient.DeleteQueueAsync(queueName);
                     Console.WriteLine("OK!");
                 }
-                catch (MessagingEntityNotFoundException)
+                catch (ServiceBusException)
                 {
                     Console.WriteLine("OK (was not there)");
                 }
@@ -83,7 +83,7 @@ namespace Rebus.AzureServiceBus.Tests.Factories
         {
             AsyncHelpers.RunSync(async () =>
             {
-                var managementClient = new ManagementClient(AsbTestConfig.ConnectionString);
+                var managementClient = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
 
                 try
                 {
@@ -91,7 +91,7 @@ namespace Rebus.AzureServiceBus.Tests.Factories
                     await managementClient.DeleteTopicAsync(topic);
                     Console.WriteLine("OK!");
                 }
-                catch (MessagingEntityNotFoundException)
+                catch (ServiceBusException)
                 {
                     Console.WriteLine("OK! (wasn't even there)");
                 }

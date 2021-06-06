@@ -1,18 +1,17 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.ServiceBus;
-using Microsoft.Azure.ServiceBus.Core;
+using Azure.Messaging.ServiceBus;
 
 namespace Rebus.Internals
 {
     class MessageLockRenewer
     {
-        readonly Message _message;
-        readonly MessageReceiver _messageReceiver;
+        readonly ServiceBusReceivedMessage _message;
+        readonly ServiceBusReceiver _messageReceiver;
 
         DateTime _nextRenewal;
 
-        public MessageLockRenewer(Message message, MessageReceiver messageReceiver)
+        public MessageLockRenewer(ServiceBusReceivedMessage message, ServiceBusReceiver messageReceiver)
         {
             _message = message;
             _messageReceiver = messageReceiver;
@@ -28,7 +27,7 @@ namespace Rebus.Internals
         {
             try
             {
-                await _messageReceiver.RenewLockAsync(_message);
+                await _messageReceiver.RenewMessageLockAsync(_message);
 
                 SetNextRenewal();
             }
@@ -40,11 +39,11 @@ namespace Rebus.Internals
         {
             var now = DateTime.UtcNow;
 
-            var remainingTime = LockedUntilUtc - now;
+            var remainingTime = LockedUntil - now;
             var halfOfRemainingTime = TimeSpan.FromMinutes(0.5 * remainingTime.TotalMinutes);
             _nextRenewal = now + halfOfRemainingTime;
         }
 
-        DateTime LockedUntilUtc => _message.SystemProperties.LockedUntilUtc;
+        DateTimeOffset LockedUntil => _message.LockedUntil;
     }
 }

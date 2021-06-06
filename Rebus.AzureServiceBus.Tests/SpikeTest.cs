@@ -2,9 +2,8 @@
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.ServiceBus;
-using Microsoft.Azure.ServiceBus.Core;
-using Microsoft.Azure.ServiceBus.Management;
+using Azure.Messaging.ServiceBus;
+using Azure.Messaging.ServiceBus.Administration;
 using NUnit.Framework;
 using Rebus.AzureServiceBus.Tests.Factories;
 using Rebus.Internals;
@@ -18,11 +17,11 @@ namespace Rebus.AzureServiceBus.Tests
     public class SpikeTest : FixtureBase
     {
         static readonly string ConnectionString = AsbTestConfig.ConnectionString;
-        ManagementClient _managementClient;
+        ServiceBusAdministrationClient _managementClient;
 
         protected override void SetUp()
         {
-            _managementClient = new ManagementClient(ConnectionString);
+            _managementClient = new ServiceBusAdministrationClient(ConnectionString);
         }
 
         [Test]
@@ -34,7 +33,7 @@ namespace Rebus.AzureServiceBus.Tests
             
             await _managementClient.DeleteQueueIfExistsAsync(queueName);
             
-            Assert.That(await _managementClient.QueueExistsAsync(queueName), Is.False, $"The queue {queueName} still exists");
+            Assert.That((await _managementClient.QueueExistsAsync(queueName)).Value, Is.False, $"The queue {queueName} still exists");
         }
 
         [Test]
@@ -48,7 +47,7 @@ namespace Rebus.AzureServiceBus.Tests
             await _managementClient.CreateQueueIfNotExistsAsync(queueName);
             await _managementClient.CreateQueueIfNotExistsAsync(queueName);
 
-            Assert.That(await _managementClient.QueueExistsAsync(queueName), Is.True, $"The queue {queueName} does not exist, even after several attempts at creating it");
+            Assert.That((await _managementClient.QueueExistsAsync(queueName)).Value, Is.True, $"The queue {queueName} does not exist, even after several attempts at creating it");
         }
 
         [Test]
@@ -57,19 +56,34 @@ namespace Rebus.AzureServiceBus.Tests
             var queueName = TestConfig.GetName("send");
             await _managementClient.CreateQueueIfNotExistsAsync(queueName);
 
-            var retryPolicy = new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(5), 10);
-            var queueClient = new QueueClient(ConnectionString, queueName, receiveMode: ReceiveMode.PeekLock, retryPolicy: retryPolicy);
+            var clientOptions = new ServiceBusClientOptions
+            {
+                RetryOptions = new ServiceBusRetryOptions
+                {
+                    Mode = ServiceBusRetryMode.Exponential,
+                    Delay = TimeSpan.FromMilliseconds(100),
+                    MaxDelay = TimeSpan.FromSeconds(5),
+                    MaxRetries = 10
+                }
+            };
+            var processorOptions = new ServiceBusProcessorOptions
+            {
+                ReceiveMode = ServiceBusReceiveMode.PeekLock
+            };
+            var client = new ServiceBusClient(ConnectionString, clientOptions);
 
-            await queueClient.SendAsync(new Message(Encoding.UTF8.GetBytes("Hej med dig min ven!")));
-            await queueClient.SendAsync(new Message(Encoding.UTF8.GetBytes("Hej med dig min ven!")));
-            await queueClient.SendAsync(new Message(Encoding.UTF8.GetBytes("Hej med dig min ven!")));
-            await queueClient.SendAsync(new Message(Encoding.UTF8.GetBytes("Hej med dig min ven!")));
+            var queueSender = client.CreateSender(queueName);
+
+            await queueSender.SendMessageAsync(new ServiceBusMessage(Encoding.UTF8.GetBytes("Hej med dig min ven!")));
+            await queueSender.SendMessageAsync(new ServiceBusMessage(Encoding.UTF8.GetBytes("Hej med dig min ven!")));
+            await queueSender.SendMessageAsync(new ServiceBusMessage(Encoding.UTF8.GetBytes("Hej med dig min ven!")));
+            await queueSender.SendMessageAsync(new ServiceBusMessage(Encoding.UTF8.GetBytes("Hej med dig min ven!")));
 
             await ManagementExtensions.PurgeQueue(ConnectionString, queueName);
 
-            var client = new QueueClient(ConnectionString, queueName);
+            var queueProcessor = client.CreateProcessor(queueName, processorOptions);
             var somethingWasReceived = new ManualResetEvent(false);
-            client.RegisterMessageHandler(async (_, __) => somethingWasReceived.Set(), async _ => somethingWasReceived.Set());
+            queueProcessor.ProcessMessageAsync += _ => Task.FromResult(somethingWasReceived.Set());
 
             Assert.That(somethingWasReceived.WaitOne(TimeSpan.FromSeconds(1)), Is.False, $"Looks like a message was received from the queue '{queueName}' even though it was purged :o");
         }
@@ -80,16 +94,31 @@ namespace Rebus.AzureServiceBus.Tests
             var queueName = TestConfig.GetName("send-receive");
             await _managementClient.CreateQueueIfNotExistsAsync(queueName);
 
-            var retryPolicy = new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(5), 10);
-            var queueClient = new QueueClient(ConnectionString, queueName, receiveMode: ReceiveMode.PeekLock, retryPolicy: retryPolicy);
+            var clientOptions = new ServiceBusClientOptions
+            {
+                RetryOptions = new ServiceBusRetryOptions
+                {
+                    Mode = ServiceBusRetryMode.Exponential,
+                    Delay = TimeSpan.FromMilliseconds(100),
+                    MaxDelay = TimeSpan.FromSeconds(5),
+                    MaxRetries = 10
+                }
+            };
+            var receiverOptions = new ServiceBusReceiverOptions
+            {
+                ReceiveMode = ServiceBusReceiveMode.PeekLock
+            };
+            var client = new ServiceBusClient(ConnectionString, clientOptions);
+
+            var queueSender = client.CreateSender(queueName);
 
             await ManagementExtensions.PurgeQueue(ConnectionString, queueName);
 
-            await queueClient.SendAsync(new Message(Encoding.UTF8.GetBytes("Hej med dig min ven! Det spiller!")));
+            await queueSender.SendMessageAsync(new ServiceBusMessage(Encoding.UTF8.GetBytes("Hej med dig min ven! Det spiller!")));
 
-            var messageReceiver = new MessageReceiver(ConnectionString, queueName, receiveMode: ReceiveMode.PeekLock);
+            var messageReceiver = client.CreateReceiver(queueName, receiverOptions);
 
-            var message = await messageReceiver.ReceiveAsync(TimeSpan.FromSeconds(2));
+            var message = await messageReceiver.ReceiveMessageAsync(TimeSpan.FromSeconds(2));
 
             Assert.That(message, Is.Not.Null);
 

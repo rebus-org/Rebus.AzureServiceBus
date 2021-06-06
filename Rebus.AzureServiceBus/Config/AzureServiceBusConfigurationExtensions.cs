@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Threading;
-using Microsoft.Azure.ServiceBus.Primitives;
+using Azure.Core;
 using Rebus.AzureServiceBus;
 using Rebus.AzureServiceBus.NameFormat;
 using Rebus.Logging;
@@ -28,7 +28,7 @@ namespace Rebus.Config
         /// <summary>
         /// Configures Rebus to use Azure Service Bus to transport messages as a one-way client (i.e. will not be able to receive any messages)
         /// </summary>
-        public static AzureServiceBusTransportClientSettings UseAzureServiceBusAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionString, ITokenProvider tokenProvider = null)
+        public static AzureServiceBusTransportClientSettings UseAzureServiceBusAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionString, TokenCredential tokenCredential = null)
         {
             var settingsBuilder = new AzureServiceBusTransportClientSettings();
 
@@ -55,7 +55,7 @@ namespace Rebus.Config
                         asyncTaskFactory: asyncTaskFactory,
                         nameFormatter: nameFormatter,
                         cancellationToken: cancellationToken,
-                        tokenProvider: tokenProvider
+                        tokenCredential: tokenCredential
                     );
 
                     transport.MaximumMessagePayloadBytes = settingsBuilder.MaximumMessagePayloadBytes;
@@ -74,14 +74,14 @@ namespace Rebus.Config
         /// Configures Rebus to use Azure Service Bus queues to transport messages, connecting to the service bus instance pointed to by the connection string
         /// (or the connection string with the specified name from the current app.config)
         /// </summary>
-        public static AzureServiceBusTransportSettings UseAzureServiceBus(this StandardConfigurer<ITransport> configurer, string connectionString, string inputQueueAddress, ITokenProvider tokenProvider = null)
+        public static AzureServiceBusTransportSettings UseAzureServiceBus(this StandardConfigurer<ITransport> configurer, string connectionString, string inputQueueAddress, TokenCredential tokenCredential = null)
         {
             var settingsBuilder = new AzureServiceBusTransportSettings();
 
             // register the actual transport as itself
             configurer
                 .OtherService<AzureServiceBusTransport>()
-                .Register(c =>
+                .Register((Func<Injection.IResolutionContext, AzureServiceBusTransport>)(c =>
                 {
                     var nameFormatter = c.Get<INameFormatter>();
                     var cancellationToken = c.Get<CancellationToken>();
@@ -95,7 +95,7 @@ namespace Rebus.Config
                         asyncTaskFactory: asyncTaskFactory,
                         nameFormatter: nameFormatter,
                         cancellationToken: cancellationToken,
-                        tokenProvider: tokenProvider
+                        tokenCredential: tokenCredential
                     );
 
                     if (settingsBuilder.PrefetchingEnabled)
@@ -115,7 +115,7 @@ namespace Rebus.Config
                     transport.MaximumMessagePayloadBytes = settingsBuilder.MaximumMessagePayloadBytes;
                     
                     return transport;
-                });
+                }));
 
             RegisterServices(configurer, () => settingsBuilder.LegacyNamingEnabled);
 

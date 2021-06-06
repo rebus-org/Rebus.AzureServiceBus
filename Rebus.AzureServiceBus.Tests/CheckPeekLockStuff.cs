@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.ServiceBus;
-using Microsoft.Azure.ServiceBus.Core;
-using Microsoft.Azure.ServiceBus.Management;
+using Azure.Messaging.ServiceBus;
+using Azure.Messaging.ServiceBus.Administration;
 using NUnit.Framework;
 using Rebus.Internals;
 using Rebus.Tests.Contracts;
@@ -12,9 +11,9 @@ namespace Rebus.AzureServiceBus.Tests
     [TestFixture]
     public class CheckPeekLockStuff : FixtureBase
     {
-        ManagementClient _managementClient;
-        MessageSender _messageSender;
-        MessageReceiver _messageReceiver;
+        ServiceBusAdministrationClient _managementClient;
+        ServiceBusSender _messageSender;
+        ServiceBusReceiver _messageReceiver;
         string _queueName;
 
         protected override void SetUp()
@@ -23,9 +22,10 @@ namespace Rebus.AzureServiceBus.Tests
             
             _queueName = TestConfig.GetName("test-queue");
             
-            _managementClient = new ManagementClient(connectionString);
-            _messageSender = new MessageSender(connectionString, _queueName);
-            _messageReceiver = new MessageReceiver(connectionString, _queueName);
+            _managementClient = new ServiceBusAdministrationClient(connectionString);
+            var client = new ServiceBusClient(connectionString);
+            _messageSender = client.CreateSender(_queueName);
+            _messageReceiver = client.CreateReceiver(_queueName);
 
             AsyncHelpers.RunSync(async () => await _managementClient.DeleteQueueIfExistsAsync(_queueName));
         }
@@ -37,34 +37,34 @@ namespace Rebus.AzureServiceBus.Tests
 
             var messageId = Guid.NewGuid().ToString();
 
-            await _messageSender.SendAsync(new Message
+            await _messageSender.SendMessageAsync(new ServiceBusMessage
             {
                 MessageId = messageId,
-                Body = new byte[] {1, 2, 3}
+                Body = new BinaryData(new byte[] {1, 2, 3}.AsMemory())
             });
 
-            var message = await _messageReceiver.ReceiveAsync(TimeSpan.FromSeconds(2));
+            var message = await _messageReceiver.ReceiveMessageAsync(TimeSpan.FromSeconds(2));
 
             Assert.That(message, Is.Not.Null);
             Assert.That(message.MessageId, Is.EqualTo(messageId));
-            Assert.That(await _messageReceiver.ReceiveAsync(TimeSpan.FromSeconds(2)), Is.Null);
+            Assert.That(await _messageReceiver.ReceiveMessageAsync(TimeSpan.FromSeconds(2)), Is.Null);
 
-            var lockedUntilUtc = message.SystemProperties.LockedUntilUtc;
+            var lockedUntilUtc = message.LockedUntil;
 
-            Console.WriteLine($"The message is locked until {lockedUntilUtc} (message ID = {message.MessageId}, lock token = {message.SystemProperties.LockToken})");
+            Console.WriteLine($"The message is locked until {lockedUntilUtc} (message ID = {message.MessageId}, lock token = {message.LockToken})");
 
-            await _messageReceiver.CompleteAsync(message.SystemProperties.LockToken);
+            await _messageReceiver.CompleteMessageAsync(message);
 
-            Assert.That(await _messageReceiver.ReceiveAsync(TimeSpan.FromSeconds(2)), Is.Null);
+            Assert.That(await _messageReceiver.ReceiveMessageAsync(TimeSpan.FromSeconds(2)), Is.Null);
 
             while (DateTime.UtcNow < lockedUntilUtc.AddSeconds(5))
             {
                 await Task.Delay(TimeSpan.FromSeconds(1));
             }
 
-            var otherMessage = await _messageReceiver.ReceiveAsync(TimeSpan.FromSeconds(2));
+            var otherMessage = await _messageReceiver.ReceiveMessageAsync(TimeSpan.FromSeconds(2));
 
-            Assert.That(otherMessage, Is.Null, () => $"Got message at time {DateTime.UtcNow} (message ID = {otherMessage.MessageId}, lock token = {otherMessage.SystemProperties.LockToken})");
+            Assert.That(otherMessage, Is.Null, () => $"Got message at time {DateTime.UtcNow} (message ID = {otherMessage.MessageId}, lock token = {otherMessage.LockToken})");
         }
     }
 }

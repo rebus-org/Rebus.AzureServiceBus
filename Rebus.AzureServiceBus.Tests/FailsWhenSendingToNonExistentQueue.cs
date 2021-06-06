@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Linq;
-using Microsoft.Azure.ServiceBus;
+using Azure.Messaging.ServiceBus;
 using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.AzureServiceBus.Tests.Factories;
@@ -34,7 +34,7 @@ namespace Rebus.AzureServiceBus.Tests
 
             Console.WriteLine(exception);
 
-            var notFoundException = (MessagingEntityNotFoundException) exception.InnerException;
+            var notFoundException = (ServiceBusException) exception.InnerException;
 
             Console.WriteLine(notFoundException);
 

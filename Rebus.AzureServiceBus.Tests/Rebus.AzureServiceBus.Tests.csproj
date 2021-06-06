@@ -43,14 +43,10 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <ProjectReference Include="..\Rebus.AzureServiceBus\Rebus.AzureServiceBus.csproj" />
-    <PackageReference Include="Microsoft.Azure.ServiceBus" Version="5.1.2" />
     <PackageReference Include="rebus" Version="6.4.1" />
     <PackageReference Include="rebus.tests.contracts" Version="6.4.0" />
   </ItemGroup>
   <ItemGroup>
-    <None Update="asb_connection_string.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="asb_connection_string.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

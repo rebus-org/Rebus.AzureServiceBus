@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.ServiceBus;
-using Microsoft.Azure.ServiceBus.Management;
+using Azure.Messaging.ServiceBus;
+using Azure.Messaging.ServiceBus.Administration;
 using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.Config;
@@ -20,7 +20,7 @@ namespace Rebus.AzureServiceBus.Tests
         [Ignore("takes a long time to execute")]
         public async Task AutomaticallyKeepsQueueAlive()
         {
-            var client = new ManagementClient(AsbTestConfig.ConnectionString);
+            var client = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
             var activator = Using(new BuiltinHandlerActivator());
             var gotTheString = Using(new ManualResetEvent(false));
 
@@ -36,7 +36,7 @@ namespace Rebus.AzureServiceBus.Tests
 
             // verify that queue exists
             var queueDescription = await client.GetQueueAsync(queueName);
-            Assert.That(queueDescription.AutoDeleteOnIdle, Is.EqualTo(TimeSpan.FromMinutes(5)));
+            Assert.That(queueDescription.Value.AutoDeleteOnIdle, Is.EqualTo(TimeSpan.FromMinutes(5)));
 
             await Task.Delay(TimeSpan.FromMinutes(8));
 
@@ -45,9 +45,9 @@ namespace Rebus.AzureServiceBus.Tests
             {
                 await client.GetQueueAsync(queueName);
             }
-            catch (MessagingEntityNotFoundException exception)
+            catch (ServiceBusException exception)
             {
-                throw new MessagingEntityNotFoundException($"Could not get queue description for '{queueName}' after 8 minutes of waiting!", exception);
+                throw new ServiceBusException($"Could not get queue description for '{queueName}' after 8 minutes of waiting!", reason: ServiceBusFailureReason.MessagingEntityDisabled, innerException: exception);
             }
 
             // verify we can get the message
@@ -59,7 +59,7 @@ namespace Rebus.AzureServiceBus.Tests
 
             await Task.Delay(TimeSpan.FromMinutes(8));
 
-            var notFoundException = Assert.ThrowsAsync<MessagingEntityNotFoundException>(async () =>
+            var notFoundException = Assert.ThrowsAsync<ServiceBusException>(async () =>
             {
                 await client.GetQueueAsync(queueName);
             });
