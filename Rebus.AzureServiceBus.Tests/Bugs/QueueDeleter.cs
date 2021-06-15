@@ -1,6 +1,6 @@
 ﻿using System;
-using Microsoft.Azure.ServiceBus;
-using Microsoft.Azure.ServiceBus.Management;
+using Azure.Messaging.ServiceBus;
+using Azure.Messaging.ServiceBus.Administration;
 using Rebus.Internals;
 
 namespace Rebus.AzureServiceBus.Tests.Bugs
@@ -16,7 +16,7 @@ namespace Rebus.AzureServiceBus.Tests.Bugs
 
         public void Dispose()
         {
-            var managementClient = new ManagementClient(AsbTestConfig.ConnectionString);
+            var managementClient = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
 
             AsyncHelpers.RunSync(async () =>
             {
@@ -24,11 +24,11 @@ namespace Rebus.AzureServiceBus.Tests.Bugs
                 {
                     var topicDescription = await managementClient.GetQueueAsync(_queueName);
 
-                    await managementClient.DeleteQueueAsync(topicDescription.Path);
+                    await managementClient.DeleteQueueAsync(topicDescription.Value.Name);
 
                     Console.WriteLine($"Deleted queue '{_queueName}'");
                 }
-                catch (MessagingEntityNotFoundException)
+                catch (ServiceBusException)
                 {
                     // it's ok
                 }

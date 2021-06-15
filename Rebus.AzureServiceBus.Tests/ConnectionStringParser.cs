@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Azure.Messaging.ServiceBus;
 using Rebus.Extensions;
 
 namespace Rebus.AzureServiceBus
@@ -44,10 +45,11 @@ namespace Rebus.AzureServiceBus
                 .ToDictionary(a => a.key, a => a.value);
         }
 
-        public string Endpoint => _parts.GetValue("Endpoint");
+        public string Endpoint => _parts.GetValue("Endpoint").TrimEnd('/');
         public string SharedAccessKeyName => _parts.GetValue("SharedAccessKeyName");
         public string SharedAccessKey => _parts.GetValue("SharedAccessKey");
         public string EntityPath => _parts.GetValueOrNull("EntityPath");
+        public ServiceBusTransportType Transport => (ServiceBusTransportType)Enum.Parse(typeof(ServiceBusTransportType), _parts.GetValueOrNull("Transport") ?? nameof(ServiceBusTransportType.AmqpTcp));
 
         public override string ToString()
         {

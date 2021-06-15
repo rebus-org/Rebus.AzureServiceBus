@@ -1,14 +1,13 @@
-﻿using Microsoft.Azure.ServiceBus;
-using Microsoft.Azure.ServiceBus.Core;
+﻿using Azure.Messaging.ServiceBus;
 
 namespace Rebus.AzureServiceBus
 {
     class ReceivedMessage
     {
-        public Message Message { get; }
-        public MessageReceiver MessageReceiver { get; }
+        public ServiceBusReceivedMessage Message { get; }
+        public ServiceBusReceiver MessageReceiver { get; }
 
-        public ReceivedMessage(Message message, MessageReceiver messageReceiver)
+        public ReceivedMessage(ServiceBusReceivedMessage message, ServiceBusReceiver messageReceiver)
         {
             Message = message;
             MessageReceiver = messageReceiver;

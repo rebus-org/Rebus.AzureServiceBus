@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Azure.ServiceBus;
 using Rebus.Activation;
 using Rebus.AzureServiceBus.NameFormat;
 using Rebus.AzureServiceBus.Tests.Extensions;

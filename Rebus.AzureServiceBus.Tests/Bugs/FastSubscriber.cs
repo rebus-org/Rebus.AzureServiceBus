@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.ServiceBus.Management;
+using Azure.Messaging.ServiceBus.Administration;
 using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.Config;
@@ -49,20 +49,13 @@ namespace Rebus.AzureServiceBus.Tests.Bugs
         [Ignore("run manually")]
         public async Task DeleteAllTopics()
         {
-            var managementClient = new ManagementClient(AsbTestConfig.ConnectionString);
+            var managementClient = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
 
-            while (true)
+            await foreach (var topic in managementClient.GetTopicsAsync())
             {
-                var topics = await managementClient.GetTopicsAsync();
-
-                if (!topics.Any()) break;
-
-                foreach (var topic in topics)
-                {
-                    Console.Write($"Deleting '{topic.Path}'... ");
-                    await managementClient.DeleteTopicAsync(topic.Path);
-                    Console.WriteLine("OK");
-                }
+                Console.Write($"Deleting '{topic.Name}'... ");
+                await managementClient.DeleteTopicAsync(topic.Name);
+                Console.WriteLine("OK");
             }
         }
     }

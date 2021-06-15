@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.ServiceBus;
-using Microsoft.Azure.ServiceBus.Management;
+using Azure.Messaging.ServiceBus.Administration;
 using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.AzureServiceBus.NameFormat;
@@ -17,13 +16,13 @@ namespace Rebus.AzureServiceBus.Tests
     [TestFixture]
     public class TestAsbNaming : FixtureBase
     {
-        ManagementClient _managementClient;
+        ServiceBusAdministrationClient _managementClient;
         string _endpoint;
 
         protected override void SetUp()
         {
-            _managementClient = new ManagementClient(AsbTestConfig.ConnectionString);
-            _endpoint = new ServiceBusConnectionStringBuilder(AsbTestConfig.ConnectionString).Endpoint;
+            _managementClient = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
+            _endpoint = new ConnectionStringParser(AsbTestConfig.ConnectionString).Endpoint;
         }
 
         [Test]
@@ -51,7 +50,7 @@ namespace Rebus.AzureServiceBus.Tests
             Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some.inputqueue"));
             Assert.IsTrue(await _managementClient.TopicExistsAsync("group/some.interesting_topic"));
             var subscription = await _managementClient.GetSubscriptionAsync("group/some.interesting_topic", "group_some.inputqueue");
-            Assert.AreEqual(_endpoint + "/group/some.inputqueue", subscription.ForwardTo);
+            Assert.AreEqual(_endpoint + "/group/some.inputqueue", subscription.Value.ForwardTo);
         }
 
         [Test]
@@ -79,7 +78,7 @@ namespace Rebus.AzureServiceBus.Tests
             Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some.inputqueue"));
             Assert.IsTrue(await _managementClient.TopicExistsAsync("system.private.corelib/system.object"));
             var subscription = await _managementClient.GetSubscriptionAsync("system.private.corelib/system.object", "group_some.inputqueue");
-            Assert.AreEqual(_endpoint + "/group/some.inputqueue", subscription.ForwardTo);
+            Assert.AreEqual(_endpoint + "/group/some.inputqueue", subscription.Value.ForwardTo);
         }
 
         [Test]
@@ -109,7 +108,7 @@ namespace Rebus.AzureServiceBus.Tests
             Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some_inputqueue"));
             Assert.IsTrue(await _managementClient.TopicExistsAsync("group/some_interesting_topic"));
             var subscription = await _managementClient.GetSubscriptionAsync("group/some_interesting_topic", "some_inputqueue");
-            Assert.AreEqual(_endpoint + "/group/some_inputqueue", subscription.ForwardTo);
+            Assert.AreEqual(_endpoint + "/group/some_inputqueue", subscription.Value.ForwardTo);
         }
 
         [Test]
@@ -139,7 +138,7 @@ namespace Rebus.AzureServiceBus.Tests
             Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some_inputqueue"));
             Assert.IsTrue(await _managementClient.TopicExistsAsync("system_object__mscorlib"));
             var subscription = await _managementClient.GetSubscriptionAsync("system_object__mscorlib", "some_inputqueue");
-            Assert.AreEqual(_endpoint + "/group/some_inputqueue", subscription.ForwardTo);
+            Assert.AreEqual(_endpoint + "/group/some_inputqueue", subscription.Value.ForwardTo);
         }
 
         [Test]
@@ -171,7 +170,7 @@ namespace Rebus.AzureServiceBus.Tests
             Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some.inputqueue"));
             Assert.IsTrue(await _managementClient.TopicExistsAsync("group/some_interesting_topic"));
             var subscription = await _managementClient.GetSubscriptionAsync("group/some_interesting_topic", "some_inputqueue");
-            Assert.AreEqual(_endpoint + "/group/some.inputqueue", subscription.ForwardTo);
+            Assert.AreEqual(_endpoint + "/group/some.inputqueue", subscription.Value.ForwardTo);
         }
 
         [Test]
@@ -200,7 +199,7 @@ namespace Rebus.AzureServiceBus.Tests
             Assert.IsTrue(await _managementClient.QueueExistsAsync("prefix/group/some.inputqueue"));
             Assert.IsTrue(await _managementClient.TopicExistsAsync("prefix/group/some_interesting_topic"));
             var subscription = await _managementClient.GetSubscriptionAsync("prefix/group/some_interesting_topic", "some_inputqueue");
-            Assert.AreEqual(_endpoint + "/prefix/group/some.inputqueue", subscription.ForwardTo);
+            Assert.AreEqual(_endpoint + "/prefix/group/some.inputqueue", subscription.Value.ForwardTo);
         }
     }
 }

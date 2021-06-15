@@ -4,10 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.ServiceBus;
-using Microsoft.Azure.ServiceBus.Core;
-using Microsoft.Azure.ServiceBus.Management;
-using Microsoft.Azure.ServiceBus.Primitives;
+using Azure.Core;
+using Azure.Messaging.ServiceBus;
+using Azure.Messaging.ServiceBus.Administration;
 using Rebus.AzureServiceBus.NameFormat;
 using Rebus.Bus;
 using Rebus.Exceptions;
@@ -18,7 +17,7 @@ using Rebus.Messages;
 using Rebus.Subscriptions;
 using Rebus.Threading;
 using Rebus.Transport;
-using Message = Microsoft.Azure.ServiceBus.Message;
+
 // ReSharper disable RedundantArgumentDefaultValue
 // ReSharper disable ArgumentsStyleNamedExpression
 // ReSharper disable ArgumentsStyleOther
@@ -48,41 +47,43 @@ namespace Rebus.AzureServiceBus
         /// </summary>
         public const string MagicDeferredMessagesAddress = "___deferred___";
 
-        static readonly RetryExponential DefaultRetryStrategy = new RetryExponential(
-            minimumBackoff: TimeSpan.FromMilliseconds(100),
-            maximumBackoff: TimeSpan.FromSeconds(10),
-            maximumRetryCount: 10
-        );
+        static readonly ServiceBusRetryOptions DefaultRetryStrategy = new ServiceBusRetryOptions
+        {
+            Mode = ServiceBusRetryMode.Exponential,
+            Delay = TimeSpan.FromMilliseconds(100),
+            MaxDelay = TimeSpan.FromSeconds(10),
+            MaxRetries = 10
+        };
 
         readonly ExceptionIgnorant _subscriptionExceptionIgnorant = new ExceptionIgnorant(maxAttemps: 10).Ignore<ServiceBusException>(ex => ex.IsTransient);
         readonly ConcurrentStack<IDisposable> _disposables = new ConcurrentStack<IDisposable>();
-        readonly ConcurrentDictionary<string, Lazy<Task<TopicClient>>> _topicClients = new ConcurrentDictionary<string, Lazy<Task<TopicClient>>>();
+        readonly ConcurrentDictionary<string, Lazy<Task<ServiceBusClient>>> _topicClients = new ConcurrentDictionary<string, Lazy<Task<ServiceBusClient>>>();
         readonly ConcurrentDictionary<string, MessageLockRenewer> _messageLockRenewers = new ConcurrentDictionary<string, MessageLockRenewer>();
         readonly ConcurrentDictionary<string, string[]> _cachedSubscriberAddresses = new ConcurrentDictionary<string, string[]>();
-        readonly ConcurrentDictionary<string, MessageSender> _messageSenders = new ConcurrentDictionary<string, MessageSender>();
+        readonly ConcurrentDictionary<string, ServiceBusSender> _messageSenders = new ConcurrentDictionary<string, ServiceBusSender>();
         readonly CancellationToken _cancellationToken;
         readonly IAsyncTask _messageLockRenewalTask;
-        readonly ManagementClient _managementClient;
-        readonly ITokenProvider _tokenProvider;
+        readonly ServiceBusAdministrationClient _managementClient;
+        readonly ConnectionStringParser _connectionStringParser;
+        readonly TokenCredential _tokenCredential;
         readonly INameFormatter _nameFormatter;
-        readonly string _connectionString;
         readonly string _subscriptionName;
-        readonly string _endpoint;
-        readonly TransportType _transportType;
         readonly ILog _log;
+        readonly ServiceBusClient _client;
 
         bool _prefetchingEnabled;
         int _prefetchCount;
 
-        MessageReceiver _messageReceiver;
+        ServiceBusReceiver _messageReceiver;
 
         /// <summary>
         /// Constructs the transport, connecting to the service bus pointed to by the connection string.
         /// </summary>
-        public AzureServiceBusTransport(string connectionString, string queueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory, INameFormatter nameFormatter, CancellationToken cancellationToken = default(CancellationToken), ITokenProvider tokenProvider = null)
+        public AzureServiceBusTransport(string connectionString, string queueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory, INameFormatter nameFormatter, CancellationToken cancellationToken = default(CancellationToken), TokenCredential tokenCredential = null)
         {
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
             if (asyncTaskFactory == null) throw new ArgumentNullException(nameof(asyncTaskFactory));
+            if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
 
             _nameFormatter = nameFormatter;
 
@@ -98,23 +99,29 @@ namespace Rebus.AzureServiceBus
                 _subscriptionName = _nameFormatter.FormatSubscriptionName(queueName);
             }
 
-            _connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
             _cancellationToken = cancellationToken;
             _log = rebusLoggerFactory.GetLogger<AzureServiceBusTransport>();
 
-            if (tokenProvider != null)
+            _connectionStringParser = new ConnectionStringParser(connectionString);
+
+            var clientOptions = new ServiceBusClientOptions
             {
-                var connectionStringBuilder = new ServiceBusConnectionStringBuilder(connectionString);
-                _managementClient = new ManagementClient(connectionStringBuilder, tokenProvider);
-                _endpoint = connectionStringBuilder.Endpoint;
-                _transportType = connectionStringBuilder.TransportType;
+                TransportType = _connectionStringParser.Transport,
+                RetryOptions = DefaultRetryStrategy,
+            };
+
+            if (tokenCredential != null)
+            {
+                var connectionStringProperties = ServiceBusConnectionStringProperties.Parse(connectionString);
+                _managementClient = new ServiceBusAdministrationClient(connectionString, tokenCredential);
+                _client = new ServiceBusClient(connectionStringProperties.FullyQualifiedNamespace, _tokenCredential, clientOptions);
             }
             else
             {
-                _managementClient = new ManagementClient(connectionString);
+                _client = new ServiceBusClient(connectionString, clientOptions);
+                _managementClient = new ServiceBusAdministrationClient(connectionString);
             }
-
-            _tokenProvider = tokenProvider;
+            _tokenCredential = tokenCredential;
 
             _messageLockRenewalTask = asyncTaskFactory.Create("Peek Lock Renewal", RenewPeekLocks, prettyInsignificant: true, intervalSeconds: 10);
         }
@@ -142,13 +149,13 @@ namespace Rebus.AzureServiceBus
 
             await _subscriptionExceptionIgnorant.Execute(async () =>
             {
-                var topicDescription = await EnsureTopicExists(topic).ConfigureAwait(false);
+                var topicProperties = await EnsureTopicExists(topic).ConfigureAwait(false);
                 var messageSender = GetMessageSender(Address);
 
-                var inputQueuePath = messageSender.Path;
-                var topicPath = topicDescription.Path;
+                var inputQueuePath = messageSender.EntityPath;
+                var topicName = topicProperties.Name;
 
-                var subscription = await GetOrCreateSubscription(topicPath, _subscriptionName).ConfigureAwait(false);
+                var subscription = await GetOrCreateSubscription(topicName, _subscriptionName).ConfigureAwait(false);
 
                 // if it looks fine, just skip it
                 if (subscription.ForwardTo == inputQueuePath) return;
@@ -174,24 +181,24 @@ namespace Rebus.AzureServiceBus
 
             await _subscriptionExceptionIgnorant.Execute(async () =>
             {
-                var topicDescription = await EnsureTopicExists(topic).ConfigureAwait(false);
-                var topicPath = topicDescription.Path;
+                var topicProperties = await EnsureTopicExists(topic).ConfigureAwait(false);
+                var topicName = topicProperties.Name;
 
                 try
                 {
-                    await _managementClient.DeleteSubscriptionAsync(topicPath, _subscriptionName, _cancellationToken).ConfigureAwait(false);
+                    await _managementClient.DeleteSubscriptionAsync(topicName, _subscriptionName, _cancellationToken).ConfigureAwait(false);
 
                     _log.Info("Subscription {subscriptionName} for topic {topicName} successfully unregistered",
                         _subscriptionName, topic);
                 }
-                catch (MessagingEntityNotFoundException)
+                catch (ServiceBusException)
                 {
                     // it's alright man
                 }
             }, _cancellationToken);
         }
 
-        async Task<SubscriptionDescription> GetOrCreateSubscription(string topicPath, string subscriptionName)
+        async Task<SubscriptionProperties> GetOrCreateSubscription(string topicPath, string subscriptionName)
         {
             if (await _managementClient.SubscriptionExistsAsync(topicPath, subscriptionName, _cancellationToken).ConfigureAwait(false))
             {
@@ -202,7 +209,7 @@ namespace Rebus.AzureServiceBus
             {
                 return await _managementClient.CreateSubscriptionAsync(topicPath, subscriptionName, _cancellationToken).ConfigureAwait(false);
             }
-            catch (MessagingEntityAlreadyExistsException)
+            catch (ServiceBusException)
             {
                 // most likely a race between two competing consumers - we should be able to get it now
                 return await _managementClient.GetSubscriptionAsync(topicPath, subscriptionName, _cancellationToken).ConfigureAwait(false);
@@ -220,7 +227,7 @@ namespace Rebus.AzureServiceBus
             throw new ArgumentException(message);
         }
 
-        async Task<TopicDescription> EnsureTopicExists(string normalizedTopic)
+        async Task<TopicProperties> EnsureTopicExists(string normalizedTopic)
         {
             if (await _managementClient.TopicExistsAsync(normalizedTopic, _cancellationToken).ConfigureAwait(false))
             {
@@ -231,7 +238,7 @@ namespace Rebus.AzureServiceBus
             {
                 return await _managementClient.CreateTopicAsync(normalizedTopic, _cancellationToken).ConfigureAwait(false);
             }
-            catch (MessagingEntityAlreadyExistsException)
+            catch (ServiceBusException)
             {
                 // most likely a race between two clients trying to create the same topic - we should be able to get it now
                 return await _managementClient.GetTopicAsync(normalizedTopic, _cancellationToken).ConfigureAwait(false);
@@ -254,41 +261,41 @@ namespace Rebus.AzureServiceBus
 
         void InnerCreateQueue(string normalizedAddress)
         {
-            QueueDescription GetInputQueueDescription()
+            CreateQueueOptions GetInputQueueDescription()
             {
-                var queueDescription = new QueueDescription(normalizedAddress);
+                var queueOptions = new CreateQueueOptions(normalizedAddress);
 
                 // if it's the input queue, do this:
                 if (normalizedAddress == Address)
                 {
                     // must be set when the queue is first created
-                    queueDescription.EnablePartitioning = PartitioningEnabled;
+                    queueOptions.EnablePartitioning = PartitioningEnabled;
 
                     if (LockDuration.HasValue)
                     {
-                        queueDescription.LockDuration = LockDuration.Value;
+                        queueOptions.LockDuration = LockDuration.Value;
                     }
 
                     if (DefaultMessageTimeToLive.HasValue)
                     {
-                        queueDescription.DefaultMessageTimeToLive = DefaultMessageTimeToLive.Value;
+                        queueOptions.DefaultMessageTimeToLive = DefaultMessageTimeToLive.Value;
                     }
 
                     if (DuplicateDetectionHistoryTimeWindow.HasValue)
                     {
-                        queueDescription.RequiresDuplicateDetection = true;
-                        queueDescription.DuplicateDetectionHistoryTimeWindow = DuplicateDetectionHistoryTimeWindow.Value;
+                        queueOptions.RequiresDuplicateDetection = true;
+                        queueOptions.DuplicateDetectionHistoryTimeWindow = DuplicateDetectionHistoryTimeWindow.Value;
                     }
 
                     if (AutoDeleteOnIdle.HasValue)
                     {
-                        queueDescription.AutoDeleteOnIdle = AutoDeleteOnIdle.Value;
+                        queueOptions.AutoDeleteOnIdle = AutoDeleteOnIdle.Value;
                     }
 
-                    queueDescription.MaxDeliveryCount = 100;
+                    queueOptions.MaxDeliveryCount = 100;
                 }
 
-                return queueDescription;
+                return queueOptions;
             }
 
             // one-way client does not create any queues
@@ -315,7 +322,7 @@ namespace Rebus.AzureServiceBus
 
                     await _managementClient.CreateQueueAsync(queueDescription, _cancellationToken).ConfigureAwait(false);
                 }
-                catch (MessagingEntityAlreadyExistsException)
+                catch (ServiceBusException)
                 {
                     // it's alright man
                 }
@@ -409,7 +416,7 @@ namespace Rebus.AzureServiceBus
             });
         }
 
-        async Task<QueueDescription> GetQueueDescription(string address)
+        async Task<QueueProperties> GetQueueDescription(string address)
         {
             try
             {
@@ -463,10 +470,10 @@ namespace Rebus.AzureServiceBus
             return destinationAddress;
         }
 
-        static Message GetMessage(OutgoingMessage outgoingMessage)
+        static ServiceBusMessage GetMessage(OutgoingMessage outgoingMessage)
         {
             var transportMessage = outgoingMessage.TransportMessage;
-            var message = new Message(transportMessage.Body);
+            var message = new ServiceBusMessage(transportMessage.Body);
             var headers = transportMessage.Headers.Clone();
 
             if (headers.TryGetValue(Headers.TimeToBeReceived, out var timeToBeReceivedStr))
@@ -479,7 +486,7 @@ namespace Rebus.AzureServiceBus
             if (headers.TryGetValue(Headers.DeferredUntil, out var deferUntilTime))
             {
                 var deferUntilDateTimeOffset = deferUntilTime.ToDateTimeOffset();
-                message.ScheduledEnqueueTimeUtc = deferUntilDateTimeOffset.UtcDateTime;
+                message.ScheduledEnqueueTime = deferUntilDateTimeOffset;
                 headers.Remove(Headers.DeferredUntil);
             }
 
@@ -498,7 +505,7 @@ namespace Rebus.AzureServiceBus
                 message.MessageId = messageId;
             }
 
-            message.Label = transportMessage.GetMessageLabel();
+            message.Subject = transportMessage.GetMessageLabel();
 
             if (headers.TryGetValue(Headers.ErrorDetails, out var errorDetails))
             {
@@ -508,7 +515,7 @@ namespace Rebus.AzureServiceBus
 
             foreach (var kvp in headers)
             {
-                message.UserProperties[kvp.Key] = kvp.Value;
+                message.ApplicationProperties[kvp.Key] = kvp.Value;
             }
 
             return message;
@@ -538,7 +545,7 @@ namespace Rebus.AzureServiceBus
                             {
                                 try
                                 {
-                                    await topicClient.SendAsync(batch.ToList()).ConfigureAwait(false);
+                                    await topicClient.SendMessagesAsync(batch.ToList(), _cancellationToken).ConfigureAwait(false);
                                 }
                                 catch (Exception exception)
                                 {
@@ -554,7 +561,7 @@ namespace Rebus.AzureServiceBus
                             {
                                 try
                                 {
-                                    await messageSender.SendAsync(batch.ToList()).ConfigureAwait(false);
+                                    await messageSender.SendMessagesAsync(batch.ToList()).ConfigureAwait(false);
                                 }
                                 catch (Exception exception)
                                 {
@@ -595,7 +602,7 @@ namespace Rebus.AzureServiceBus
             items["asb-message"] = message;
             items["asb-message-receiver"] = messageReceiver;
 
-            if (!message.SystemProperties.IsLockTokenSet)
+            if (string.IsNullOrWhiteSpace(message.LockToken))
             {
                 throw new RebusApplicationException($"OMG that's weird - message with ID {message.MessageId} does not have a lock token!");
             }
@@ -612,14 +619,14 @@ namespace Rebus.AzureServiceBus
                 // only ACK the message if it's still in the context - this way, carefully crafted
                 // user code can take over responsibility for the message by removing it from the transaction context
                 if (ctx.Items.TryGetValue("asb-message", out var messageObject)
-                    && messageObject is Message asbMessage)
+                    && messageObject is ServiceBusReceivedMessage asbMessage)
                 {
-                    var lockToken = asbMessage.SystemProperties.LockToken;
+                    var lockToken = asbMessage.LockToken;
 
                     try
                     {
                         await messageReceiver
-                            .CompleteAsync(lockToken)
+                            .CompleteMessageAsync(asbMessage)
                             .ConfigureAwait(false);
                     }
                     catch (Exception exception)
@@ -641,13 +648,13 @@ namespace Rebus.AzureServiceBus
                     // only NACK the message if it's still in the context - this way, carefully crafted
                     // user code can take over responsibility for the message by removing it from the transaction context
                     if (ctx.Items.TryGetValue("asb-message", out var messageObject)
-                        && messageObject is Message asbMessage)
+                        && messageObject is ServiceBusReceivedMessage asbMessage)
                     {
-                        var lockToken = asbMessage.SystemProperties.LockToken;
+                        var lockToken = asbMessage.LockToken;
 
                         try
                         {
-                            await messageReceiver.AbandonAsync(lockToken).ConfigureAwait(false);
+                            await messageReceiver.AbandonMessageAsync(message, cancellationToken: _cancellationToken).ConfigureAwait(false);
                         }
                         catch (Exception exception)
                         {
@@ -660,11 +667,11 @@ namespace Rebus.AzureServiceBus
 
             context.OnDisposed(ctx => _messageLockRenewers.TryRemove(messageId, out _));
 
-            var userProperties = message.UserProperties;
-            var headers = userProperties.ToDictionary(kvp => kvp.Key, kvp => kvp.Value?.ToString());
+            var applicationProperties = message.ApplicationProperties;
+            var headers = applicationProperties.ToDictionary(kvp => kvp.Key, kvp => kvp.Value?.ToString());
             var body = message.Body;
 
-            return new TransportMessage(headers, body);
+            return new TransportMessage(headers, body.ToMemory().ToArray());
         }
 
         async Task<ReceivedMessage> ReceiveInternal()
@@ -673,13 +680,13 @@ namespace Rebus.AzureServiceBus
             {
                 var messageReceiver = _messageReceiver;
 
-                var message = await messageReceiver.ReceiveAsync(ReceiveOperationTimeout).ConfigureAwait(false);
+                var message = await messageReceiver.ReceiveMessageAsync(ReceiveOperationTimeout, _cancellationToken).ConfigureAwait(false);
 
                 return message == null
                     ? null
                     : new ReceivedMessage(message, messageReceiver);
             }
-            catch (MessagingEntityNotFoundException exception)
+            catch (ServiceBusException exception)
             {
                 throw new RebusApplicationException(exception, $"Could not receive next message from Azure Service Bus queue '{Address}'");
             }
@@ -706,25 +713,13 @@ namespace Rebus.AzureServiceBus
 
                 CheckInputQueueConfiguration(Address);
 
-                _messageReceiver = _tokenProvider == null
-                    ?
-                        new MessageReceiver(
-                            _connectionString,
-                            Address,
-                            receiveMode: ReceiveMode.PeekLock,
-                            retryPolicy: DefaultRetryStrategy,
-                            prefetchCount: _prefetchCount
-                        )
-                    :
-                        new MessageReceiver(
-                            _endpoint,
-                            Address,
-                            _tokenProvider,
-                            transportType: _transportType,
-                            receiveMode: ReceiveMode.PeekLock,
-                            retryPolicy: DefaultRetryStrategy,
-                            prefetchCount: _prefetchCount
-                        );
+                var receiverOptions = new ServiceBusReceiverOptions
+                {
+                    PrefetchCount = _prefetchCount,
+                    ReceiveMode = ServiceBusReceiveMode.PeekLock
+                };
+
+                _messageReceiver = _client.CreateReceiver(Address, receiverOptions);
 
                 _disposables.Push(_messageReceiver.AsDisposable(m => AsyncHelpers.RunSync(async () => await m.CloseAsync().ConfigureAwait(false))));
 
@@ -841,7 +836,7 @@ namespace Rebus.AzureServiceBus
             try
             {
                 AsyncHelpers.RunSync(async () =>
-                    await ManagementExtensions.PurgeQueue(_connectionString, queueName, _cancellationToken).ConfigureAwait(false));
+                    await ManagementExtensions.PurgeQueue(_connectionStringParser.GetConnectionString(), queueName, _cancellationToken).ConfigureAwait(false));
             }
             catch (Exception exception)
             {
@@ -849,28 +844,13 @@ namespace Rebus.AzureServiceBus
             }
         }
 
-        IMessageSender GetMessageSender(string queue)
+        ServiceBusSender GetMessageSender(string queue)
         {
             return _messageSenders.GetOrAdd(queue, _ =>
             {
-                var connectionStringParser = new ConnectionStringParser(_connectionString);
-                var connectionString = connectionStringParser.GetConnectionStringWithoutEntityPath();
+                var connectionString = _connectionStringParser.GetConnectionStringWithoutEntityPath();
 
-                var messageSender = _tokenProvider == null
-                    ?
-                        new MessageSender(
-                            connectionString,
-                            queue,
-                            retryPolicy: DefaultRetryStrategy
-                        )
-                    :
-                        new MessageSender(
-                            _endpoint,
-                            queue,
-                            _tokenProvider,
-                            transportType: _transportType,
-                            retryPolicy: DefaultRetryStrategy
-                        );
+                var messageSender = _client.CreateSender(queue);
 
                 _disposables.Push(messageSender.AsDisposable(t => AsyncHelpers.RunSync(async () => await t.CloseAsync().ConfigureAwait(false))));
 
@@ -878,21 +858,24 @@ namespace Rebus.AzureServiceBus
             });
         }
 
-        async Task<ITopicClient> GetTopicClient(string topic)
+        async Task<ServiceBusSender> GetTopicClient(string topic)
         {
-            async Task<TopicClient> InitializeTopicClient()
+            async Task<ServiceBusSender> InitializeTopicClient()
             {
                 await EnsureTopicExists(topic);
 
-                var topicClient = _tokenProvider == null ? new TopicClient(_connectionString, topic, retryPolicy: DefaultRetryStrategy) : new TopicClient(_endpoint, topic, _tokenProvider, transportType: _transportType, retryPolicy: DefaultRetryStrategy);
-                _disposables.Push(topicClient.AsDisposable(t => AsyncHelpers.RunSync(async () => await t.CloseAsync().ConfigureAwait(false))));
+                var topicClient = _client.CreateSender(topic);
+                //_disposables.Push(topicClient.AsDisposable(t => AsyncHelpers.RunSync(async () => await t.CloseAsync().ConfigureAwait(false))));
                 return topicClient;
             }
 
+            return await InitializeTopicClient();
+
+            // TODO: All client has been converged into ServiceBusClient, so just put ServiceBusClient into disposable context satisfy the requirements.
+
             // Task.Run executes InitializeTopicClient on a threadpool thread, this avoids a potential deadlock in legacy ASP.net
-            var lazy = _topicClients.GetOrAdd(topic, _ => new Lazy<Task<TopicClient>>(() => Task.Run(InitializeTopicClient, _cancellationToken)));
-            var task = lazy.Value;
-            return await task;
+            //var lazy = _topicClients.GetOrAdd(topic, _ => new Lazy<Task<TopicClient>>(() => Task.Run(InitializeTopicClient, _cancellationToken)));
+            //var task = lazy.Value;
         }
 
         async Task RenewPeekLocks()
