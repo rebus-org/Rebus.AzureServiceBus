@@ -50,7 +50,11 @@ namespace Rebus.AzureServiceBus.Tests
             Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some.inputqueue"));
             Assert.IsTrue(await _managementClient.TopicExistsAsync("group/some.interesting_topic"));
             var subscription = await _managementClient.GetSubscriptionAsync("group/some.interesting_topic", "group_some.inputqueue");
-            Assert.AreEqual(_endpoint + "/group/some.inputqueue", subscription.Value.ForwardTo);
+
+            var expected = $"{_endpoint}/group/some.inputqueue";
+            var actual = subscription.Value.ForwardTo;
+
+            AssertUris(expected, actual);
         }
 
         [Test]
@@ -78,7 +82,14 @@ namespace Rebus.AzureServiceBus.Tests
             Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some.inputqueue"));
             Assert.IsTrue(await _managementClient.TopicExistsAsync("system.private.corelib/system.object"));
             var subscription = await _managementClient.GetSubscriptionAsync("system.private.corelib/system.object", "group_some.inputqueue");
-            Assert.AreEqual(_endpoint + "/group/some.inputqueue", subscription.Value.ForwardTo);
+
+            //Assert.AreEqual(_endpoint + "/group/some.inputqueue", subscription.Value.ForwardTo);
+
+            var expected = $"{_endpoint}/group/some.inputqueue";
+            var actual = subscription.Value.ForwardTo;
+
+            AssertUris(expected, actual);
+
         }
 
         [Test]
@@ -108,7 +119,12 @@ namespace Rebus.AzureServiceBus.Tests
             Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some_inputqueue"));
             Assert.IsTrue(await _managementClient.TopicExistsAsync("group/some_interesting_topic"));
             var subscription = await _managementClient.GetSubscriptionAsync("group/some_interesting_topic", "some_inputqueue");
-            Assert.AreEqual(_endpoint + "/group/some_inputqueue", subscription.Value.ForwardTo);
+
+            //Assert.AreEqual(_endpoint + "/group/some_inputqueue", subscription.Value.ForwardTo);
+            var expected = $"{_endpoint}/group/some_inputqueue";
+            var actual = subscription.Value.ForwardTo;
+
+            AssertUris(expected, actual);
         }
 
         [Test]
@@ -138,7 +154,12 @@ namespace Rebus.AzureServiceBus.Tests
             Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some_inputqueue"));
             Assert.IsTrue(await _managementClient.TopicExistsAsync("system_object__mscorlib"));
             var subscription = await _managementClient.GetSubscriptionAsync("system_object__mscorlib", "some_inputqueue");
-            Assert.AreEqual(_endpoint + "/group/some_inputqueue", subscription.Value.ForwardTo);
+
+            //Assert.AreEqual(_endpoint + "/group/some_inputqueue", subscription.Value.ForwardTo);
+            var expected = $"{_endpoint}/group/some_inputqueue";
+            var actual = subscription.Value.ForwardTo;
+
+            AssertUris(expected, actual);
         }
 
         [Test]
@@ -170,7 +191,12 @@ namespace Rebus.AzureServiceBus.Tests
             Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some.inputqueue"));
             Assert.IsTrue(await _managementClient.TopicExistsAsync("group/some_interesting_topic"));
             var subscription = await _managementClient.GetSubscriptionAsync("group/some_interesting_topic", "some_inputqueue");
-            Assert.AreEqual(_endpoint + "/group/some.inputqueue", subscription.Value.ForwardTo);
+
+            //Assert.AreEqual(_endpoint + "/group/some.inputqueue", subscription.Value.ForwardTo);
+            var expected = $"{_endpoint}/group/some.inputqueue";
+            var actual = subscription.Value.ForwardTo;
+
+            AssertUris(expected, actual);
         }
 
         [Test]
@@ -199,7 +225,21 @@ namespace Rebus.AzureServiceBus.Tests
             Assert.IsTrue(await _managementClient.QueueExistsAsync("prefix/group/some.inputqueue"));
             Assert.IsTrue(await _managementClient.TopicExistsAsync("prefix/group/some_interesting_topic"));
             var subscription = await _managementClient.GetSubscriptionAsync("prefix/group/some_interesting_topic", "some_inputqueue");
-            Assert.AreEqual(_endpoint + "/prefix/group/some.inputqueue", subscription.Value.ForwardTo);
+            
+            
+            //Assert.AreEqual(_endpoint + "/prefix/group/some.inputqueue", subscription.Value.ForwardTo);
+            var expected = $"{_endpoint}/prefix/group/some.inputqueue";
+            var actual = subscription.Value.ForwardTo;
+
+            AssertUris(expected, actual);
+        }
+
+        static void AssertUris(string expected, string actual)
+        {
+            var expectedForwardUri = new Uri(expected);
+            var actualForwardUri = new Uri(actual);
+            Assert.That(actualForwardUri.Host, Is.EqualTo(expectedForwardUri.Host));
+            Assert.That(actualForwardUri.PathAndQuery, Is.EqualTo(expectedForwardUri.PathAndQuery));
         }
     }
 }
