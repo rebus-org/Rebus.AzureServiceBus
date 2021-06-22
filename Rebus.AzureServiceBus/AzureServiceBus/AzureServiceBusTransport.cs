@@ -118,8 +118,9 @@ namespace Rebus.AzureServiceBus
             }
             else
             {
-                _client = new ServiceBusClient(connectionString, clientOptions);
-                _managementClient = new ServiceBusAdministrationClient(connectionString);
+                var connectionStringWithoutEntityPath = new ConnectionStringParser(connectionString).GetConnectionStringWithoutEntityPath();
+                _client = new ServiceBusClient(connectionStringWithoutEntityPath, clientOptions);
+                _managementClient = new ServiceBusAdministrationClient(connectionStringWithoutEntityPath);
             }
             _tokenCredential = tokenCredential;
 

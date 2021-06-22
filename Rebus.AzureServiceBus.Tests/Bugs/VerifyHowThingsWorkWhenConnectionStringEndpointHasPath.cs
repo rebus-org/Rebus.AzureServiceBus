@@ -15,7 +15,7 @@ namespace Rebus.AzureServiceBus.Tests.Bugs
         {
             var name = TestConfig.GetName("namespace");
             var conn = new ConnectionStringParser(AsbTestConfig.ConnectionString);
-            var newConn = new ConnectionStringParser($"{conn.Endpoint}{name}", conn.SharedAccessKeyName, conn.SharedAccessKey, conn.EntityPath);
+            var newConn = new ConnectionStringParser($"{conn.Endpoint.TrimEnd('/')}/{name}", conn.SharedAccessKeyName, conn.SharedAccessKey, conn.EntityPath);
 
             using var activator = new BuiltinHandlerActivator();
             
