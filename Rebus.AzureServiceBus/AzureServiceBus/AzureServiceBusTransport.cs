@@ -57,7 +57,6 @@ namespace Rebus.AzureServiceBus
 
         readonly ExceptionIgnorant _subscriptionExceptionIgnorant = new ExceptionIgnorant(maxAttemps: 10).Ignore<ServiceBusException>(ex => ex.IsTransient);
         readonly ConcurrentStack<IDisposable> _disposables = new ConcurrentStack<IDisposable>();
-        readonly ConcurrentDictionary<string, Lazy<Task<ServiceBusClient>>> _topicClients = new ConcurrentDictionary<string, Lazy<Task<ServiceBusClient>>>();
         readonly ConcurrentDictionary<string, MessageLockRenewer> _messageLockRenewers = new ConcurrentDictionary<string, MessageLockRenewer>();
         readonly ConcurrentDictionary<string, string[]> _cachedSubscriberAddresses = new ConcurrentDictionary<string, string[]>();
         readonly ConcurrentDictionary<string, ServiceBusSender> _messageSenders = new ConcurrentDictionary<string, ServiceBusSender>();
@@ -541,32 +540,44 @@ namespace Rebus.AzureServiceBus
                         {
                             var topicName = _nameFormatter.FormatTopicName(destinationQueue.Substring(MagicSubscriptionPrefix.Length));
                             var topicClient = await GetTopicClient(topicName);
+                            var serviceBusMessageBatches = await GetBatches(messages.Select(GetMessage), topicClient);
 
-                            foreach (var batch in messages.Select(GetMessage).BatchWeighted(m => m.EstimateSize(), maxWeight: MaximumMessagePayloadBytes))
+                            using (serviceBusMessageBatches.AsDisposable(b => b.DisposeCollection()))
                             {
-                                try
+                                foreach (var batch in serviceBusMessageBatches)
                                 {
-                                    await topicClient.SendMessagesAsync(batch.ToList(), _cancellationToken).ConfigureAwait(false);
-                                }
-                                catch (Exception exception)
-                                {
-                                    throw new RebusApplicationException(exception, $"Could not publish to topic '{topicName}'");
+                                    try
+                                    {
+                                        await topicClient
+                                            .SendMessagesAsync(batch, _cancellationToken)
+                                            .ConfigureAwait(false);
+                                    }
+                                    catch (Exception exception)
+                                    {
+                                        throw new RebusApplicationException(exception, $"Could not publish to topic '{topicName}'");
+                                    }
                                 }
                             }
                         }
                         else
                         {
                             var messageSender = GetMessageSender(destinationQueue);
+                            var serviceBusMessageBatches = await GetBatches(messages.Select(GetMessage), messageSender);
 
-                            foreach (var batch in messages.Select(GetMessage).BatchWeighted(m => m.EstimateSize(), maxWeight: MaximumMessagePayloadBytes))
+                            using (serviceBusMessageBatches.AsDisposable(b => b.DisposeCollection()))
                             {
-                                try
+                                foreach (var batch in serviceBusMessageBatches)
                                 {
-                                    await messageSender.SendMessagesAsync(batch.ToList()).ConfigureAwait(false);
-                                }
-                                catch (Exception exception)
-                                {
-                                    throw new RebusApplicationException(exception, $"Could not send to queue '{destinationQueue}'");
+                                    try
+                                    {
+                                        await messageSender
+                                            .SendMessagesAsync(batch, _cancellationToken)
+                                            .ConfigureAwait(false);
+                                    }
+                                    catch (Exception exception)
+                                    {
+                                        throw new RebusApplicationException(exception, $"Could not send to queue '{destinationQueue}'");
+                                    }
                                 }
                             }
                         }
@@ -583,6 +594,33 @@ namespace Rebus.AzureServiceBus
             }
 
             return context.GetOrAdd(OutgoingMessagesKey, CreateNewOutgoingMessagesQueue);
+        }
+
+        async Task<IReadOnlyList<ServiceBusMessageBatch>> GetBatches(IEnumerable<ServiceBusMessage> messages, ServiceBusSender sender)
+        {
+            var batches = new List<ServiceBusMessageBatch>();
+
+            var currentBatch = await sender.CreateMessageBatchAsync(_cancellationToken);
+
+            foreach (var message in messages)
+            {
+                if (currentBatch.TryAddMessage(message)) continue;
+                
+                batches.Add(currentBatch);
+
+                currentBatch = await sender.CreateMessageBatchAsync(_cancellationToken);
+
+                if (currentBatch.TryAddMessage(message)) continue;
+
+                throw new ArgumentException($"The message {message} could not be added to a brand new message batch - is it too big?");
+            }
+
+            if (currentBatch.Count > 0)
+            {
+                batches.Add(currentBatch);
+            }
+
+            return batches;
         }
 
         /// <summary>
@@ -626,6 +664,7 @@ namespace Rebus.AzureServiceBus
 
                     try
                     {
+                        // ReSharper disable once MethodSupportsCancellation
                         await messageReceiver
                             .CompleteMessageAsync(asbMessage)
                             .ConfigureAwait(false);
@@ -722,7 +761,7 @@ namespace Rebus.AzureServiceBus
 
                 _messageReceiver = _client.CreateReceiver(Address, receiverOptions);
 
-                _disposables.Push(_messageReceiver.AsDisposable(m => AsyncHelpers.RunSync(async () => await m.CloseAsync().ConfigureAwait(false))));
+                _disposables.Push(_messageReceiver.AsDisposable(m => AsyncHelpers.RunSync(async () => await m.CloseAsync(_cancellationToken).ConfigureAwait(false))));
 
                 if (AutomaticallyRenewPeekLock)
                 {
@@ -853,7 +892,7 @@ namespace Rebus.AzureServiceBus
 
                 var messageSender = _client.CreateSender(queue);
 
-                _disposables.Push(messageSender.AsDisposable(t => AsyncHelpers.RunSync(async () => await t.CloseAsync().ConfigureAwait(false))));
+                _disposables.Push(messageSender.AsDisposable(t => AsyncHelpers.RunSync(async () => await t.CloseAsync(_cancellationToken).ConfigureAwait(false))));
 
                 return messageSender;
             });
