@@ -9,39 +9,35 @@ namespace Rebus.Internals
         readonly ServiceBusReceivedMessage _message;
         readonly ServiceBusReceiver _messageReceiver;
 
-        DateTime _nextRenewal;
+        DateTimeOffset _nextRenewal;
 
         public MessageLockRenewer(ServiceBusReceivedMessage message, ServiceBusReceiver messageReceiver)
         {
             _message = message;
             _messageReceiver = messageReceiver;
-
-            SetNextRenewal();
+            _nextRenewal = GetTimeOfNextRenewal();
         }
 
         public string MessageId => _message.MessageId;
 
-        public bool IsDue => DateTime.UtcNow >= _nextRenewal;
+        public bool IsDue => DateTimeOffset.Now >= _nextRenewal;
 
         public async Task Renew()
         {
-            try
-            {
-                await _messageReceiver.RenewMessageLockAsync(_message);
+            // intentionally let exceptions bubble out here, so the caller can log it as a warning
+            await _messageReceiver.RenewMessageLockAsync(_message);
 
-                SetNextRenewal();
-            }
-            catch { } //< will automatically be retried if it fails
-
+            _nextRenewal = GetTimeOfNextRenewal();
         }
 
-        void SetNextRenewal()
+        DateTimeOffset GetTimeOfNextRenewal()
         {
-            var now = DateTime.UtcNow;
+            var now = DateTimeOffset.Now;
 
             var remainingTime = LockedUntil - now;
             var halfOfRemainingTime = TimeSpan.FromMinutes(0.5 * remainingTime.TotalMinutes);
-            _nextRenewal = now + halfOfRemainingTime;
+
+            return now + halfOfRemainingTime;
         }
 
         DateTimeOffset LockedUntil => _message.LockedUntil;

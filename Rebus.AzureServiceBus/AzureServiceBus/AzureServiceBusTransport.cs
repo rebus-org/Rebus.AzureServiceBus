@@ -745,33 +745,32 @@ namespace Rebus.AzureServiceBus
         {
             _disposables.Push(_messageLockRenewalTask);
 
-            if (Address != null)
+            if (Address == null)
             {
-                _log.Info("Initializing Azure Service Bus transport with queue {queueName}", Address);
-
-                InnerCreateQueue(Address);
-
-                CheckInputQueueConfiguration(Address);
-
-                var receiverOptions = new ServiceBusReceiverOptions
-                {
-                    PrefetchCount = _prefetchCount,
-                    ReceiveMode = ServiceBusReceiveMode.PeekLock
-                };
-
-                _messageReceiver = _client.CreateReceiver(Address, receiverOptions);
-
-                _disposables.Push(_messageReceiver.AsDisposable(m => AsyncHelpers.RunSync(async () => await m.CloseAsync(_cancellationToken).ConfigureAwait(false))));
-
-                if (AutomaticallyRenewPeekLock)
-                {
-                    _messageLockRenewalTask.Start();
-                }
-
+                _log.Info("Initializing one-way Azure Service Bus transport");
                 return;
             }
 
-            _log.Info("Initializing one-way Azure Service Bus transport");
+            _log.Info("Initializing Azure Service Bus transport with queue {queueName}", Address);
+
+            InnerCreateQueue(Address);
+
+            CheckInputQueueConfiguration(Address);
+
+            var receiverOptions = new ServiceBusReceiverOptions
+            {
+                PrefetchCount = _prefetchCount,
+                ReceiveMode = ServiceBusReceiveMode.PeekLock
+            };
+
+            _messageReceiver = _client.CreateReceiver(Address, receiverOptions);
+
+            _disposables.Push(_messageReceiver.AsDisposable(m => AsyncHelpers.RunSync(async () => await m.CloseAsync(_cancellationToken).ConfigureAwait(false))));
+
+            if (AutomaticallyRenewPeekLock)
+            {
+                _messageLockRenewalTask.Start();
+            }
         }
 
         /// <summary>
