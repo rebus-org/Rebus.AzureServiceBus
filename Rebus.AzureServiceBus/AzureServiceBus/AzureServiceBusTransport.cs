@@ -598,21 +598,31 @@ namespace Rebus.AzureServiceBus
 
         async Task<IReadOnlyList<ServiceBusMessageBatch>> GetBatches(IEnumerable<ServiceBusMessage> messages, ServiceBusSender sender)
         {
-            var batches = new List<ServiceBusMessageBatch>();
+            async ValueTask<ServiceBusMessageBatch> CreateMessageBatchAsync()
+            {
+                try
+                {
+                    return await sender.CreateMessageBatchAsync(_cancellationToken);
+                }
+                catch (ServiceBusException exception) when (exception.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
+                {
+                    throw new RebusApplicationException(exception, $"Message batch creation failed, because the messaging entity with path '{sender.EntityPath}' does not exist");
+                }
+            }
 
-            var currentBatch = await sender.CreateMessageBatchAsync(_cancellationToken);
+            var batches = new List<ServiceBusMessageBatch>();
+            var currentBatch = await CreateMessageBatchAsync();
 
             foreach (var message in messages)
             {
                 if (currentBatch.TryAddMessage(message)) continue;
-                
-                batches.Add(currentBatch);
 
-                currentBatch = await sender.CreateMessageBatchAsync(_cancellationToken);
+                batches.Add(currentBatch);
+                currentBatch = await CreateMessageBatchAsync();
 
                 if (currentBatch.TryAddMessage(message)) continue;
 
-                throw new ArgumentException($"The message {message} could not be added to a brand new message batch - is it too big?");
+                throw new ArgumentException($"The message {message} could not be added to a brand new message batch (batch max size is {currentBatch.MaxSizeInBytes} bytes)");
             }
 
             if (currentBatch.Count > 0)
