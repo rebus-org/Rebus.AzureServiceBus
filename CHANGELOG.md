@@ -109,7 +109,7 @@
 ## 8.1.5
 * Add intelligent batching to send logic, ensuring that request payload stays below 256 kB (and make it configurable!)
 
-## 9.0.0-b2
+## 9.0.0
 * Port to new Azure Service Bus driver (Azure.Messaging.ServiceBus) - thanks [binick]
 * Use the new driver's built-in ability to create message batches
 
