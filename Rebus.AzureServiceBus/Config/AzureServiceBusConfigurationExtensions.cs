@@ -81,7 +81,7 @@ namespace Rebus.Config
             // register the actual transport as itself
             configurer
                 .OtherService<AzureServiceBusTransport>()
-                .Register((Func<Injection.IResolutionContext, AzureServiceBusTransport>)(c =>
+                .Register(c =>
                 {
                     var nameFormatter = c.Get<INameFormatter>();
                     var cancellationToken = c.Get<CancellationToken>();
@@ -113,9 +113,9 @@ namespace Rebus.Config
                     transport.DuplicateDetectionHistoryTimeWindow = settingsBuilder.DuplicateDetectionHistoryTimeWindow;
                     transport.ReceiveOperationTimeout = settingsBuilder.ReceiveOperationTimeout;
                     transport.MaximumMessagePayloadBytes = settingsBuilder.MaximumMessagePayloadBytes;
-                    
+
                     return transport;
-                }));
+                });
 
             RegisterServices(configurer, () => settingsBuilder.LegacyNamingEnabled);
 

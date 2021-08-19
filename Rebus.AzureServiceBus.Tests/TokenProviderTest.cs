@@ -7,6 +7,8 @@ using Rebus.Tests.Contracts.Extensions;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Rebus.AzureServiceBus.Tests.TestUtilities;
+
 #pragma warning disable 1998
 
 namespace Rebus.AzureServiceBus.Tests

@@ -113,6 +113,9 @@
 * Port to new Azure Service Bus driver (Azure.Messaging.ServiceBus) - thanks [binick]
 * Use the new driver's built-in ability to create message batches
 
+## 9.0.1
+* Detect managed identity and use it
+
 
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick

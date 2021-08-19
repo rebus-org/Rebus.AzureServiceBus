@@ -1,10 +1,10 @@
-﻿using Azure.Core;
-using Microsoft.Identity.Client;
-using System;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Core;
+using Microsoft.Identity.Client;
 
-namespace Rebus.AzureServiceBus.Tests
+namespace Rebus.AzureServiceBus.Tests.TestUtilities
 {
     internal class StubTokenCredential : TokenCredential
     {

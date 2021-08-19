@@ -40,6 +40,8 @@ namespace Rebus.AzureServiceBus
         public string EntityPath => _parts.GetValueOrNull("EntityPath");
         public ServiceBusTransportType Transport => (ServiceBusTransportType)Enum.Parse(typeof(ServiceBusTransportType), _parts.GetValueOrNull("Transport") ?? nameof(ServiceBusTransportType.AmqpTcp));
 
+        public bool Contains(string name, string value, StringComparison comparison) => _parts.Any(p => string.Equals(p.Key, name, comparison) && string.Equals(p.Value, value, comparison));
+
         public override string ToString()
         {
             return $@"{ConnectionString}
@@ -49,7 +51,7 @@ SharedAccessKeyName: {SharedAccessKeyName}
         }
 
         public string GetConnectionStringWithoutEntityPath() => string.Join(";", _parts.Where(p => !string.Equals(p.Key, "EntityPath")).Select(kvp => $"{kvp.Key}={kvp.Value}"));
-        
+
         public string GetConnectionString() => string.Join(";", _parts.Select(kvp => $"{kvp.Key}={kvp.Value}"));
     }
 }

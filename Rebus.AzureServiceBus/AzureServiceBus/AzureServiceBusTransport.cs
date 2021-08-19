@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Core;
+using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
 using Rebus.AzureServiceBus.NameFormat;
@@ -78,7 +79,7 @@ namespace Rebus.AzureServiceBus
         /// <summary>
         /// Constructs the transport, connecting to the service bus pointed to by the connection string.
         /// </summary>
-        public AzureServiceBusTransport(string connectionString, string queueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory, INameFormatter nameFormatter, CancellationToken cancellationToken = default(CancellationToken), TokenCredential tokenCredential = null)
+        public AzureServiceBusTransport(string connectionString, string queueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory, INameFormatter nameFormatter, CancellationToken cancellationToken = default, TokenCredential tokenCredential = null)
         {
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
             if (asyncTaskFactory == null) throw new ArgumentNullException(nameof(asyncTaskFactory));
@@ -114,14 +115,27 @@ namespace Rebus.AzureServiceBus
                 var connectionStringProperties = ServiceBusConnectionStringProperties.Parse(connectionString);
                 _managementClient = new ServiceBusAdministrationClient(connectionString, tokenCredential);
                 _client = new ServiceBusClient(connectionStringProperties.FullyQualifiedNamespace, _tokenCredential, clientOptions);
+                _tokenCredential = tokenCredential;
             }
             else
             {
-                var connectionStringWithoutEntityPath = new ConnectionStringParser(connectionString).GetConnectionStringWithoutEntityPath();
-                _client = new ServiceBusClient(connectionStringWithoutEntityPath, clientOptions);
-                _managementClient = new ServiceBusAdministrationClient(connectionStringWithoutEntityPath);
+                // detect Authentication=Managed Identity
+                if (_connectionStringParser.Contains("Authentication", "Managed Identity", StringComparison.OrdinalIgnoreCase))
+                {
+                    var connectionStringProperties = ServiceBusConnectionStringProperties.Parse(connectionString);
+
+                    _tokenCredential = new DefaultAzureCredential();
+                    _client = new ServiceBusClient(connectionStringProperties.FullyQualifiedNamespace, _tokenCredential, clientOptions);
+                    _managementClient = new ServiceBusAdministrationClient(connectionStringProperties.FullyQualifiedNamespace, _tokenCredential);
+                }
+                else
+                {
+                    var connectionStringWithoutEntityPath = _connectionStringParser.GetConnectionStringWithoutEntityPath();
+
+                    _client = new ServiceBusClient(connectionStringWithoutEntityPath, clientOptions);
+                    _managementClient = new ServiceBusAdministrationClient(connectionStringWithoutEntityPath);
+                }
             }
-            _tokenCredential = tokenCredential;
 
             _messageLockRenewalTask = asyncTaskFactory.Create("Peek Lock Renewal", RenewPeekLocks, prettyInsignificant: true, intervalSeconds: 10);
         }
