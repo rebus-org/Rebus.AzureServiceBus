@@ -124,7 +124,7 @@ namespace Rebus.AzureServiceBus
                 {
                     var connectionStringProperties = ServiceBusConnectionStringProperties.Parse(connectionString);
 
-                    _tokenCredential = new DefaultAzureCredential();
+                    _tokenCredential = new ManagedIdentityCredential();
                     _client = new ServiceBusClient(connectionStringProperties.FullyQualifiedNamespace, _tokenCredential, clientOptions);
                     _managementClient = new ServiceBusAdministrationClient(connectionStringProperties.FullyQualifiedNamespace, _tokenCredential);
                 }

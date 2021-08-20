@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Identity;
+using Azure.Messaging.ServiceBus.Administration;
 using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.Config;
@@ -15,6 +17,20 @@ namespace Rebus.AzureServiceBus.Tests.Bugs
     [TestFixture]
     public class WorkWithIntegratedAuth : FixtureBase
     {
+        [Test]
+        [Explicit("run manually")]
+        public async Task HowAboutThis()
+        {
+            var administrationClient = new ServiceBusAdministrationClient("<something something>", new ManagedIdentityCredential());
+
+            var queues = administrationClient.GetQueuesAsync();
+
+            await foreach (var queue in queues)
+            {
+                Console.WriteLine($"🐄: {queue.Name}");
+            }
+        }
+
         [Test]
         [Explicit("run manually")]
         public async Task SureDoes()
