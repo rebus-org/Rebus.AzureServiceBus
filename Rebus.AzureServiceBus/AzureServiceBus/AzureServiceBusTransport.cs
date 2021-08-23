@@ -120,21 +120,21 @@ namespace Rebus.AzureServiceBus
             else
             {
                 // detect Authentication=Managed Identity
-                if (_connectionStringParser.Contains("Authentication", "Managed Identity", StringComparison.OrdinalIgnoreCase))
-                {
-                    var connectionStringProperties = ServiceBusConnectionStringProperties.Parse(connectionString);
+                //if (_connectionStringParser.Contains("Authentication", "Managed Identity", StringComparison.OrdinalIgnoreCase))
+                //{
+                //    var connectionStringProperties = ServiceBusConnectionStringProperties.Parse(connectionString);
 
-                    _tokenCredential = new ManagedIdentityCredential();
-                    _client = new ServiceBusClient(connectionStringProperties.FullyQualifiedNamespace, _tokenCredential, clientOptions);
-                    _managementClient = new ServiceBusAdministrationClient(connectionStringProperties.FullyQualifiedNamespace, _tokenCredential);
-                }
-                else
-                {
-                    var connectionStringWithoutEntityPath = _connectionStringParser.GetConnectionStringWithoutEntityPath();
+                //    _tokenCredential = new ManagedIdentityCredential();
+                //    _client = new ServiceBusClient(connectionStringProperties.FullyQualifiedNamespace, _tokenCredential, clientOptions);
+                //    _managementClient = new ServiceBusAdministrationClient(connectionStringProperties.FullyQualifiedNamespace, _tokenCredential);
+                //}
+                //else
+                //{
+                var connectionStringWithoutEntityPath = _connectionStringParser.GetConnectionStringWithoutEntityPath();
 
-                    _client = new ServiceBusClient(connectionStringWithoutEntityPath, clientOptions);
-                    _managementClient = new ServiceBusAdministrationClient(connectionStringWithoutEntityPath);
-                }
+                _client = new ServiceBusClient(connectionStringWithoutEntityPath, clientOptions);
+                _managementClient = new ServiceBusAdministrationClient(connectionStringWithoutEntityPath);
+                //}
             }
 
             _messageLockRenewalTask = asyncTaskFactory.Create("Peek Lock Renewal", RenewPeekLocks, prettyInsignificant: true, intervalSeconds: 10);
