@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Core;
-using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
 using Rebus.AzureServiceBus.NameFormat;
@@ -113,7 +112,7 @@ namespace Rebus.AzureServiceBus
             if (tokenCredential != null)
             {
                 var connectionStringProperties = ServiceBusConnectionStringProperties.Parse(connectionString);
-                _managementClient = new ServiceBusAdministrationClient(connectionString, tokenCredential);
+                _managementClient = new ServiceBusAdministrationClient(connectionStringProperties.FullyQualifiedNamespace, tokenCredential);
                 _client = new ServiceBusClient(connectionStringProperties.FullyQualifiedNamespace, _tokenCredential, clientOptions);
                 _tokenCredential = tokenCredential;
             }

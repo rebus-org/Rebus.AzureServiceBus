@@ -113,7 +113,7 @@
 * Port to new Azure Service Bus driver (Azure.Messaging.ServiceBus) - thanks [binick]
 * Use the new driver's built-in ability to create message batches
 
-## 9.0.3
+## 9.0.4
 * Update Azure Service Bus driver
 
 
