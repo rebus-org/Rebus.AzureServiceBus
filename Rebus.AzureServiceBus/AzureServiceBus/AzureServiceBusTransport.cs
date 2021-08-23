@@ -789,7 +789,17 @@ namespace Rebus.AzureServiceBus
 
             _messageReceiver = _client.CreateReceiver(Address, receiverOptions);
 
-            _disposables.Push(_messageReceiver.AsDisposable(m => AsyncHelpers.RunSync(async () => await m.CloseAsync(_cancellationToken).ConfigureAwait(false))));
+            _disposables.Push(_messageReceiver.AsDisposable(m => AsyncHelpers.RunSync(async () =>
+            {
+                try
+                {
+                    await m.CloseAsync(_cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (_cancellationToken.IsCancellationRequested)
+                {
+                    // we're being cancelled
+                }
+            })));
 
             if (AutomaticallyRenewPeekLock)
             {
@@ -888,10 +898,14 @@ namespace Rebus.AzureServiceBus
         /// </summary>
         public void Dispose()
         {
+            var disposables = new List<IDisposable>();
+
             while (_disposables.TryPop(out var disposable))
             {
-                disposable.Dispose();
+                disposables.Add(disposable);
             }
+
+            Parallel.ForEach(disposables, d => d.Dispose());
         }
 
         void PurgeQueue(string queueName)
@@ -911,11 +925,19 @@ namespace Rebus.AzureServiceBus
         {
             return _messageSenders.GetOrAdd(queue, _ =>
             {
-                var connectionString = _connectionStringParser.GetConnectionStringWithoutEntityPath();
-
                 var messageSender = _client.CreateSender(queue);
 
-                _disposables.Push(messageSender.AsDisposable(t => AsyncHelpers.RunSync(async () => await t.CloseAsync(_cancellationToken).ConfigureAwait(false))));
+                _disposables.Push(messageSender.AsDisposable(t => AsyncHelpers.RunSync(async () =>
+                {
+                    try
+                    {
+                        await t.CloseAsync(_cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException) when (_cancellationToken.IsCancellationRequested)
+                    {
+                        // we're being cancelled
+                    }
+                })));
 
                 return messageSender;
             });
