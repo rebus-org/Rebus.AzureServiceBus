@@ -47,7 +47,7 @@ namespace Rebus.AzureServiceBus
         /// </summary>
         public const string MagicDeferredMessagesAddress = "___deferred___";
 
-        static readonly ServiceBusRetryOptions DefaultRetryStrategy = new ServiceBusRetryOptions
+        static readonly ServiceBusRetryOptions DefaultRetryStrategy = new()
         {
             Mode = ServiceBusRetryMode.Exponential,
             Delay = TimeSpan.FromMilliseconds(100),
@@ -56,10 +56,11 @@ namespace Rebus.AzureServiceBus
         };
 
         readonly ExceptionIgnorant _subscriptionExceptionIgnorant = new ExceptionIgnorant(maxAttemps: 10).Ignore<ServiceBusException>(ex => ex.IsTransient);
-        readonly ConcurrentStack<IDisposable> _disposables = new ConcurrentStack<IDisposable>();
-        readonly ConcurrentDictionary<string, MessageLockRenewer> _messageLockRenewers = new ConcurrentDictionary<string, MessageLockRenewer>();
-        readonly ConcurrentDictionary<string, string[]> _cachedSubscriberAddresses = new ConcurrentDictionary<string, string[]>();
-        readonly ConcurrentDictionary<string, ServiceBusSender> _messageSenders = new ConcurrentDictionary<string, ServiceBusSender>();
+        readonly ConcurrentStack<IDisposable> _disposables = new();
+        readonly ConcurrentDictionary<string, MessageLockRenewer> _messageLockRenewers = new();
+        readonly ConcurrentDictionary<string, string[]> _cachedSubscriberAddresses = new();
+        readonly ConcurrentDictionary<string, Lazy<ServiceBusSender>> _messageSenders = new();
+        readonly ConcurrentDictionary<string, Lazy<Task<ServiceBusSender>>> _topicClients = new();
         readonly CancellationToken _cancellationToken;
         readonly IAsyncTask _messageLockRenewalTask;
         readonly ServiceBusAdministrationClient _managementClient;
@@ -920,13 +921,33 @@ namespace Rebus.AzureServiceBus
             }
         }
 
-        ServiceBusSender GetMessageSender(string queue)
+        ServiceBusSender GetMessageSender(string queue) => _messageSenders.GetOrAdd(queue, _ => new(() =>
         {
-            return _messageSenders.GetOrAdd(queue, _ =>
-            {
-                var messageSender = _client.CreateSender(queue);
+            var messageSender = _client.CreateSender(queue);
 
-                _disposables.Push(messageSender.AsDisposable(t => AsyncHelpers.RunSync(async () =>
+            _disposables.Push(messageSender.AsDisposable(t => AsyncHelpers.RunSync(async () =>
+            {
+                try
+                {
+                    await t.CloseAsync(_cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (_cancellationToken.IsCancellationRequested)
+                {
+                    // we're being cancelled
+                }
+            })));
+
+            return messageSender;
+
+        })).Value;
+
+        async Task<ServiceBusSender> GetTopicClient(string topic) => await _topicClients.GetOrAdd(topic, _ => new(async () =>
+            {
+                await EnsureTopicExists(topic);
+
+                var topicClient = _client.CreateSender(topic);
+
+                _disposables.Push(topicClient.AsDisposable(t => AsyncHelpers.RunSync(async () =>
                 {
                     try
                     {
@@ -934,33 +955,12 @@ namespace Rebus.AzureServiceBus
                     }
                     catch (OperationCanceledException) when (_cancellationToken.IsCancellationRequested)
                     {
-                        // we're being cancelled
+                        // it's ok
                     }
                 })));
 
-                return messageSender;
-            });
-        }
-
-        async Task<ServiceBusSender> GetTopicClient(string topic)
-        {
-            async Task<ServiceBusSender> InitializeTopicClient()
-            {
-                await EnsureTopicExists(topic);
-
-                var topicClient = _client.CreateSender(topic);
-                //_disposables.Push(topicClient.AsDisposable(t => AsyncHelpers.RunSync(async () => await t.CloseAsync().ConfigureAwait(false))));
                 return topicClient;
-            }
-
-            return await InitializeTopicClient();
-
-            // TODO: All client has been converged into ServiceBusClient, so just put ServiceBusClient into disposable context satisfy the requirements.
-
-            // Task.Run executes InitializeTopicClient on a threadpool thread, this avoids a potential deadlock in legacy ASP.net
-            //var lazy = _topicClients.GetOrAdd(topic, _ => new Lazy<Task<TopicClient>>(() => Task.Run(InitializeTopicClient, _cancellationToken)));
-            //var task = lazy.Value;
-        }
+            })).Value;
 
         async Task RenewPeekLocks()
         {

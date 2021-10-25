@@ -116,6 +116,9 @@
 ## 9.0.5
 * Update Azure Service Bus driver
 
+## 9.0.6
+* Fix bug that would result in creating massive amounts of topic client message senders, which would never be disposed
+
 
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick
