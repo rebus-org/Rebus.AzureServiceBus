@@ -53,7 +53,7 @@ namespace Rebus.Config
                         messageId = "<unknown>";
                     }
 
-                    _log.Error(exception, "Dead-lettering message with ID {messageId}", messageId);
+                    _log.Error(exception, "Dead-lettering message with ID {messageId}, reason={deadLetterReason}", messageId, deadLetterReason);
                     await messageReceiver.DeadLetterMessageAsync(message, deadLetterReason, deadLetterErrorDescription);
 
                     // remove the message from the context, so the transport doesn't try to complete the message
