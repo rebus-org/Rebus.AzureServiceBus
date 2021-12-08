@@ -5,6 +5,7 @@ using Rebus.Internals;
 using Rebus.Messages;
 using Rebus.Retry;
 using Rebus.Transport;
+using Rebus.Logging;
 
 namespace Rebus.Config
 {
@@ -20,14 +21,19 @@ namespace Rebus.Config
         {
             configurer
                 .OtherService<IErrorHandler>()
-                .Decorate(c => new BuiltInDeadletteringErrorHandler(c.Get<IErrorHandler>()));
+                .Decorate(c => new BuiltInDeadletteringErrorHandler(c.Get<IErrorHandler>(), c.Get<IRebusLoggerFactory>()));
         }
 
         class BuiltInDeadletteringErrorHandler : IErrorHandler
         {
             readonly IErrorHandler _errorHandler;
+            private readonly ILog _log;
 
-            public BuiltInDeadletteringErrorHandler(IErrorHandler errorHandler) => _errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
+            public BuiltInDeadletteringErrorHandler(IErrorHandler errorHandler, IRebusLoggerFactory rebusLoggerFactory)
+            {
+                _errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
+                _log = rebusLoggerFactory?.GetLogger<BuiltInDeadletteringErrorHandler>() ?? throw new ArgumentNullException(nameof(rebusLoggerFactory));
+            }
 
             public async Task HandlePoisonMessage(TransportMessage transportMessage, ITransactionContext transactionContext, Exception exception)
             {
@@ -42,6 +48,12 @@ namespace Rebus.Config
                     var deadLetterErrorDescription = exception.ToString().TrimTo(maxLength: headerValueMaxLength);
                     var lockToken = message.LockToken;
 
+                    if (!transportMessage.Headers.TryGetValue(Headers.MessageId, out var messageId))
+                    {
+                        messageId = "<unknown>";
+                    }
+
+                    _log.Error(exception, "Dead-lettering message with ID {messageId}", messageId);
                     await messageReceiver.DeadLetterMessageAsync(message, deadLetterReason, deadLetterErrorDescription);
 
                     // remove the message from the context, so the transport doesn't try to complete the message
