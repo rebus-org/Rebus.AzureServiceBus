@@ -119,11 +119,14 @@
 ## 9.0.6
 * Fix bug that would result in creating massive amounts of topic client message senders, which would never be disposed
 
+## 9.0.7
+* Log it when using Azure Service Bus' built-in dead-lettering on a message - thanks [hjalle]
 
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick
 [eeskildsen]: https://github.com/eeskildsen
 [ehabelgindy]: https://github.com/ehabelgindy
+[hjalle]: https://github.com/hjalle
 [jr01]: https://github.com/jr01
 [lezzi]: https://github.com/lezzi
 [Meyce]: https://github.com/Meyce
