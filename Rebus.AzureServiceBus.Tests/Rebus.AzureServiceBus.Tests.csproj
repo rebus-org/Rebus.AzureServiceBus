@@ -5,28 +5,8 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Rebus.AzureServiceBus.Tests</RootNamespace>
     <AssemblyName>Rebus.AzureServiceBus.Tests</AssemblyName>
-    <TargetFramework>net50</TargetFramework>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <LangVersion>latest</LangVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>RELEASE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <WarningsAsErrors />
+    <TargetFramework>net60</TargetFramework>
+    <LangVersion>10</LangVersion>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\Rebus.AzureServiceBus\Internals\AsyncHelpers.cs" Link="Links\AsyncHelpers.cs" />
@@ -35,9 +15,9 @@
     <Compile Include="..\Rebus.AzureServiceBus\Internals\ManagementExtensions.cs" Link="Links\ManagementExtensions.cs" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="microsoft.net.test.sdk" Version="16.11.0" />
+    <PackageReference Include="microsoft.net.test.sdk" Version="17.0.0" />
     <PackageReference Include="nunit" Version="3.13.2" />
-    <PackageReference Include="NUnit3TestAdapter" Version="4.0.0">
+    <PackageReference Include="NUnit3TestAdapter" Version="4.2.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>

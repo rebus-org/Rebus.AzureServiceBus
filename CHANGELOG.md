@@ -122,6 +122,9 @@
 ## 9.0.7
 * Log it when using Azure Service Bus' built-in dead-lettering on a message - thanks [hjalle]
 
+## 9.0.8
+* Update Azure.Messaging.ServiceBus dependency to 7.5.1
+
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick
 [eeskildsen]: https://github.com/eeskildsen
