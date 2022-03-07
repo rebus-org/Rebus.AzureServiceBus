@@ -1,63 +1,62 @@
 ﻿using System.Linq;
 
-namespace Rebus.AzureServiceBus.NameFormat
+namespace Rebus.AzureServiceBus.NameFormat;
+
+/// <summary>
+/// A formatter that formats queue, topic and subscription names using a default convention.
+/// </summary>
+public class DefaultNameFormatter : INameFormatter
 {
+    readonly char[] _additionalValidCharacters;
+
     /// <summary>
-    /// A formatter that formats queue, topic and subscription names using a default convention.
+    /// Creates the name formatter.
     /// </summary>
-    public class DefaultNameFormatter : INameFormatter
+    public DefaultNameFormatter()
     {
-        readonly char[] _additionalValidCharacters;
+        _additionalValidCharacters = new[] { '.', '-', '_' };
+    }
 
-        /// <summary>
-        /// Creates the name formatter.
-        /// </summary>
-        public DefaultNameFormatter()
+    private string ReplaceInvalidCharacters(string str)
+    {
+        var name = string.Concat(str.Select(c =>
         {
-            _additionalValidCharacters = new[] { '.', '-', '_' };
-        }
+            if (c == '/') return '/';
 
-        private string ReplaceInvalidCharacters(string str)
-        {
-            var name = string.Concat(str.Select(c =>
-            {
-                if (c == '/') return '/';
+            return IsValidCharacter(c) ? c : '_';
+        }));
 
-                return IsValidCharacter(c) ? c : '_';
-            }));
+        return name;
+    }
 
-            return name;
-        }
+    bool IsValidCharacter(char c)
+    {
+        return char.IsLetterOrDigit(c)
+               || _additionalValidCharacters.Contains(c);
+    }
 
-        bool IsValidCharacter(char c)
-        {
-            return char.IsLetterOrDigit(c)
-                   || _additionalValidCharacters.Contains(c);
-        }
+    /// <summary>
+    /// Formats the queue name into a usable name on ASB, normalizing if needed.
+    /// </summary>
+    public string FormatQueueName(string queueName)
+    {
+        return ReplaceInvalidCharacters(queueName);
+    }
 
-        /// <summary>
-        /// Formats the queue name into a usable name on ASB, normalizing if needed.
-        /// </summary>
-        public string FormatQueueName(string queueName)
-        {
-            return ReplaceInvalidCharacters(queueName);
-        }
+    /// <summary>
+    /// Formats the subscription name into a usable name on ASB, normalizing if needed.
+    /// </summary>
+    public string FormatSubscriptionName(string subscriptionName)
+    {
+        // queue names can have multiple segments in them separated by / - subscription names cannot!
+        return ReplaceInvalidCharacters(subscriptionName.Replace("/", "_"));
+    }
 
-        /// <summary>
-        /// Formats the subscription name into a usable name on ASB, normalizing if needed.
-        /// </summary>
-        public string FormatSubscriptionName(string subscriptionName)
-        {
-            // queue names can have multiple segments in them separated by / - subscription names cannot!
-            return ReplaceInvalidCharacters(subscriptionName.Replace("/", "_"));
-        }
-
-        /// <summary>
-        /// Formats the topic name into a usable name on ASB, normalizing if needed.
-        /// </summary>
-        public string FormatTopicName(string topicName)
-        {
-            return ReplaceInvalidCharacters(topicName);
-        }
+    /// <summary>
+    /// Formats the topic name into a usable name on ASB, normalizing if needed.
+    /// </summary>
+    public string FormatTopicName(string topicName)
+    {
+        return ReplaceInvalidCharacters(topicName);
     }
 }

@@ -10,49 +10,48 @@ using Rebus.Tests.Contracts.Extensions;
 
 #pragma warning disable 1998
 
-namespace Rebus.AzureServiceBus.Tests.Bugs
+namespace Rebus.AzureServiceBus.Tests.Bugs;
+
+[TestFixture]
+public class VerifyTopicsCanHaveSlashesInThem : FixtureBase
 {
-    [TestFixture]
-    public class VerifyTopicsCanHaveSlashesInThem : FixtureBase
+    [Test]
+    public async Task ItsTrueTheyCan()
     {
-        [Test]
-        public async Task ItsTrueTheyCan()
+        var queueName = TestConfig.GetName("topics-with-slashes");
+        const string topicNameWithSlash = "primitives/string";
+
+        Using(new TopicDeleter(topicNameWithSlash));
+        Using(new QueueDeleter(queueName));
+
+        var activator = new BuiltinHandlerActivator();
+
+        Using(activator);
+
+        var gotTheString = new ManualResetEvent(false);
+
+        activator.Handle<string>(async message =>
         {
-            var queueName = TestConfig.GetName("topics-with-slashes");
-            const string topicNameWithSlash = "primitives/string";
+            gotTheString.Set();
+        });
 
-            Using(new TopicDeleter(topicNameWithSlash));
-            Using(new QueueDeleter(queueName));
+        var bus = Configure.With(activator)
+            .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName))
+            .Start();
 
-            var activator = new BuiltinHandlerActivator();
+        await bus.Advanced.Topics.Subscribe(topicNameWithSlash);
 
-            Using(activator);
+        await bus.Advanced.Topics.Publish(topicNameWithSlash, "WHOA DET VIRKER!!");
 
-            var gotTheString = new ManualResetEvent(false);
-
-            activator.Handle<string>(async message =>
-            {
-                gotTheString.Set();
-            });
-
-            var bus = Configure.With(activator)
-                .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName))
-                .Start();
-
-            await bus.Advanced.Topics.Subscribe(topicNameWithSlash);
-
-            await bus.Advanced.Topics.Publish(topicNameWithSlash, "WHOA DET VIRKER!!");
-
-            gotTheString.WaitOrDie(TimeSpan.FromSeconds(5));
+        gotTheString.WaitOrDie(TimeSpan.FromSeconds(5));
 
 
 
-            // make a final verification: the topic has a / in it
+        // make a final verification: the topic has a / in it
 
-            var managementClient = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
-            var topicDescription = await managementClient.GetTopicAsync(topicNameWithSlash);
+        var managementClient = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
+        var topicDescription = await managementClient.GetTopicAsync(topicNameWithSlash);
 
-            Assert.That(topicDescription.Value.Name, Contains.Substring(topicNameWithSlash));
-        }
+        Assert.That(topicDescription.Value.Name, Contains.Substring(topicNameWithSlash));
     }
 }

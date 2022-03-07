@@ -3,36 +3,35 @@ using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
 using Rebus.Internals;
 
-namespace Rebus.AzureServiceBus.Tests.Bugs
+namespace Rebus.AzureServiceBus.Tests.Bugs;
+
+public class TopicDeleter : IDisposable
 {
-    public class TopicDeleter : IDisposable
+    readonly string _topicName;
+
+    public TopicDeleter(string topicName)
     {
-        readonly string _topicName;
+        _topicName = topicName;
+    }
 
-        public TopicDeleter(string topicName)
+    public void Dispose()
+    {
+        var managementClient = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
+
+        AsyncHelpers.RunSync(async () =>
         {
-            _topicName = topicName;
-        }
-
-        public void Dispose()
-        {
-            var managementClient = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
-
-            AsyncHelpers.RunSync(async () =>
+            try
             {
-                try
-                {
-                    var topicDescription = await managementClient.GetTopicAsync(_topicName);
+                var topicDescription = await managementClient.GetTopicAsync(_topicName);
 
-                    await managementClient.DeleteTopicAsync(topicDescription.Value.Name);
+                await managementClient.DeleteTopicAsync(topicDescription.Value.Name);
 
-                    Console.WriteLine($"Deleted topic '{_topicName}'");
-                }
-                catch (ServiceBusException)
-                {
-                    // it's ok
-                }
-            });
-        }
+                Console.WriteLine($"Deleted topic '{_topicName}'");
+            }
+            catch (ServiceBusException)
+            {
+                // it's ok
+            }
+        });
     }
 }

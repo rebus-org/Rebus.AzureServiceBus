@@ -6,28 +6,27 @@ using Rebus.Tests.Contracts;
 using Rebus.Threading.TaskParallelLibrary;
 #pragma warning disable 1998
 
-namespace Rebus.AzureServiceBus.Tests.Bugs
+namespace Rebus.AzureServiceBus.Tests.Bugs;
+
+[TestFixture]
+public class VerifyAssumptionAboutDisposingAsyncTaskMultipleTimes : FixtureBase
 {
-    [TestFixture]
-    public class VerifyAssumptionAboutDisposingAsyncTaskMultipleTimes : FixtureBase
+    [Test]
+    public async Task NoProblem()
     {
-        [Test]
-        public async Task NoProblem()
-        {
-            var consoleLoggerFactory = new ConsoleLoggerFactory(colored: false);
-            var factory = new TplAsyncTaskFactory(consoleLoggerFactory);
-            var logger = consoleLoggerFactory.GetLogger<VerifyAssumptionAboutDisposingAsyncTaskMultipleTimes>();
-            var task = factory.Create("test-task", intervalSeconds: 1, action: async () => logger.Info("Called back"));
+        var consoleLoggerFactory = new ConsoleLoggerFactory(colored: false);
+        var factory = new TplAsyncTaskFactory(consoleLoggerFactory);
+        var logger = consoleLoggerFactory.GetLogger<VerifyAssumptionAboutDisposingAsyncTaskMultipleTimes>();
+        var task = factory.Create("test-task", intervalSeconds: 1, action: async () => logger.Info("Called back"));
 
-            task.Start();
+        task.Start();
 
-            await Task.Delay(TimeSpan.FromSeconds(4));
+        await Task.Delay(TimeSpan.FromSeconds(4));
 
-            task.Dispose();
-            task.Dispose();
-            task.Dispose();
-            task.Dispose();
-        }
-        
+        task.Dispose();
+        task.Dispose();
+        task.Dispose();
+        task.Dispose();
     }
+        
 }

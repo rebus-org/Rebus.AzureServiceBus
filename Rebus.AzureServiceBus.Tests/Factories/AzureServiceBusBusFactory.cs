@@ -10,52 +10,51 @@ using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Transports;
 using Rebus.Threading.TaskParallelLibrary;
 
-namespace Rebus.AzureServiceBus.Tests.Factories
+namespace Rebus.AzureServiceBus.Tests.Factories;
+
+public class AzureServiceBusBusFactory : IBusFactory
 {
-    public class AzureServiceBusBusFactory : IBusFactory
+    readonly List<IDisposable> _stuffToDispose = new List<IDisposable>();
+
+    public IBus GetBus<TMessage>(string inputQueueAddress, Func<TMessage, Task> handler)
     {
-        readonly List<IDisposable> _stuffToDispose = new List<IDisposable>();
+        var builtinHandlerActivator = new BuiltinHandlerActivator();
 
-        public IBus GetBus<TMessage>(string inputQueueAddress, Func<TMessage, Task> handler)
-        {
-            var builtinHandlerActivator = new BuiltinHandlerActivator();
+        builtinHandlerActivator.Handle(handler);
 
-            builtinHandlerActivator.Handle(handler);
+        var queueName = TestConfig.GetName(inputQueueAddress);
 
-            var queueName = TestConfig.GetName(inputQueueAddress);
+        PurgeQueue(queueName);
 
-            PurgeQueue(queueName);
-
-            var bus = Configure.With(builtinHandlerActivator)
-                .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName))
-                .Options(o =>
-                {
-                    o.SetNumberOfWorkers(10);
-                    o.SetMaxParallelism(10);
-                })
-                .Start();
-
-            _stuffToDispose.Add(bus);
-
-            return bus;
-        }
-
-        static void PurgeQueue(string queueName)
-        {
-            var consoleLoggerFactory = new ConsoleLoggerFactory(false);
-            var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
-            var connectionString = AsbTestConfig.ConnectionString;
-
-            using (var transport = new AzureServiceBusTransport(connectionString, queueName, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter()))
+        var bus = Configure.With(builtinHandlerActivator)
+            .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName))
+            .Options(o =>
             {
-                transport.PurgeInputQueue();
-            }
-        }
+                o.SetNumberOfWorkers(10);
+                o.SetMaxParallelism(10);
+            })
+            .Start();
 
-        public void Cleanup()
+        _stuffToDispose.Add(bus);
+
+        return bus;
+    }
+
+    static void PurgeQueue(string queueName)
+    {
+        var consoleLoggerFactory = new ConsoleLoggerFactory(false);
+        var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
+        var connectionString = AsbTestConfig.ConnectionString;
+
+        using (var transport = new AzureServiceBusTransport(connectionString, queueName, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter()))
         {
-            _stuffToDispose.ForEach(d => d.Dispose());
-            _stuffToDispose.Clear();
+            transport.PurgeInputQueue();
         }
+    }
+
+    public void Cleanup()
+    {
+        _stuffToDispose.ForEach(d => d.Dispose());
+        _stuffToDispose.Clear();
     }
 }

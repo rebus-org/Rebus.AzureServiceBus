@@ -10,92 +10,91 @@ using Rebus.Tests.Contracts.Transports;
 using Rebus.Threading.TaskParallelLibrary;
 using Rebus.Transport;
 
-namespace Rebus.AzureServiceBus.Tests.Factories
+namespace Rebus.AzureServiceBus.Tests.Factories;
+
+public class AzureServiceBusTransportFactory : ITransportFactory
 {
-    public class AzureServiceBusTransportFactory : ITransportFactory
+    readonly Dictionary<string, AzureServiceBusTransport> _queuesToDelete = new Dictionary<string, AzureServiceBusTransport>();
+
+    public ITransport CreateOneWayClient()
     {
-        readonly Dictionary<string, AzureServiceBusTransport> _queuesToDelete = new Dictionary<string, AzureServiceBusTransport>();
+        return Create(null);
+    }
 
-        public ITransport CreateOneWayClient()
+    public ITransport Create(string inputQueueAddress)
+    {
+        var consoleLoggerFactory = new ConsoleLoggerFactory(false);
+        var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
+
+        if (inputQueueAddress == null)
         {
-            return Create(null);
+            var transport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, null, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter());
+
+            transport.Initialize();
+
+            return transport;
         }
 
-        public ITransport Create(string inputQueueAddress)
+        return _queuesToDelete.GetOrAdd(inputQueueAddress, () =>
         {
-            var consoleLoggerFactory = new ConsoleLoggerFactory(false);
-            var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
+            var transport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter());
 
-            if (inputQueueAddress == null)
+            transport.PurgeInputQueue();
+
+            transport.Initialize();
+
+            return transport;
+        });
+    }
+
+    public void CleanUp()
+    {
+        foreach (var key in _queuesToDelete.Keys)
+        {
+            DeleteQueue(key);
+        }
+
+        foreach (var value in _queuesToDelete.Values)
+        {
+            value.Dispose();
+        }
+    }
+
+    public static void DeleteQueue(string queueName)
+    {
+        AsyncHelpers.RunSync(async () =>
+        {
+            var managementClient = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
+
+            try
             {
-                var transport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, null, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter());
-
-                transport.Initialize();
-
-                return transport;
+                Console.Write("Deleting ASB queue {0}...", queueName);
+                await managementClient.DeleteQueueAsync(queueName);
+                Console.WriteLine("OK!");
             }
-
-            return _queuesToDelete.GetOrAdd(inputQueueAddress, () =>
+            catch (ServiceBusException)
             {
-                var transport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter());
-
-                transport.PurgeInputQueue();
-
-                transport.Initialize();
-
-                return transport;
-            });
-        }
-
-        public void CleanUp()
-        {
-            foreach (var key in _queuesToDelete.Keys)
-            {
-                DeleteQueue(key);
+                Console.WriteLine("OK (was not there)");
             }
+        });
+    }
 
-            foreach (var value in _queuesToDelete.Values)
+    public static void DeleteTopic(string topic)
+    {
+        AsyncHelpers.RunSync(async () =>
+        {
+            var managementClient = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
+
+            try
             {
-                value.Dispose();
+                Console.Write("Deleting topic '{0}' ...", topic);
+                await managementClient.DeleteTopicAsync(topic);
+                Console.WriteLine("OK!");
             }
-        }
-
-        public static void DeleteQueue(string queueName)
-        {
-            AsyncHelpers.RunSync(async () =>
+            catch (ServiceBusException)
             {
-                var managementClient = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
-
-                try
-                {
-                    Console.Write("Deleting ASB queue {0}...", queueName);
-                    await managementClient.DeleteQueueAsync(queueName);
-                    Console.WriteLine("OK!");
-                }
-                catch (ServiceBusException)
-                {
-                    Console.WriteLine("OK (was not there)");
-                }
-            });
-        }
-
-        public static void DeleteTopic(string topic)
-        {
-            AsyncHelpers.RunSync(async () =>
-            {
-                var managementClient = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
-
-                try
-                {
-                    Console.Write("Deleting topic '{0}' ...", topic);
-                    await managementClient.DeleteTopicAsync(topic);
-                    Console.WriteLine("OK!");
-                }
-                catch (ServiceBusException)
-                {
-                    Console.WriteLine("OK! (wasn't even there)");
-                }
-            });
-        }
+                Console.WriteLine("OK! (wasn't even there)");
+            }
+        });
     }
 }

@@ -1,46 +1,42 @@
 ﻿using System;
-using System.Linq;
 using Azure.Messaging.ServiceBus;
 using NUnit.Framework;
 using Rebus.Activation;
-using Rebus.AzureServiceBus.Tests.Factories;
 using Rebus.Config;
 using Rebus.Exceptions;
-using Rebus.Tests;
 using Rebus.Tests.Contracts;
 
-namespace Rebus.AzureServiceBus.Tests
+namespace Rebus.AzureServiceBus.Tests;
+
+[TestFixture]
+public class FailsWhenSendingToNonExistentQueue : FixtureBase
 {
-    [TestFixture]
-    public class FailsWhenSendingToNonExistentQueue : FixtureBase
+    static readonly string ConnectionString = AsbTestConfig.ConnectionString;
+
+    [Test]
+    public void YesItDoes()
     {
-        static readonly string ConnectionString = AsbTestConfig.ConnectionString;
+        var activator = new BuiltinHandlerActivator();
 
-        [Test]
-        public void YesItDoes()
+        Using(activator);
+
+        Configure.With(activator)
+            .Transport(t => t.UseAzureServiceBus(ConnectionString, "bimmelim"))
+            .Start();
+
+        var exception = Assert.ThrowsAsync<RebusApplicationException>(async () =>
         {
-            var activator = new BuiltinHandlerActivator();
+            await activator.Bus.Advanced.Routing.Send("yunoexist", "hej med dig min ven!");
+        });
 
-            Using(activator);
+        Console.WriteLine(exception);
 
-            Configure.With(activator)
-                .Transport(t => t.UseAzureServiceBus(ConnectionString, "bimmelim"))
-                .Start();
+        var notFoundException = (ServiceBusException) exception.InnerException;
 
-            var exception = Assert.ThrowsAsync<RebusApplicationException>(async () =>
-            {
-                await activator.Bus.Advanced.Routing.Send("yunoexist", "hej med dig min ven!");
-            });
+        Console.WriteLine(notFoundException);
 
-            Console.WriteLine(exception);
-
-            var notFoundException = (ServiceBusException) exception.InnerException;
-
-            Console.WriteLine(notFoundException);
-
-            var bimse = notFoundException.ToString();
+        var bimse = notFoundException.ToString();
 
 
-        }
     }
 }

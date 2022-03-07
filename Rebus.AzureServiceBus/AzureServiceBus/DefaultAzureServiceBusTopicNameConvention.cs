@@ -2,39 +2,38 @@
 using Rebus.Extensions;
 using Rebus.Topic;
 
-namespace Rebus.AzureServiceBus
+namespace Rebus.AzureServiceBus;
+
+/// <summary>
+/// Helper responsible for implementing how various names turn out
+/// </summary>
+public class DefaultAzureServiceBusTopicNameConvention : ITopicNameConvention
 {
+    readonly bool _useLegacyNaming;
+
     /// <summary>
-    /// Helper responsible for implementing how various names turn out
+    /// Creates the name helper, using legacy topic naming if <paramref name="useLegacyNaming"/> is true.
     /// </summary>
-    public class DefaultAzureServiceBusTopicNameConvention : ITopicNameConvention
+    public DefaultAzureServiceBusTopicNameConvention(bool useLegacyNaming = false)
     {
-        readonly bool _useLegacyNaming;
+        _useLegacyNaming = useLegacyNaming;
+    }
 
-        /// <summary>
-        /// Creates the name helper, using legacy topic naming if <paramref name="useLegacyNaming"/> is true.
-        /// </summary>
-        public DefaultAzureServiceBusTopicNameConvention(bool useLegacyNaming = false)
+    /// <summary>
+    /// Gets a topic name from the given <paramref name="eventType"/>
+    /// </summary>
+    public string GetTopic(Type eventType)
+    {
+        if (!_useLegacyNaming)
         {
-            _useLegacyNaming = useLegacyNaming;
+            var assemblyName = eventType.Assembly.GetName().Name;
+            var typeName = eventType.FullName;
+
+            return $"{assemblyName}/{typeName}";
         }
 
-        /// <summary>
-        /// Gets a topic name from the given <paramref name="eventType"/>
-        /// </summary>
-        public string GetTopic(Type eventType)
-        {
-            if (!_useLegacyNaming)
-            {
-                var assemblyName = eventType.Assembly.GetName().Name;
-                var typeName = eventType.FullName;
+        var simpleAssemblyQualifiedName = eventType.GetSimpleAssemblyQualifiedName();
 
-                return $"{assemblyName}/{typeName}";
-            }
-
-            var simpleAssemblyQualifiedName = eventType.GetSimpleAssemblyQualifiedName();
-
-            return simpleAssemblyQualifiedName;
-        }
+        return simpleAssemblyQualifiedName;
     }
 }

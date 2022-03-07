@@ -1,18 +1,15 @@
-﻿using System.Linq;
+﻿namespace Rebus.Internals;
 
-namespace Rebus.Internals
+static class StringExtensions
 {
-    static class StringExtensions
+    public static string TrimTo(this string str, int maxLength)
     {
-        public static string TrimTo(this string str, int maxLength)
-        {
-            if (str == null) return null;
+        if (str == null) return null;
 
-            if (str.Length < maxLength) return str;
+        if (str.Length < maxLength) return str;
 
-            const string ellipsis = " (...)";
+        const string ellipsis = " (...)";
 
-            return string.Concat(str.Substring(0, maxLength - ellipsis.Length), ellipsis);
-        }
+        return string.Concat(str.Substring(0, maxLength - ellipsis.Length), ellipsis);
     }
 }

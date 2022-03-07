@@ -9,12 +9,6 @@
     <LangVersion>10</LangVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\Rebus.AzureServiceBus\Internals\AsyncHelpers.cs" Link="Links\AsyncHelpers.cs" />
-    <Compile Include="..\Rebus.AzureServiceBus\Internals\EnumerableExtensions.cs" Link="Links\EnumerableExtensions.cs" />
-    <Compile Include="..\Rebus.AzureServiceBus\Internals\ExceptionIgnorant.cs" Link="Links\ExceptionIgnorant.cs" />
-    <Compile Include="..\Rebus.AzureServiceBus\Internals\ManagementExtensions.cs" Link="Links\ManagementExtensions.cs" />
-  </ItemGroup>
-  <ItemGroup>
     <PackageReference Include="microsoft.net.test.sdk" Version="17.0.0" />
     <PackageReference Include="nunit" Version="3.13.2" />
     <PackageReference Include="NUnit3TestAdapter" Version="4.2.0">

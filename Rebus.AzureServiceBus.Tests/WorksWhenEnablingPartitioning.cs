@@ -8,38 +8,37 @@ using Rebus.Tests.Contracts.Utilities;
 
 #pragma warning disable 1998
 
-namespace Rebus.AzureServiceBus.Tests
+namespace Rebus.AzureServiceBus.Tests;
+
+[TestFixture]
+public class WorksWhenEnablingPartitioning : FixtureBase
 {
-    [TestFixture]
-    public class WorksWhenEnablingPartitioning : FixtureBase
+    readonly string _queueName = TestConfig.GetName("input");
+    readonly string _connectionString = AsbTestConfig.ConnectionString;
+
+    [Test]
+    public async Task YesItDoes()
     {
-        readonly string _queueName = TestConfig.GetName("input");
-        readonly string _connectionString = AsbTestConfig.ConnectionString;
-
-        [Test]
-        public async Task YesItDoes()
+        using (var activator = new BuiltinHandlerActivator())
         {
-            using (var activator = new BuiltinHandlerActivator())
-            {
-                var counter = new SharedCounter(1);
+            var counter = new SharedCounter(1);
 
-                Using(counter);
+            Using(counter);
 
-                activator.Handle<string>(async str => counter.Decrement());
+            activator.Handle<string>(async str => counter.Decrement());
 
-                var bus = Configure.With(activator)
-                    .Transport(t => t.UseAzureServiceBus(_connectionString, _queueName).EnablePartitioning())
-                    .Start();
+            var bus = Configure.With(activator)
+                .Transport(t => t.UseAzureServiceBus(_connectionString, _queueName).EnablePartitioning())
+                .Start();
 
-                await bus.SendLocal("hej med dig min ven!!!");
+            await bus.SendLocal("hej med dig min ven!!!");
 
-                counter.WaitForResetEvent();
-            }
+            counter.WaitForResetEvent();
         }
+    }
 
-        protected override void TearDown()
-        {
-            AzureServiceBusTransportFactory.DeleteQueue(_queueName);
-        }
+    protected override void TearDown()
+    {
+        AzureServiceBusTransportFactory.DeleteQueue(_queueName);
     }
 }

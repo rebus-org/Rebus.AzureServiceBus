@@ -9,48 +9,47 @@ using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
 #pragma warning disable 1998
 
-namespace Rebus.AzureServiceBus.Tests
+namespace Rebus.AzureServiceBus.Tests;
+
+[TestFixture]
+[Ignore("Requires some manual setup")]
+public class SharedAccessSignatureWorks : FixtureBase
 {
-    [TestFixture]
-    [Ignore("Requires some manual setup")]
-    public class SharedAccessSignatureWorks : FixtureBase
-    {
-        /// <summary>
-        /// Intentionally configured to be a const, because the connection string grants access to this queue explicitly
-        /// </summary>
-        const string QueueName = "sastest";
+    /// <summary>
+    /// Intentionally configured to be a const, because the connection string grants access to this queue explicitly
+    /// </summary>
+    const string QueueName = "sastest";
         
-        BuiltinHandlerActivator _server;
+    BuiltinHandlerActivator _server;
 
-        protected override void SetUp()
+    protected override void SetUp()
+    {
+        _server = new BuiltinHandlerActivator();
+
+        Using(_server);
+
+        Configure.With(_server)
+            .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, QueueName))
+            .Start();
+
+    }
+
+    [Test]
+    public async Task CanInitializeOneWayClientWithSasToken()
+    {
+        var gotTheString = new ManualResetEvent(false);
+
+        _server.Handle<string>(async _ => gotTheString.Set());
+
+        var configurer = Configure.With(new BuiltinHandlerActivator())
+            .Transport(t => t.UseAzureServiceBusAsOneWayClient("<insert sas connection string here with SEND claim for the 'sastest' queue>"))
+            .Routing(r => r.TypeBased().Map<string>(QueueName));
+
+        using (var client = configurer.Start())
         {
-            _server = new BuiltinHandlerActivator();
-
-            Using(_server);
-
-            Configure.With(_server)
-                .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, QueueName))
-                .Start();
-
+            await client.Send("HEJ MED DIG MIN VEN");
         }
 
-        [Test]
-        public async Task CanInitializeOneWayClientWithSasToken()
-        {
-            var gotTheString = new ManualResetEvent(false);
-
-            _server.Handle<string>(async _ => gotTheString.Set());
-
-            var configurer = Configure.With(new BuiltinHandlerActivator())
-                .Transport(t => t.UseAzureServiceBusAsOneWayClient("<insert sas connection string here with SEND claim for the 'sastest' queue>"))
-                .Routing(r => r.TypeBased().Map<string>(QueueName));
-
-            using (var client = configurer.Start())
-            {
-                await client.Send("HEJ MED DIG MIN VEN");
-            }
-
-            gotTheString.WaitOrDie(TimeSpan.FromSeconds(5));
-        }
+        gotTheString.WaitOrDie(TimeSpan.FromSeconds(5));
     }
 }

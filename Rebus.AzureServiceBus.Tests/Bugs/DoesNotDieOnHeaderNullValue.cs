@@ -11,43 +11,42 @@ using Rebus.Tests.Contracts.Extensions;
 // ReSharper disable ArgumentsStyleLiteral
 #pragma warning disable 1998
 
-namespace Rebus.AzureServiceBus.Tests.Bugs
+namespace Rebus.AzureServiceBus.Tests.Bugs;
+
+[TestFixture]
+[Description("Verifies that a NULL value present in the headers dictionary => no trouble")]
+public class DoesNotDieOnHeaderNullValue : FixtureBase
 {
-    [TestFixture]
-    [Description("Verifies that a NULL value present in the headers dictionary => no trouble")]
-    public class DoesNotDieOnHeaderNullValue : FixtureBase
+    [Test]
+    public async Task NoItDoesNot()
     {
-        [Test]
-        public async Task NoItDoesNot()
+        var queueName = TestConfig.GetName("not-null");
+
+        Using(new QueueDeleter(queueName));
+
+        var headerKey = Guid.NewGuid().ToString("N");
+        var gotTheMessageAndTheMessageWasGood = new ManualResetEvent(initialState: false);
+        var activator = Using(new BuiltinHandlerActivator());
+
+        activator.Handle<string>(async (bus, context, message) =>
         {
-            var queueName = TestConfig.GetName("not-null");
+            var headers = context.Headers;
 
-            Using(new QueueDeleter(queueName));
-
-            var headerKey = Guid.NewGuid().ToString("N");
-            var gotTheMessageAndTheMessageWasGood = new ManualResetEvent(initialState: false);
-            var activator = Using(new BuiltinHandlerActivator());
-
-            activator.Handle<string>(async (bus, context, message) =>
+            if (headers.TryGetValue(headerKey, out var value)
+                && value == null)
             {
-                var headers = context.Headers;
+                gotTheMessageAndTheMessageWasGood.Set();
+            }
+        });
 
-                if (headers.TryGetValue(headerKey, out var value)
-                    && value == null)
-                {
-                    gotTheMessageAndTheMessageWasGood.Set();
-                }
-            });
+        Configure.With(activator)
+            .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName))
+            .Start();
 
-            Configure.With(activator)
-                .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName))
-                .Start();
+        var problematicHeadersBecauseOfNullValue = new Dictionary<string, string>{{headerKey, null}};
 
-            var problematicHeadersBecauseOfNullValue = new Dictionary<string, string>{{headerKey, null}};
+        await activator.Bus.SendLocal("HEJ MED DIG", problematicHeadersBecauseOfNullValue);
 
-            await activator.Bus.SendLocal("HEJ MED DIG", problematicHeadersBecauseOfNullValue);
-
-            gotTheMessageAndTheMessageWasGood.WaitOrDie(timeout: TimeSpan.FromSeconds(3));
-        }
+        gotTheMessageAndTheMessageWasGood.WaitOrDie(timeout: TimeSpan.FromSeconds(3));
     }
 }

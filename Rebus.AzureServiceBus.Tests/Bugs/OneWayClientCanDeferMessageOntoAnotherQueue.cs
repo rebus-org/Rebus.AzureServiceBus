@@ -13,39 +13,38 @@ using Rebus.Tests.Contracts.Extensions;
 // ReSharper disable ArgumentsStyleLiteral
 #pragma warning disable 1998
 
-namespace Rebus.AzureServiceBus.Tests.Bugs
+namespace Rebus.AzureServiceBus.Tests.Bugs;
+
+[TestFixture]
+public class OneWayClientCanDeferMessageOntoAnotherQueue : FixtureBase
 {
-    [TestFixture]
-    public class OneWayClientCanDeferMessageOntoAnotherQueue : FixtureBase
+    [Test]
+    public async Task ItWorksAsItShould()
     {
-        [Test]
-        public async Task ItWorksAsItShould()
-        {
-            var connectionString = AsbTestConfig.ConnectionString;
-            var queueName = TestConfig.GetName("some-target-queue");
-            var gotTheDeferredMessage = new ManualResetEvent(initialState: false);
+        var connectionString = AsbTestConfig.ConnectionString;
+        var queueName = TestConfig.GetName("some-target-queue");
+        var gotTheDeferredMessage = new ManualResetEvent(initialState: false);
 
-            // start bus instance, which is supposed to receive the deferred message
-            var activator = Using(new BuiltinHandlerActivator());
+        // start bus instance, which is supposed to receive the deferred message
+        var activator = Using(new BuiltinHandlerActivator());
 
-            activator.Handle<DeferredMessage>(async msg => gotTheDeferredMessage.Set());
+        activator.Handle<DeferredMessage>(async msg => gotTheDeferredMessage.Set());
 
-            Configure.With(activator)
-                .Transport(t => t.UseAzureServiceBus(connectionString, queueName))
-                .Start();
+        Configure.With(activator)
+            .Transport(t => t.UseAzureServiceBus(connectionString, queueName))
+            .Start();
 
-            // create one-way client
-            var sender = Configure.With(Using(new BuiltinHandlerActivator()))
-                .Transport(t => t.UseAzureServiceBusAsOneWayClient(connectionString))
-                .Routing(r => r.TypeBased().Map<DeferredMessage>(queueName))
-                .Start();
+        // create one-way client
+        var sender = Configure.With(Using(new BuiltinHandlerActivator()))
+            .Transport(t => t.UseAzureServiceBusAsOneWayClient(connectionString))
+            .Routing(r => r.TypeBased().Map<DeferredMessage>(queueName))
+            .Start();
 
-            await sender.Defer(TimeSpan.FromSeconds(1), new DeferredMessage());
+        await sender.Defer(TimeSpan.FromSeconds(1), new DeferredMessage());
 
-            gotTheDeferredMessage.WaitOrDie(timeout: TimeSpan.FromSeconds(50), 
-                errorMessage: "Did not receive the message within 5 s timeout");
-        }
-
-        class DeferredMessage { }
+        gotTheDeferredMessage.WaitOrDie(timeout: TimeSpan.FromSeconds(50), 
+            errorMessage: "Did not receive the message within 5 s timeout");
     }
+
+    class DeferredMessage { }
 }

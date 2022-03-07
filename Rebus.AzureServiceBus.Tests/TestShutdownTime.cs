@@ -3,40 +3,38 @@ using System.Diagnostics;
 using System.Threading;
 using NUnit.Framework;
 using Rebus.Activation;
-using Rebus.AzureServiceBus.Tests.Factories;
 using Rebus.Config;
 using Rebus.Tests.Contracts;
 
-namespace Rebus.AzureServiceBus.Tests
+namespace Rebus.AzureServiceBus.Tests;
+
+[TestFixture]
+public class TestShutdownTime : FixtureBase
 {
-    [TestFixture]
-    public class TestShutdownTime : FixtureBase
+    static readonly string ConnectionString = AsbTestConfig.ConnectionString;
+    static readonly string QueueName = TestConfig.GetName("timeouttest");
+
+    [Test]
+    [Description("Verifies that all pending receive operations are cancelled when the bus is disposed")]
+    public void FoundWayToCancelAllPendingReceiveOperations()
     {
-        static readonly string ConnectionString = AsbTestConfig.ConnectionString;
-        static readonly string QueueName = TestConfig.GetName("timeouttest");
+        var stopwatch = new Stopwatch();
 
-        [Test]
-        [Description("Verifies that all pending receive operations are cancelled when the bus is disposed")]
-        public void FoundWayToCancelAllPendingReceiveOperations()
+        using (var activator = new BuiltinHandlerActivator())
         {
-            var stopwatch = new Stopwatch();
+            Configure.With(activator)
+                .Transport(t => t.UseAzureServiceBus(ConnectionString, QueueName))
+                .Start();
 
-            using (var activator = new BuiltinHandlerActivator())
-            {
-                Configure.With(activator)
-                    .Transport(t => t.UseAzureServiceBus(ConnectionString, QueueName))
-                    .Start();
+            Thread.Sleep(1000);
 
-                Thread.Sleep(1000);
-
-                stopwatch.Start();
-            }
-
-            stopwatch.Stop();
-
-            var shutdownDuration = stopwatch.Elapsed;
-
-            Console.WriteLine($"Shutdown took {shutdownDuration}");
+            stopwatch.Start();
         }
+
+        stopwatch.Stop();
+
+        var shutdownDuration = stopwatch.Elapsed;
+
+        Console.WriteLine($"Shutdown took {shutdownDuration}");
     }
 }

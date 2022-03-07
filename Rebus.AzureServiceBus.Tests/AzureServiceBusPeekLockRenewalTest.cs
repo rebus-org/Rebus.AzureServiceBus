@@ -16,94 +16,93 @@ using Rebus.Threading.TaskParallelLibrary;
 using Rebus.Transport;
 // ReSharper disable ArgumentsStyleLiteral
 
-namespace Rebus.AzureServiceBus.Tests
+namespace Rebus.AzureServiceBus.Tests;
+
+[TestFixture]
+public class AzureServiceBusPeekLockRenewalTest : FixtureBase
 {
-    [TestFixture]
-    public class AzureServiceBusPeekLockRenewalTest : FixtureBase
+    static readonly string ConnectionString = AsbTestConfig.ConnectionString;
+    static readonly string QueueName = TestConfig.GetName("input");
+
+    readonly ConsoleLoggerFactory _consoleLoggerFactory = new ConsoleLoggerFactory(false);
+
+    BuiltinHandlerActivator _activator;
+    AzureServiceBusTransport _transport;
+    IBus _bus;
+    IBusStarter _busStarter;
+
+    protected override void SetUp()
     {
-        static readonly string ConnectionString = AsbTestConfig.ConnectionString;
-        static readonly string QueueName = TestConfig.GetName("input");
+        _transport = new AzureServiceBusTransport(ConnectionString, QueueName, _consoleLoggerFactory, new TplAsyncTaskFactory(_consoleLoggerFactory), new DefaultNameFormatter());
 
-        readonly ConsoleLoggerFactory _consoleLoggerFactory = new ConsoleLoggerFactory(false);
+        Using(_transport);
 
-        BuiltinHandlerActivator _activator;
-        AzureServiceBusTransport _transport;
-        IBus _bus;
-        IBusStarter _busStarter;
+        _transport.Initialize();
+        _transport.PurgeInputQueue();
 
-        protected override void SetUp()
-        {
-            _transport = new AzureServiceBusTransport(ConnectionString, QueueName, _consoleLoggerFactory, new TplAsyncTaskFactory(_consoleLoggerFactory), new DefaultNameFormatter());
+        _activator = new BuiltinHandlerActivator();
 
-            Using(_transport);
-
-            _transport.Initialize();
-            _transport.PurgeInputQueue();
-
-            _activator = new BuiltinHandlerActivator();
-
-            _busStarter = Configure.With(_activator)
-                .Logging(l => l.Use(new ListLoggerFactory(outputToConsole: true, detailed: true)))
-                .Transport(t => t.UseAzureServiceBus(ConnectionString, QueueName).AutomaticallyRenewPeekLock())
-                .Options(o =>
-                {
-                    o.SetNumberOfWorkers(1);
-                    o.SetMaxParallelism(1);
-                })
-                .Create();
-
-            _bus = _busStarter.Bus;
-
-            Using(_bus);
-        }
-
-        [Test, Ignore("Can be used to check silencing behavior when receive errors occur")]
-        public void ReceiveExceptions()
-        {
-            Using(_transport);
-
-            Thread.Sleep(TimeSpan.FromMinutes(10));
-        }
-
-        [Test]
-        public async Task ItWorks()
-        {
-            var gotMessage = new ManualResetEvent(false);
-
-            _activator.Handle<string>(async (bus, context, message) =>
+        _busStarter = Configure.With(_activator)
+            .Logging(l => l.Use(new ListLoggerFactory(outputToConsole: true, detailed: true)))
+            .Transport(t => t.UseAzureServiceBus(ConnectionString, QueueName).AutomaticallyRenewPeekLock())
+            .Options(o =>
             {
-                Console.WriteLine($"Got message with ID {context.Headers.GetValue(Headers.MessageId)} - waiting 6 minutes....");
+                o.SetNumberOfWorkers(1);
+                o.SetMaxParallelism(1);
+            })
+            .Create();
 
-                // longer than the longest asb peek lock in the world...
-                //await Task.Delay(TimeSpan.FromSeconds(3));
-                await Task.Delay(TimeSpan.FromMinutes(6));
+        _bus = _busStarter.Bus;
 
-                Console.WriteLine("done waiting");
+        Using(_bus);
+    }
 
-                gotMessage.Set();
-            });
+    [Test, Ignore("Can be used to check silencing behavior when receive errors occur")]
+    public void ReceiveExceptions()
+    {
+        Using(_transport);
 
-            _busStarter.Start();
+        Thread.Sleep(TimeSpan.FromMinutes(10));
+    }
 
-            await _bus.SendLocal("hej med dig min ven!");
+    [Test]
+    public async Task ItWorks()
+    {
+        var gotMessage = new ManualResetEvent(false);
 
-            gotMessage.WaitOrDie(TimeSpan.FromMinutes(6.5));
+        _activator.Handle<string>(async (bus, context, message) =>
+        {
+            Console.WriteLine($"Got message with ID {context.Headers.GetValue(Headers.MessageId)} - waiting 6 minutes....");
 
-            // shut down bus
-            _bus.Dispose();
+            // longer than the longest asb peek lock in the world...
+            //await Task.Delay(TimeSpan.FromSeconds(3));
+            await Task.Delay(TimeSpan.FromMinutes(6));
 
-            // see if queue is empty
-            using var scope = new RebusTransactionScope();
+            Console.WriteLine("done waiting");
+
+            gotMessage.Set();
+        });
+
+        _busStarter.Start();
+
+        await _bus.SendLocal("hej med dig min ven!");
+
+        gotMessage.WaitOrDie(TimeSpan.FromMinutes(6.5));
+
+        // shut down bus
+        _bus.Dispose();
+
+        // see if queue is empty
+        using var scope = new RebusTransactionScope();
             
-            var message = await _transport.Receive(scope.TransactionContext, CancellationToken.None);
+        var message = await _transport.Receive(scope.TransactionContext, CancellationToken.None);
 
-            await scope.CompleteAsync();
+        await scope.CompleteAsync();
 
-            if (message != null)
-            {
-                throw new AssertionException(
-                    $"Did not expect to receive a message - got one with ID {message.Headers.GetValue(Headers.MessageId)}");
-            }
+        if (message != null)
+        {
+            throw new AssertionException(
+                $"Did not expect to receive a message - got one with ID {message.Headers.GetValue(Headers.MessageId)}");
         }
     }
 }

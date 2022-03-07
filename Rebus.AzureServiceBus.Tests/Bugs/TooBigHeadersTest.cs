@@ -12,102 +12,101 @@ using Rebus.Tests.Contracts;
 using Rebus.Threading.TaskParallelLibrary;
 using Rebus.Transport;
 
-namespace Rebus.AzureServiceBus.Tests.Bugs
+namespace Rebus.AzureServiceBus.Tests.Bugs;
+
+[TestFixture]
+public class TooBigHeadersTest : FixtureBase
 {
-    [TestFixture]
-    public class TooBigHeadersTest : FixtureBase
+    AzureServiceBusTransport errorQueueTransport;
+
+    protected override void SetUp()
     {
-        AzureServiceBusTransport errorQueueTransport;
+        var loggerFactory = new ConsoleLoggerFactory(false);
 
-        protected override void SetUp()
+        errorQueueTransport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, "error", loggerFactory, new TplAsyncTaskFactory(loggerFactory), new DefaultNameFormatter());
+
+        Using(errorQueueTransport);
+
+        errorQueueTransport.Initialize();
+        errorQueueTransport.PurgeInputQueue();
+    }
+
+    [Test]
+    public async Task ItWorks()
+    {
+        const int MaxDeliveryAttempts = 3;
+
+        var queueName = TestConfig.GetName("test-queue");
+
+        Using(new QueueDeleter(queueName));
+
+        var activator = new BuiltinHandlerActivator();
+
+        Using(activator);
+
+        var done = new ManualResetEvent(false);
+
+        Using(done);
+
+        activator.Handle<string>(message =>
         {
-            var loggerFactory = new ConsoleLoggerFactory(false);
+            var exceptionMessage = new string('a', 30 * 1024); // 30 KB * 3 < 256KB max message size.
 
-            errorQueueTransport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, "error", loggerFactory, new TplAsyncTaskFactory(loggerFactory), new DefaultNameFormatter());
+            throw new InvalidOperationException(exceptionMessage);
+        });
 
-            Using(errorQueueTransport);
+        Configure.With(activator)
+            .Logging(l => l.Console(minLevel: LogLevel.Error))
+            .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName))
+            .Options(o => o.SimpleRetryStrategy(maxDeliveryAttempts: MaxDeliveryAttempts))
+            .Start();
 
-            errorQueueTransport.Initialize();
-            errorQueueTransport.PurgeInputQueue();
-        }
+        await activator.Bus.SendLocal("Hello World");
 
-        [Test]
-        public async Task ItWorks()
-        {
-            const int MaxDeliveryAttempts = 3;
+        var nextMessage = await GetNextMessageFromErrorQueue(timeoutSeconds: 10);
 
-            var queueName = TestConfig.GetName("test-queue");
+        Assert.That(nextMessage.Headers, Contains.Key(Headers.ErrorDetails));
 
-            Using(new QueueDeleter(queueName));
+        var errorDetails = nextMessage.Headers[Headers.ErrorDetails];
 
-            var activator = new BuiltinHandlerActivator();
-
-            Using(activator);
-
-            var done = new ManualResetEvent(false);
-
-            Using(done);
-
-            activator.Handle<string>(message =>
-            {
-                var exceptionMessage = new string('a', 30 * 1024); // 30 KB * 3 < 256KB max message size.
-
-                throw new InvalidOperationException(exceptionMessage);
-            });
-
-            Configure.With(activator)
-                .Logging(l => l.Console(minLevel: LogLevel.Error))
-                .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName))
-                .Options(o => o.SimpleRetryStrategy(maxDeliveryAttempts: MaxDeliveryAttempts))
-                .Start();
-
-            await activator.Bus.SendLocal("Hello World");
-
-            var nextMessage = await GetNextMessageFromErrorQueue(timeoutSeconds: 10);
-
-            Assert.That(nextMessage.Headers, Contains.Key(Headers.ErrorDetails));
-
-            var errorDetails = nextMessage.Headers[Headers.ErrorDetails];
-
-            Console.WriteLine($@"------------------------------------------------------------------------------------------------
+        Console.WriteLine($@"------------------------------------------------------------------------------------------------
 The following error details got attached to the message:
 
 {errorDetails}");
-        }
+    }
 
-        async Task<TransportMessage> GetNextMessageFromErrorQueue(int timeoutSeconds)
+    async Task<TransportMessage> GetNextMessageFromErrorQueue(int timeoutSeconds)
+    {
+        var cancellationTokenSource = new CancellationTokenSource();
+        var cancellationToken = cancellationTokenSource.Token;
+        var timeout = TimeSpan.FromSeconds(timeoutSeconds);
+
+        cancellationTokenSource.CancelAfter(timeout);
+
+        try
         {
-            var cancellationTokenSource = new CancellationTokenSource();
-            var cancellationToken = cancellationTokenSource.Token;
-            var timeout = TimeSpan.FromSeconds(timeoutSeconds);
-
-            cancellationTokenSource.CancelAfter(timeout);
-
-            try
+            while (true)
             {
-                while (true)
+                cancellationToken.ThrowIfCancellationRequested();
+
+                using (var scope = new RebusTransactionScope())
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
+                    var message = await errorQueueTransport.Receive(scope.TransactionContext, cancellationToken);
 
-                    using (var scope = new RebusTransactionScope())
+                    try
                     {
-                        var message = await errorQueueTransport.Receive(scope.TransactionContext, cancellationToken);
-
-                        try
-                        {
-                            if (message != null) return message;
-                        }
-                        finally
-                        {
-                            await scope.CompleteAsync();
-                        }
+                        if (message != null) return message;
+                    }
+                    finally
+                    {
+                        await scope.CompleteAsync();
                     }
                 }
             }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw new TimeoutException($"Did not receive message in queue '{errorQueueTransport.Address}' within timeout of {timeout}");
-            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException($"Did not receive message in queue '{errorQueueTransport.Address}' within timeout of {timeout}");
         }
     }
 }

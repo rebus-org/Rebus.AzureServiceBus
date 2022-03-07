@@ -10,53 +10,52 @@ using Rebus.Logging;
 using Rebus.Tests.Contracts;
 #pragma warning disable 1998
 
-namespace Rebus.AzureServiceBus.Tests.Bugs
+namespace Rebus.AzureServiceBus.Tests.Bugs;
+
+[TestFixture]
+public class FastSubscriber : FixtureBase
 {
-    [TestFixture]
-    public class FastSubscriber : FixtureBase
+    [TestCase(10)]
+    public async Task TakeTime(int topicCount)
     {
-        [TestCase(10)]
-        public async Task TakeTime(int topicCount)
-        {
-            var activator = new BuiltinHandlerActivator();
+        var activator = new BuiltinHandlerActivator();
 
-            Using(activator);
+        Using(activator);
 
-            var bus = Configure.With(activator)
-                .Logging(l => l.Console(LogLevel.Warn))
-                .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, "my-input-queue"))
-                .Start();
+        var bus = Configure.With(activator)
+            .Logging(l => l.Console(LogLevel.Warn))
+            .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, "my-input-queue"))
+            .Start();
 
-            var stopwatch = Stopwatch.StartNew();
+        var stopwatch = Stopwatch.StartNew();
 
-            Task.WaitAll(Enumerable.Range(0, topicCount)
-                .Select(async n =>
-                {
-                    var topicName = $"topic-{n}";
-
-                    Using(new TopicDeleter(topicName));
-
-                    await bus.Advanced.Topics.Subscribe(topicName);
-                })
-                .ToArray());
-
-            var elapsedSeconds = stopwatch.Elapsed.TotalSeconds;
-
-            Console.WriteLine($"Subscribing to {topicCount} topics took {elapsedSeconds:0.0}s - that's {elapsedSeconds / topicCount:0.0} s/subscription");
-        }
-
-        [Test]
-        [Ignore("run manually")]
-        public async Task DeleteAllTopics()
-        {
-            var managementClient = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
-
-            await foreach (var topic in managementClient.GetTopicsAsync())
+        Task.WaitAll(Enumerable.Range(0, topicCount)
+            .Select(async n =>
             {
-                Console.Write($"Deleting '{topic.Name}'... ");
-                await managementClient.DeleteTopicAsync(topic.Name);
-                Console.WriteLine("OK");
-            }
+                var topicName = $"topic-{n}";
+
+                Using(new TopicDeleter(topicName));
+
+                await bus.Advanced.Topics.Subscribe(topicName);
+            })
+            .ToArray());
+
+        var elapsedSeconds = stopwatch.Elapsed.TotalSeconds;
+
+        Console.WriteLine($"Subscribing to {topicCount} topics took {elapsedSeconds:0.0}s - that's {elapsedSeconds / topicCount:0.0} s/subscription");
+    }
+
+    [Test]
+    [Ignore("run manually")]
+    public async Task DeleteAllTopics()
+    {
+        var managementClient = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
+
+        await foreach (var topic in managementClient.GetTopicsAsync())
+        {
+            Console.Write($"Deleting '{topic.Name}'... ");
+            await managementClient.DeleteTopicAsync(topic.Name);
+            Console.WriteLine("OK");
         }
     }
 }

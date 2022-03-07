@@ -19,95 +19,94 @@ using Rebus.Threading.TaskParallelLibrary;
 
 #pragma warning disable 1998
 
-namespace Rebus.AzureServiceBus.Tests.Bugs
+namespace Rebus.AzureServiceBus.Tests.Bugs;
+
+[TestFixture]
+public class DeferredMessagesAreDeadletteredJustFine : FixtureBase
 {
-    [TestFixture]
-    public class DeferredMessagesAreDeadletteredJustFine : FixtureBase
+    AzureServiceBusTransport _deadletters;
+    ListLoggerFactory _loggerFactory;
+
+    protected override void SetUp()
     {
-        AzureServiceBusTransport _deadletters;
-        ListLoggerFactory _loggerFactory;
+        _loggerFactory = new ListLoggerFactory(outputToConsole: false);
 
-        protected override void SetUp()
-        {
-            _loggerFactory = new ListLoggerFactory(outputToConsole: false);
+        _deadletters = GetAsbTransport("error");
+        Using(_deadletters);
+        _deadletters.Initialize();
 
-            _deadletters = GetAsbTransport("error");
-            Using(_deadletters);
-            _deadletters.Initialize();
-
-            _deadletters.PurgeInputQueue();
-        }
-
-        [Test]
-        public async Task WhatTheClassSays()
-        {
-            var queueName = TestConfig.GetName("defer-deadletter");
-
-            PurgeQueue(queueName);
-
-            var deliveryAttempts = 0;
-
-            Using(new QueueDeleter(queueName));
-
-            using var activator = new BuiltinHandlerActivator();
-
-            activator.Handle<Poison>(async _ =>
-            {
-                deliveryAttempts++;
-                throw new ArgumentException("can't take it");
-            });
-
-            var bus = Configure.With(activator)
-                .Logging(l => l.Use(_loggerFactory))
-                .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName))
-                .Start();
-
-            var knownMessageId = Guid.NewGuid().ToString();
-
-            await bus.DeferLocal(TimeSpan.FromSeconds(1), new Poison(), new Dictionary<string, string>{["custom-id"] = knownMessageId});
-
-            await Task.Delay(TimeSpan.FromSeconds(1));
-
-            var transportMessage = await _deadletters.WaitForNextMessage(timeoutSeconds: 5);
-
-            Assert.That(transportMessage.Headers.GetValue("custom-id"), Is.EqualTo(knownMessageId));
-            Assert.That(deliveryAttempts, Is.EqualTo(5), "Expected exactly five delivery attempts followed by dead-lettering");
-
-            var errorLogLines = _loggerFactory.Where(log => log.Level == LogLevel.Error).ToList();
-
-            Assert.That(errorLogLines.Count, Is.EqualTo(1), "Expected one single 'message was dead-lettered' log line");
-        }
-
-        void PurgeQueue(string queueName)
-        {
-            using var transport = GetAsbTransport(queueName);
-            transport.Initialize();
-            transport.PurgeInputQueue();
-        }
-
-        AzureServiceBusTransport GetAsbTransport(string queueName) =>
-            new AzureServiceBusTransport(
-                AsbTestConfig.ConnectionString,
-                queueName,
-                _loggerFactory,
-                new TplAsyncTaskFactory(_loggerFactory),
-                new DefaultNameFormatter(),
-                CancellationToken.None
-            );
-
-        class Poison { }
+        _deadletters.PurgeInputQueue();
     }
 
-    public class Sladrehank : IIncomingStep
+    [Test]
+    public async Task WhatTheClassSays()
     {
-        public async Task Process(IncomingStepContext context, Func<Task> next)
+        var queueName = TestConfig.GetName("defer-deadletter");
+
+        PurgeQueue(queueName);
+
+        var deliveryAttempts = 0;
+
+        Using(new QueueDeleter(queueName));
+
+        using var activator = new BuiltinHandlerActivator();
+
+        activator.Handle<Poison>(async _ =>
         {
-            var transportMessage = context.Load<TransportMessage>();
-            var messageId = transportMessage.GetMessageId();
+            deliveryAttempts++;
+            throw new ArgumentException("can't take it");
+        });
 
-            Console.WriteLine($"HANDLING MSG {messageId}");
+        var bus = Configure.With(activator)
+            .Logging(l => l.Use(_loggerFactory))
+            .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName))
+            .Start();
 
-            await next();
-        }
+        var knownMessageId = Guid.NewGuid().ToString();
+
+        await bus.DeferLocal(TimeSpan.FromSeconds(1), new Poison(), new Dictionary<string, string>{["custom-id"] = knownMessageId});
+
+        await Task.Delay(TimeSpan.FromSeconds(1));
+
+        var transportMessage = await _deadletters.WaitForNextMessage(timeoutSeconds: 5);
+
+        Assert.That(transportMessage.Headers.GetValue("custom-id"), Is.EqualTo(knownMessageId));
+        Assert.That(deliveryAttempts, Is.EqualTo(5), "Expected exactly five delivery attempts followed by dead-lettering");
+
+        var errorLogLines = _loggerFactory.Where(log => log.Level == LogLevel.Error).ToList();
+
+        Assert.That(errorLogLines.Count, Is.EqualTo(1), "Expected one single 'message was dead-lettered' log line");
+    }
+
+    void PurgeQueue(string queueName)
+    {
+        using var transport = GetAsbTransport(queueName);
+        transport.Initialize();
+        transport.PurgeInputQueue();
+    }
+
+    AzureServiceBusTransport GetAsbTransport(string queueName) =>
+        new AzureServiceBusTransport(
+            AsbTestConfig.ConnectionString,
+            queueName,
+            _loggerFactory,
+            new TplAsyncTaskFactory(_loggerFactory),
+            new DefaultNameFormatter(),
+            CancellationToken.None
+        );
+
+    class Poison { }
+}
+
+public class Sladrehank : IIncomingStep
+{
+    public async Task Process(IncomingStepContext context, Func<Task> next)
+    {
+        var transportMessage = context.Load<TransportMessage>();
+        var messageId = transportMessage.GetMessageId();
+
+        Console.WriteLine($"HANDLING MSG {messageId}");
+
+        await next();
     }
 }

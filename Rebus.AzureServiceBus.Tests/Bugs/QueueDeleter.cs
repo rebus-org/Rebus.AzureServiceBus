@@ -3,36 +3,35 @@ using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
 using Rebus.Internals;
 
-namespace Rebus.AzureServiceBus.Tests.Bugs
+namespace Rebus.AzureServiceBus.Tests.Bugs;
+
+public class QueueDeleter : IDisposable
 {
-    public class QueueDeleter : IDisposable
+    readonly string _queueName;
+
+    public QueueDeleter(string queueName)
     {
-        readonly string _queueName;
+        _queueName = queueName;
+    }
 
-        public QueueDeleter(string queueName)
+    public void Dispose()
+    {
+        var managementClient = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
+
+        AsyncHelpers.RunSync(async () =>
         {
-            _queueName = queueName;
-        }
-
-        public void Dispose()
-        {
-            var managementClient = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
-
-            AsyncHelpers.RunSync(async () =>
+            try
             {
-                try
-                {
-                    var topicDescription = await managementClient.GetQueueAsync(_queueName);
+                var topicDescription = await managementClient.GetQueueAsync(_queueName);
 
-                    await managementClient.DeleteQueueAsync(topicDescription.Value.Name);
+                await managementClient.DeleteQueueAsync(topicDescription.Value.Name);
 
-                    Console.WriteLine($"Deleted queue '{_queueName}'");
-                }
-                catch (ServiceBusException)
-                {
-                    // it's ok
-                }
-            });
-        }
+                Console.WriteLine($"Deleted queue '{_queueName}'");
+            }
+            catch (ServiceBusException)
+            {
+                // it's ok
+            }
+        });
     }
 }

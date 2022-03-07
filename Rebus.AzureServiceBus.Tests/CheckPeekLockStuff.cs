@@ -6,65 +6,64 @@ using NUnit.Framework;
 using Rebus.Internals;
 using Rebus.Tests.Contracts;
 
-namespace Rebus.AzureServiceBus.Tests
+namespace Rebus.AzureServiceBus.Tests;
+
+[TestFixture]
+public class CheckPeekLockStuff : FixtureBase
 {
-    [TestFixture]
-    public class CheckPeekLockStuff : FixtureBase
+    ServiceBusAdministrationClient _managementClient;
+    ServiceBusSender _messageSender;
+    ServiceBusReceiver _messageReceiver;
+    string _queueName;
+
+    protected override void SetUp()
     {
-        ServiceBusAdministrationClient _managementClient;
-        ServiceBusSender _messageSender;
-        ServiceBusReceiver _messageReceiver;
-        string _queueName;
+        var connectionString = AsbTestConfig.ConnectionString;
+            
+        _queueName = TestConfig.GetName("test-queue");
+            
+        _managementClient = new ServiceBusAdministrationClient(connectionString);
+        var client = new ServiceBusClient(connectionString);
+        _messageSender = client.CreateSender(_queueName);
+        _messageReceiver = client.CreateReceiver(_queueName);
 
-        protected override void SetUp()
+        AsyncHelpers.RunSync(async () => await _managementClient.DeleteQueueIfExistsAsync(_queueName));
+    }
+
+    [Test]
+    public async Task CanGrabPeekLock()
+    {
+        await _managementClient.CreateQueueAsync(_queueName);
+
+        var messageId = Guid.NewGuid().ToString();
+
+        await _messageSender.SendMessageAsync(new ServiceBusMessage
         {
-            var connectionString = AsbTestConfig.ConnectionString;
-            
-            _queueName = TestConfig.GetName("test-queue");
-            
-            _managementClient = new ServiceBusAdministrationClient(connectionString);
-            var client = new ServiceBusClient(connectionString);
-            _messageSender = client.CreateSender(_queueName);
-            _messageReceiver = client.CreateReceiver(_queueName);
+            MessageId = messageId,
+            Body = new BinaryData(new byte[] {1, 2, 3}.AsMemory())
+        });
 
-            AsyncHelpers.RunSync(async () => await _managementClient.DeleteQueueIfExistsAsync(_queueName));
+        var message = await _messageReceiver.ReceiveMessageAsync(TimeSpan.FromSeconds(2));
+
+        Assert.That(message, Is.Not.Null);
+        Assert.That(message.MessageId, Is.EqualTo(messageId));
+        Assert.That(await _messageReceiver.ReceiveMessageAsync(TimeSpan.FromSeconds(2)), Is.Null);
+
+        var lockedUntilUtc = message.LockedUntil;
+
+        Console.WriteLine($"The message is locked until {lockedUntilUtc} (message ID = {message.MessageId}, lock token = {message.LockToken})");
+
+        await _messageReceiver.CompleteMessageAsync(message);
+
+        Assert.That(await _messageReceiver.ReceiveMessageAsync(TimeSpan.FromSeconds(2)), Is.Null);
+
+        while (DateTime.UtcNow < lockedUntilUtc.AddSeconds(5))
+        {
+            await Task.Delay(TimeSpan.FromSeconds(1));
         }
 
-        [Test]
-        public async Task CanGrabPeekLock()
-        {
-            await _managementClient.CreateQueueAsync(_queueName);
+        var otherMessage = await _messageReceiver.ReceiveMessageAsync(TimeSpan.FromSeconds(2));
 
-            var messageId = Guid.NewGuid().ToString();
-
-            await _messageSender.SendMessageAsync(new ServiceBusMessage
-            {
-                MessageId = messageId,
-                Body = new BinaryData(new byte[] {1, 2, 3}.AsMemory())
-            });
-
-            var message = await _messageReceiver.ReceiveMessageAsync(TimeSpan.FromSeconds(2));
-
-            Assert.That(message, Is.Not.Null);
-            Assert.That(message.MessageId, Is.EqualTo(messageId));
-            Assert.That(await _messageReceiver.ReceiveMessageAsync(TimeSpan.FromSeconds(2)), Is.Null);
-
-            var lockedUntilUtc = message.LockedUntil;
-
-            Console.WriteLine($"The message is locked until {lockedUntilUtc} (message ID = {message.MessageId}, lock token = {message.LockToken})");
-
-            await _messageReceiver.CompleteMessageAsync(message);
-
-            Assert.That(await _messageReceiver.ReceiveMessageAsync(TimeSpan.FromSeconds(2)), Is.Null);
-
-            while (DateTime.UtcNow < lockedUntilUtc.AddSeconds(5))
-            {
-                await Task.Delay(TimeSpan.FromSeconds(1));
-            }
-
-            var otherMessage = await _messageReceiver.ReceiveMessageAsync(TimeSpan.FromSeconds(2));
-
-            Assert.That(otherMessage, Is.Null, () => $"Got message at time {DateTime.UtcNow} (message ID = {otherMessage.MessageId}, lock token = {otherMessage.LockToken})");
-        }
+        Assert.That(otherMessage, Is.Null, () => $"Got message at time {DateTime.UtcNow} (message ID = {otherMessage.MessageId}, lock token = {otherMessage.LockToken})");
     }
 }

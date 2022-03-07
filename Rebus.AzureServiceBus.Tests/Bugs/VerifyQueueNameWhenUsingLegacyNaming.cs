@@ -8,45 +8,44 @@ using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
 #pragma warning disable 1998
 
-namespace Rebus.AzureServiceBus.Tests.Bugs
+namespace Rebus.AzureServiceBus.Tests.Bugs;
+
+[TestFixture]
+public class VerifyQueueNameWhenUsingLegacyNaming : FixtureBase
 {
-    [TestFixture]
-    public class VerifyQueueNameWhenUsingLegacyNaming : FixtureBase
+    [TestCase("tester_input", false)]
+    [TestCase("tester.input", false)]
+    [TestCase("tester/input", false)]
+    [TestCase("tester_input", true)]
+    [TestCase("tester.input", true)]
+    [TestCase("tester/input", true)]
+    public async Task ItWorks(string queueName, bool useLegacyMode)
     {
-        [TestCase("tester_input", false)]
-        [TestCase("tester.input", false)]
-        [TestCase("tester/input", false)]
-        [TestCase("tester_input", true)]
-        [TestCase("tester.input", true)]
-        [TestCase("tester/input", true)]
-        public async Task ItWorks(string queueName, bool useLegacyMode)
-        {
-            Console.WriteLine($"Checking that stuff works with queue name '{queueName}' and legacy mode = {useLegacyMode}");
+        Console.WriteLine($"Checking that stuff works with queue name '{queueName}' and legacy mode = {useLegacyMode}");
 
-            var gotTheMessage = new ManualResetEvent(false);
-            var activator = new BuiltinHandlerActivator();
+        var gotTheMessage = new ManualResetEvent(false);
+        var activator = new BuiltinHandlerActivator();
 
-            Using(activator);
+        Using(activator);
 
-            activator.Handle<string>(async message => gotTheMessage.Set());
+        activator.Handle<string>(async message => gotTheMessage.Set());
 
-            Configure.With(activator)
-                .Transport(t =>
+        Configure.With(activator)
+            .Transport(t =>
+            {
+                var settings = t.UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName);
+
+                if (useLegacyMode)
                 {
-                    var settings = t.UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName);
+                    settings.UseLegacyNaming();
+                }
+            })
+            .Start();
 
-                    if (useLegacyMode)
-                    {
-                        settings.UseLegacyNaming();
-                    }
-                })
-                .Start();
+        await activator.Bus.Subscribe<string>();
 
-            await activator.Bus.Subscribe<string>();
+        await activator.Bus.Publish("HEJ MED DIG MIN VEEEEN");
 
-            await activator.Bus.Publish("HEJ MED DIG MIN VEEEEN");
-
-            gotTheMessage.WaitOrDie(TimeSpan.FromSeconds(3));
-        }
+        gotTheMessage.WaitOrDie(TimeSpan.FromSeconds(3));
     }
 }

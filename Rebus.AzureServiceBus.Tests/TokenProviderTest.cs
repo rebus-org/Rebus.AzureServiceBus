@@ -11,49 +11,48 @@ using Rebus.AzureServiceBus.Tests.TestUtilities;
 
 #pragma warning disable 1998
 
-namespace Rebus.AzureServiceBus.Tests
+namespace Rebus.AzureServiceBus.Tests;
+
+[TestFixture]
+[Ignore("Requires some manual setup")]
+public class TokenProviderTest : FixtureBase
 {
-    [TestFixture]
-    [Ignore("Requires some manual setup")]
-    public class TokenProviderTest : FixtureBase
+    const string QueueName = "token-provider-server";
+
+    BuiltinHandlerActivator _server;
+
+    protected override void SetUp()
     {
-        const string QueueName = "token-provider-server";
+        _server = new BuiltinHandlerActivator();
 
-        BuiltinHandlerActivator _server;
+        Using(_server);
 
-        protected override void SetUp()
+        Configure.With(_server)
+            .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, QueueName))
+            .Start();
+
+    }
+
+    [Test]
+    public async Task CanInitializeClientWithTokenProvider()
+    {
+        var gotTheString = new ManualResetEvent(false);
+
+        _server.Handle<string>(async _ => gotTheString.Set());
+
+        var configurer = Configure.With(new BuiltinHandlerActivator())
+            .Transport(t => t
+                .UseAzureServiceBus("<insert connection string with endpoint only>", "<insert input queue>", new StubTokenCredential("<insert client ID>", "<insert client secret>", "<insert tenant ID>"))
+                .DoNotCheckQueueConfiguration()
+                .DoNotCreateQueues()
+            )
+            .Routing(r => r.TypeBased().Map<string>(QueueName));
+
+        using (var client = configurer.Start())
         {
-            _server = new BuiltinHandlerActivator();
-
-            Using(_server);
-
-            Configure.With(_server)
-                .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, QueueName))
-                .Start();
-
+            await client.Send("HEJ MED DIG MIN VEN");
         }
 
-        [Test]
-        public async Task CanInitializeClientWithTokenProvider()
-        {
-            var gotTheString = new ManualResetEvent(false);
-
-            _server.Handle<string>(async _ => gotTheString.Set());
-
-            var configurer = Configure.With(new BuiltinHandlerActivator())
-                .Transport(t => t
-                    .UseAzureServiceBus("<insert connection string with endpoint only>", "<insert input queue>", new StubTokenCredential("<insert client ID>", "<insert client secret>", "<insert tenant ID>"))
-                    .DoNotCheckQueueConfiguration()
-                    .DoNotCreateQueues()
-                )
-                .Routing(r => r.TypeBased().Map<string>(QueueName));
-
-            using (var client = configurer.Start())
-            {
-                await client.Send("HEJ MED DIG MIN VEN");
-            }
-
-            gotTheString.WaitOrDie(TimeSpan.FromSeconds(5));
-        }
+        gotTheString.WaitOrDie(TimeSpan.FromSeconds(5));
     }
 }
