@@ -8,7 +8,7 @@
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <Authors>mookid8000</Authors>
     <PackageProjectUrl>https://rebus.fm/what-is-rebus/</PackageProjectUrl>
-    <Copyright>Copyright 2012</Copyright>
+    <Copyright>Copyright Rebus FM ApS 2012</Copyright>
     <PackageTags>rebus events</PackageTags>
     <PackageDescription>Provides an Azure Service Bus transport for Rebus</PackageDescription>
     <RepositoryUrl>https://github.com/rebus-org/Rebus</RepositoryUrl>
