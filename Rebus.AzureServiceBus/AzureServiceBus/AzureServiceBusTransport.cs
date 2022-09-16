@@ -47,6 +47,8 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     /// </summary>
     public const string MagicDeferredMessagesAddress = "___deferred___";
 
+    const string SessionIdHeader = "SessionId";
+
     static readonly ServiceBusRetryOptions DefaultRetryStrategy = new()
     {
         Mode = ServiceBusRetryMode.Exponential,
@@ -524,6 +526,11 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         if (headers.TryGetValue(Headers.MessageId, out var messageId))
         {
             message.MessageId = messageId;
+        }
+        
+        if (headers.TryGetValue(SessionIdHeader, out var sessionId))
+        {
+            message.SessionId = sessionId;
         }
 
         message.Subject = transportMessage.GetMessageLabel();
