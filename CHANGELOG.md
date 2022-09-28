@@ -125,10 +125,14 @@
 ## 9.0.8
 * Update Azure.Messaging.ServiceBus dependency to 7.5.1
 
+## 9.1.0
+* Enable the use of sessions - thanks [georgechond94]
+
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick
 [eeskildsen]: https://github.com/eeskildsen
 [ehabelgindy]: https://github.com/ehabelgindy
+[georgechond94]: https://github.com/georgechond94
 [hjalle]: https://github.com/hjalle
 [jr01]: https://github.com/jr01
 [lezzi]: https://github.com/lezzi
