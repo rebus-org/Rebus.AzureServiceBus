@@ -47,6 +47,8 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     /// </summary>
     public const string MagicDeferredMessagesAddress = "___deferred___";
 
+    const string SessionIdHeader = "SessionId";
+
     static readonly ServiceBusRetryOptions DefaultRetryStrategy = new()
     {
         Mode = ServiceBusRetryMode.Exponential,
@@ -292,6 +294,8 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                 // must be set when the queue is first created
                 queueOptions.EnablePartitioning = PartitioningEnabled;
 
+                queueOptions.RequiresSession = RequiresSession;
+
                 if (LockDuration.HasValue)
                 {
                     queueOptions.LockDuration = LockDuration.Value;
@@ -370,6 +374,12 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
             {
                 _log.Warn("The queue {queueName} has EnablePartitioning={enablePartitioning}, but the transport has PartitioningEnabled={partitioningEnabled}. As this setting cannot be changed after the queue is created, please either make sure the Rebus transport settings are consistent with the queue settings, or delete the queue and let Rebus create it again with the new settings.",
                     address, queueDescription.EnablePartitioning, PartitioningEnabled);
+            }
+            
+            if (queueDescription.RequiresSession != RequiresSession)
+            {
+                _log.Warn("The queue {queueName} has RequiresSession={requiresSession}, but the transport has RequiresSession={requiresSession}. As this setting cannot be changed after the queue is created, please either make sure the Rebus transport settings are consistent with the queue settings, or delete the queue and let Rebus create it again with the new settings.",
+                    address, queueDescription.RequiresSession, RequiresSession);
             }
 
             if (DuplicateDetectionHistoryTimeWindow.HasValue)
@@ -525,6 +535,11 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         {
             message.MessageId = messageId;
         }
+        
+        if (headers.TryGetValue(SessionIdHeader, out var sessionId))
+        {
+            message.SessionId = sessionId;
+        }
 
         message.Subject = transportMessage.GetMessageLabel();
 
@@ -661,7 +676,21 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     {
         var receivedMessage = await ReceiveInternal().ConfigureAwait(false);
 
-        if (receivedMessage == null) return null;
+        if (receivedMessage == null)
+        {
+            // No pending message - accept the next available session
+            if (RequiresSession)
+            {
+                var receiverSessionOptions = new ServiceBusSessionReceiverOptions
+                {
+                    PrefetchCount = _prefetchCount,
+                    ReceiveMode = ServiceBusReceiveMode.PeekLock
+                };
+                _messageReceiver = await _client.AcceptNextSessionAsync(Address, receiverSessionOptions, _cancellationToken).ConfigureAwait(false);
+            }
+
+            return null;
+        }
 
         var message = receivedMessage.Message;
         var messageReceiver = receivedMessage.MessageReceiver;
@@ -788,30 +817,44 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
         CheckInputQueueConfiguration(Address);
 
-        var receiverOptions = new ServiceBusReceiverOptions
+        AsyncHelpers.RunSync(async () =>
         {
-            PrefetchCount = _prefetchCount,
-            ReceiveMode = ServiceBusReceiveMode.PeekLock
-        };
-
-        _messageReceiver = _client.CreateReceiver(Address, receiverOptions);
-
-        _disposables.Push(_messageReceiver.AsDisposable(m => AsyncHelpers.RunSync(async () =>
-        {
-            try
+            if (!RequiresSession)
             {
-                await m.CloseAsync(_cancellationToken).ConfigureAwait(false);
+                var receiverOptions = new ServiceBusReceiverOptions
+                {
+                    PrefetchCount = _prefetchCount,
+                    ReceiveMode = ServiceBusReceiveMode.PeekLock
+                };
+                _messageReceiver = _client.CreateReceiver(Address, receiverOptions);
             }
-            catch (OperationCanceledException) when (_cancellationToken.IsCancellationRequested)
+            else
             {
-                // we're being cancelled
+                var receiverSessionOptions = new ServiceBusSessionReceiverOptions
+                {
+                    PrefetchCount = _prefetchCount,
+                    ReceiveMode = ServiceBusReceiveMode.PeekLock
+                };
+                _messageReceiver = await _client.AcceptNextSessionAsync(Address, receiverSessionOptions, _cancellationToken).ConfigureAwait(false);
             }
-        })));
+            
+            _disposables.Push(_messageReceiver.AsDisposable(m => AsyncHelpers.RunSync(async () =>
+            {
+                try
+                {
+                    await m.CloseAsync(_cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (_cancellationToken.IsCancellationRequested)
+                {
+                    // we're being cancelled
+                }
+            })));
 
-        if (AutomaticallyRenewPeekLock)
-        {
-            _messageLockRenewalTask.Start();
-        }
+            if (AutomaticallyRenewPeekLock)
+            {
+                _messageLockRenewalTask.Start();
+            }
+        });
     }
 
     /// <summary>
@@ -840,6 +883,12 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     /// </summary>
     public bool DoNotCheckQueueConfigurationEnabled { get; set; }
 
+    /// <summary>
+    /// Gets/sets whether the queue requires a session
+    /// </summary>
+    public bool RequiresSession { get; set; }
+
+    
     /// <summary>
     /// Gets/sets the default message TTL. Must be set before calling <see cref="Initialize"/>, because that is the time when the queue is (re)configured
     /// </summary>
