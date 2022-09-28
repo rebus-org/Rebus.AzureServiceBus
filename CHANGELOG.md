@@ -127,6 +127,9 @@
 
 ## 9.1.0
 * Enable the use of sessions - thanks [georgechond94]
+* Update Azure.Messaging.ServiceBus dependency to 7.10.0
+* Update azure.identity dependency to 1.7.0
+* Update Rebus dependency to 6.6.5
 
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick
