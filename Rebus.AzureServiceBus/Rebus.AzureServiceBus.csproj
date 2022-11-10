@@ -15,8 +15,8 @@
 		<PackageIcon>little_rebusbus2_copy-500x500.png</PackageIcon>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="azure.identity" Version="1.7.0" />
-		<PackageReference Include="Azure.Messaging.ServiceBus" Version="7.10.0" />
+		<PackageReference Include="azure.identity" Version="1.8.0" />
+		<PackageReference Include="Azure.Messaging.ServiceBus" Version="7.11.1" />
 		<PackageReference Include="Rebus" Version="6.6.5" />
 	</ItemGroup>
 	<ItemGroup>

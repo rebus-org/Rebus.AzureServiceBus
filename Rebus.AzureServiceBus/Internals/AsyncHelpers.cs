@@ -3,18 +3,12 @@ using System.Collections.Concurrent;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
+// ReSharper disable AsyncVoidLambda
 
 namespace Rebus.Internals;
 
 static class AsyncHelpers
 {
-    public static TResult ReturnSync<TResult>(Func<Task<TResult>> task)
-    {
-        var result = default(TResult);
-        RunSync(async () => result = await task().ConfigureAwait(false));
-        return result;
-    }
-
     /// <summary>
     /// Executes a task synchronously on the calling thread by installing a temporary synchronization context that queues continuations
     ///  </summary>
@@ -40,8 +34,8 @@ static class AsyncHelpers
     /// </summary>
     class CustomSynchronizationContext : SynchronizationContext
     {
-        readonly ConcurrentQueue<Tuple<SendOrPostCallback, object>> _items = new ConcurrentQueue<Tuple<SendOrPostCallback, object>>();
-        readonly AutoResetEvent _workItemsWaiting = new AutoResetEvent(false);
+        readonly ConcurrentQueue<Tuple<SendOrPostCallback, object>> _items = new();
+        readonly AutoResetEvent _workItemsWaiting = new(false);
         readonly Func<Task> _task;
 
         ExceptionDispatchInfo _caughtException;
@@ -77,7 +71,7 @@ static class AsyncHelpers
                 }
                 finally
                 {
-                    Post(state => _done = true, null);
+                    Post(_ => _done = true, null);
                 }
             }, null);
 
@@ -98,14 +92,8 @@ static class AsyncHelpers
             }
         }
 
-        public override void Send(SendOrPostCallback d, object state)
-        {
-            throw new NotSupportedException("Cannot send to same thread");
-        }
-
-        public override SynchronizationContext CreateCopy()
-        {
-            return this;
-        }
+        public override SynchronizationContext CreateCopy() => this;
+        
+        public override void Send(SendOrPostCallback d, object state) => throw new NotSupportedException("Cannot send to same thread");
     }
 }
