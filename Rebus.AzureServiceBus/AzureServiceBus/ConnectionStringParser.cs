@@ -12,6 +12,17 @@ class ConnectionStringParser
 
     public string ConnectionString { get; }
 
+    public ConnectionStringParser(string endpoint, string sharedAccessKeyName, string sharedAccessKey, string entityPath)
+    {
+        _parts = new Dictionary<string, string>
+        {
+            {"Endpoint", endpoint},
+            {"SharedAccessKeyName", sharedAccessKeyName},
+            {"SharedAccessKey", sharedAccessKey},
+            {"EntityPath", entityPath}
+        };
+    }
+
     public ConnectionStringParser(string connectionString)
     {
         ConnectionString = connectionString;
