@@ -165,7 +165,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
         await _subscriptionExceptionIgnorant.Execute(async () =>
         {
-            var topicProperties = await EnsureTopicExists(topic).ConfigureAwait(false);
+            var topicProperties = await EnsureTopicExists("rebus").ConfigureAwait(false);
             var messageSender = GetMessageSender(Address);
 
             var inputQueuePath = messageSender.GetQueuePath();
@@ -173,7 +173,15 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
             var subscription = await GetOrCreateSubscription(topicName, _subscriptionName).ConfigureAwait(false);
 
+            try
+            {
+                await _managementClient.CreateRuleAsync(subscription.TopicName, subscription.SubscriptionName,
+                    new CreateRuleOptions(_nameFormatter.FormatSubscriptionName(topic), new SqlRuleFilter($"sys.to='{topic}'")), _cancellationToken);
+            }
+            catch(ServiceBusException ex) when(ex.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists) {}
+
             bool ForwardToMatches() => subscription.ForwardTo == inputQueuePath;
+
 
             // if it looks fine, just skip it
             if (ForwardToMatches()) return;
@@ -199,13 +207,12 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
         await _subscriptionExceptionIgnorant.Execute(async () =>
         {
-            var topicProperties = await EnsureTopicExists(topic).ConfigureAwait(false);
+            var topicProperties = await EnsureTopicExists("rebus").ConfigureAwait(false);
             var topicName = topicProperties.Name;
 
             try
             {
-                await _managementClient.DeleteSubscriptionAsync(topicName, _subscriptionName, _cancellationToken).ConfigureAwait(false);
-
+                await _managementClient.DeleteRuleAsync(topicName, _subscriptionName, _nameFormatter.FormatSubscriptionName(topic), _cancellationToken);
                 _log.Info("Subscription {subscriptionName} for topic {topicName} successfully unregistered",
                     _subscriptionName, topic);
             }
@@ -230,7 +237,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                 ForwardTo = GetMessageSender(Address).GetQueuePath()
             };
 
-            return await _managementClient.CreateSubscriptionAsync(options, _cancellationToken).ConfigureAwait(false);
+            return await _managementClient.CreateSubscriptionAsync(options,  new CreateRuleOptions("block-unless", new FalseRuleFilter()), _cancellationToken).ConfigureAwait(false);
         }
         catch (ServiceBusException)
         {
@@ -507,6 +514,8 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         var message = new ServiceBusMessage(transportMessage.Body);
         var headers = transportMessage.Headers.Clone();
 
+        message.To = outgoingMessage.DestinationAddress.Replace(MagicSubscriptionPrefix, "");
+        
         if (headers.TryGetValue(Headers.TimeToBeReceived, out var timeToBeReceivedStr))
         {
             var timeToBeReceived = TimeSpan.Parse(timeToBeReceivedStr);
@@ -574,7 +583,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
                     if (destinationQueue.StartsWith(MagicSubscriptionPrefix))
                     {
-                        var topicName = _nameFormatter.FormatTopicName(destinationQueue.Substring(MagicSubscriptionPrefix.Length));
+                        var topicName = "rebus"; //_nameFormatter.FormatTopicName(destinationQueue.Substring(MagicSubscriptionPrefix.Length));
                         var topicClient = await GetTopicClient(topicName);
                         var serviceBusMessageBatches = await GetBatches(messages.Select(GetMessage), topicClient);
 

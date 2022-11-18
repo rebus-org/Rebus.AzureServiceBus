@@ -63,6 +63,29 @@ public class TestAsbTopicsPubSub : FixtureBase
         gotString1.WaitOrDie(TimeSpan.FromSeconds(3));
         gotString2.WaitOrDie(TimeSpan.FromSeconds(3));
     }
+    
+    [Test]
+    public async Task PubSubMultipleTypesSeemsToWork()
+    {
+        var gotString1 = new ManualResetEvent(false);
+        var gotString2 = new ManualResetEvent(false);
+
+        _bus2.Handle<string>(async str => gotString1.Set());
+        _bus2.Handle<int>(async str => gotString2.Set());
+
+        StartBuses();
+
+        await _bus2.Bus.Subscribe<string>();
+        await _bus2.Bus.Subscribe<int>();
+
+        await Task.Delay(500);
+
+        await _bus3.Bus.Publish("hello there!!!!");
+        await _bus3.Bus.Publish(3);
+
+        gotString1.WaitOrDie(TimeSpan.FromSeconds(3));
+        gotString2.WaitOrDie(TimeSpan.FromSeconds(3));
+    }
 
     [Test]
     public async Task PubSubSeemsToWorkAlsoWithUnsubscribe()
@@ -93,6 +116,21 @@ public class TestAsbTopicsPubSub : FixtureBase
         gotString1.WaitOrDie(TimeSpan.FromSeconds(3));
 
         Assert.That(subscriber2GotTheMessage, Is.False, "Didn't expect subscriber 2 to get the string since it was unsubscribed");
+    }
+    
+    [Test]
+    public async Task PubNoSubSeemsNoMessage()
+    {
+        var gotString1 = new ManualResetEvent(false);
+        _bus1.Handle<int>(async str => gotString1.Set());
+        StartBuses();
+
+        await _bus1.Bus.Subscribe<string>();
+        await Task.Delay(500);
+
+        await _bus3.Bus.Publish(24);
+
+        Assert.False(gotString1.WaitOne(TimeSpan.FromSeconds(3)));
     }
 
     (BuiltinHandlerActivator, IBusStarter) CreateBus(string inputQueue)
