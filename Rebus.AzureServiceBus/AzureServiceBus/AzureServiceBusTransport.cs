@@ -47,8 +47,6 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     /// </summary>
     public const string MagicDeferredMessagesAddress = "___deferred___";
 
-    const string SessionIdHeader = "SessionId";
-
     static readonly ServiceBusRetryOptions DefaultRetryStrategy = new()
     {
         Mode = ServiceBusRetryMode.Exponential,
@@ -501,62 +499,6 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         return destinationAddress;
     }
 
-    static ServiceBusMessage GetMessage(OutgoingMessage outgoingMessage)
-    {
-        var transportMessage = outgoingMessage.TransportMessage;
-        var message = new ServiceBusMessage(transportMessage.Body);
-        var headers = transportMessage.Headers.Clone();
-
-        if (headers.TryGetValue(Headers.TimeToBeReceived, out var timeToBeReceivedStr))
-        {
-            var timeToBeReceived = TimeSpan.Parse(timeToBeReceivedStr);
-            message.TimeToLive = timeToBeReceived;
-            headers.Remove(Headers.TimeToBeReceived);
-        }
-
-        if (headers.TryGetValue(Headers.DeferredUntil, out var deferUntilTime))
-        {
-            var deferUntilDateTimeOffset = deferUntilTime.ToDateTimeOffset();
-            message.ScheduledEnqueueTime = deferUntilDateTimeOffset;
-            headers.Remove(Headers.DeferredUntil);
-        }
-
-        if (headers.TryGetValue(Headers.ContentType, out var contentType))
-        {
-            message.ContentType = contentType;
-        }
-
-        if (headers.TryGetValue(Headers.CorrelationId, out var correlationId))
-        {
-            message.CorrelationId = correlationId;
-        }
-
-        if (headers.TryGetValue(Headers.MessageId, out var messageId))
-        {
-            message.MessageId = messageId;
-        }
-        
-        if (headers.TryGetValue(SessionIdHeader, out var sessionId))
-        {
-            message.SessionId = sessionId;
-        }
-
-        message.Subject = transportMessage.GetMessageLabel();
-
-        if (headers.TryGetValue(Headers.ErrorDetails, out var errorDetails))
-        {
-            // this particular header has a tendency to grow out of hand
-            headers[Headers.ErrorDetails] = errorDetails.TrimTo(32000);
-        }
-
-        foreach (var kvp in headers)
-        {
-            message.ApplicationProperties[kvp.Key] = kvp.Value;
-        }
-
-        return message;
-    }
-
     ConcurrentQueue<OutgoingMessage> GetOutgoingMessages(ITransactionContext context)
     {
         ConcurrentQueue<OutgoingMessage> CreateNewOutgoingMessagesQueue()
@@ -576,7 +518,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                     {
                         var topicName = _nameFormatter.FormatTopicName(destinationQueue.Substring(MagicSubscriptionPrefix.Length));
                         var topicClient = await GetTopicClient(topicName);
-                        var serviceBusMessageBatches = await GetBatches(messages.Select(GetMessage), topicClient);
+                        var serviceBusMessageBatches = await GetBatches(messages.ToServiceBusMessages(RemoveHeaders), topicClient);
 
                         using (serviceBusMessageBatches.AsDisposable(b => b.DisposeCollection()))
                         {
@@ -598,7 +540,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                     else
                     {
                         var messageSender = GetMessageSender(destinationQueue);
-                        var serviceBusMessageBatches = await GetBatches(messages.Select(GetMessage), messageSender);
+                        var serviceBusMessageBatches = await GetBatches(messages.ToServiceBusMessages(RemoveHeaders), messageSender);
 
                         using (serviceBusMessageBatches.AsDisposable(b => b.DisposeCollection()))
                         {
@@ -767,11 +709,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
         context.OnDisposed(ctx => _messageLockRenewers.TryRemove(messageId, out _));
 
-        var applicationProperties = message.ApplicationProperties;
-        var headers = applicationProperties.ToDictionary(kvp => kvp.Key, kvp => kvp.Value?.ToString());
-        var body = message.Body;
-
-        return new TransportMessage(headers, body.ToMemory().ToArray());
+        return message.ToTransportMessage();
     }
 
     async Task<ReceivedMessage> ReceiveInternal()
@@ -919,6 +857,8 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     /// (e.g. 'Premium' at the time of writing allows for 1 MB) Please add some leeway, because Rebus' payload size estimation is not entirely precise
     /// </summary>
     public int MaximumMessagePayloadBytes { get; set; }
+
+    public bool RemoveHeaders { get; set; }
 
     /// <summary>
     /// Purges the input queue by receiving all messages as quickly as possible

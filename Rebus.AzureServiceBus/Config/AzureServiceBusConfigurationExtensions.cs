@@ -114,6 +114,7 @@ public static class AzureServiceBusConfigurationExtensions
                 transport.DuplicateDetectionHistoryTimeWindow = settingsBuilder.DuplicateDetectionHistoryTimeWindow;
                 transport.ReceiveOperationTimeout = settingsBuilder.ReceiveOperationTimeout;
                 transport.MaximumMessagePayloadBytes = settingsBuilder.MaximumMessagePayloadBytes;
+                transport.RemoveHeaders = settingsBuilder.RemoveHeaders;
 
                 return transport;
             });

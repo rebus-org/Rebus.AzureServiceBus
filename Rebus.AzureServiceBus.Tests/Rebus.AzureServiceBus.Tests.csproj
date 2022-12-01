@@ -5,6 +5,7 @@
 		<LangVersion>10</LangVersion>
 	</PropertyGroup>
 	<ItemGroup>
+		<PackageReference Include="Hypothesist.Rebus" Version="2.1.44" />
 		<PackageReference Include="microsoft.net.test.sdk" Version="17.4.0" />
 		<PackageReference Include="nunit" Version="3.13.3" />
 		<PackageReference Include="NUnit3TestAdapter" Version="4.3.0">
