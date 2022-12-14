@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
+using Rebus.AzureServiceBus.Messages;
 using Rebus.AzureServiceBus.NameFormat;
 using Rebus.Extensions;
 using Rebus.Internals;
@@ -28,7 +29,7 @@ public class AzureServiceBusTransportFactory : ITransportFactory
 
         if (inputQueueAddress == null)
         {
-            var transport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, null, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter());
+            var transport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, null, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter(), new DefaultMessageConverter());
 
             transport.Initialize();
 
@@ -37,7 +38,7 @@ public class AzureServiceBusTransportFactory : ITransportFactory
 
         return _queuesToDelete.GetOrAdd(inputQueueAddress, () =>
         {
-            var transport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter());
+            var transport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter(), new DefaultMessageConverter());
 
             transport.PurgeInputQueue();
 

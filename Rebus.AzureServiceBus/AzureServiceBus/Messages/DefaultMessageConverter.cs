@@ -1,35 +1,30 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using Azure.Messaging.ServiceBus;
-using Rebus.AzureServiceBus;
 using Rebus.Bus;
 using Rebus.Extensions;
+using Rebus.Internals;
 using Rebus.Messages;
 
-namespace Rebus.Internals;
+namespace Rebus.AzureServiceBus.Messages;
 
-internal static class ServiceBusMessageConvert
+internal class DefaultMessageConverter : IMessageConverter
 {
-    private const string SessionIdHeader = "SessionId";
-
-    public static TransportMessage ToTransportMessage(this ServiceBusReceivedMessage message)
+    public TransportMessage ToTransport(ServiceBusReceivedMessage message)
     {
         var applicationProperties = message.ApplicationProperties;
         var headers = applicationProperties.ToDictionary(kvp => kvp.Key, kvp => kvp.Value?.ToString());
         headers[Headers.TimeToBeReceived] = message.TimeToLive.ToString();
-        headers[Headers.DeferredUntil] = message.ScheduledEnqueueTime.ToString();
         headers[Headers.ContentType] = message.ContentType;
         headers[Headers.CorrelationId] = message.CorrelationId;
         headers[Headers.MessageId] = message.MessageId;
-        headers[SessionIdHeader] = message.SessionId;
+        headers[ExtraHeaders.SessionId] = message.SessionId;
 
         return new TransportMessage(headers, message.Body.ToMemory().ToArray());
     }
 
-    private static ServiceBusMessage ToServiceBusMessage(this OutgoingMessage outgoingMessage)
+    public ServiceBusMessage ToServiceBus(TransportMessage transportMessage)
     {
-        var transportMessage = outgoingMessage.TransportMessage;
         var message = new ServiceBusMessage(transportMessage.Body);
         var headers = transportMessage.Headers.Clone();
 
@@ -62,7 +57,7 @@ internal static class ServiceBusMessageConvert
             message.MessageId = messageId;
         }
         
-        if (headers.TryGetValue(SessionIdHeader, out var sessionId))
+        if (headers.TryGetValue(ExtraHeaders.SessionId, out var sessionId))
         {
             message.SessionId = sessionId;
         }
@@ -81,28 +76,6 @@ internal static class ServiceBusMessageConvert
         }
 
         return message;
-    }
-
-    public static IEnumerable<ServiceBusMessage> ToServiceBusMessages(this IEnumerable<OutgoingMessage> m, bool remove) => 
-        m.Select(ToServiceBusMessage).RemoveHeaders(remove);
-
-    private static IEnumerable<ServiceBusMessage> RemoveHeaders(this IEnumerable<ServiceBusMessage> messages, bool remove) =>
-        messages.Select(m =>
-        {
-            if (remove)
-            {
-                m.RemoveHeaders();
-            }
-            
-            return m;
-        });
-
-    private static void RemoveHeaders(this ServiceBusMessage m)
-    {
-        m.ApplicationProperties.Remove(Headers.MessageId);
-        m.ApplicationProperties.Remove(Headers.CorrelationId);
-        m.ApplicationProperties.Remove(Headers.ContentType);
-        m.ApplicationProperties.Remove(SessionIdHeader);
     }
 }
 

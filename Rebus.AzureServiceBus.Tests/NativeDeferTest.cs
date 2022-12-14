@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Activation;
+using Rebus.AzureServiceBus.Messages;
 using Rebus.AzureServiceBus.NameFormat;
 using Rebus.Bus;
 using Rebus.Config;
@@ -31,7 +32,7 @@ public class NativeDeferTest : FixtureBase
         var consoleLoggerFactory = new ConsoleLoggerFactory(false);
         var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
             
-        using (var transport = new AzureServiceBusTransport(connectionString, QueueName, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter()))
+        using (var transport = new AzureServiceBusTransport(connectionString, QueueName, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter(), new DefaultMessageConverter()))
         {
             transport.PurgeInputQueue();
         }

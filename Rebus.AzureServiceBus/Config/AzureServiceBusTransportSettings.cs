@@ -23,8 +23,6 @@ public class AzureServiceBusTransportSettings
     internal TimeSpan ReceiveOperationTimeout { get; set; } = TimeSpan.FromSeconds(5);
 
     internal int MaximumMessagePayloadBytes { get; set; } = 256 * 1024;
-    internal bool RemoveHeaders { get; set; }
-
 
     /// <summary>
     /// Enables partitioning whereby Azure Service Bus will be able to distribute messages between message stores and this way increase throughput.
@@ -35,7 +33,7 @@ public class AzureServiceBusTransportSettings
         PartitioningEnabled = true;
         return this;
     }
-
+    
     /// <summary>
     /// Enables sessions whereby messages will be processed in order based on their SessionId header.
     /// Sessions cannot be enabled after a queue is created, so it must be enabled before Rebus creates the input queue.
@@ -188,15 +186,6 @@ public class AzureServiceBusTransportSettings
     public AzureServiceBusTransportSettings SetReceiveOperationTimeout(TimeSpan receiveOperationTimeout)
     {
         ReceiveOperationTimeout = receiveOperationTimeout;
-        return this;
-    }
-
-    /// <summary>
-    /// Stop publishing `rbs2-*` headers for values that are already available on the ServiceBusMessage.
-    /// </summary>
-    public AzureServiceBusTransportSettings UseNativeHeaders()
-    {
-        RemoveHeaders = true;
         return this;
     }
 }

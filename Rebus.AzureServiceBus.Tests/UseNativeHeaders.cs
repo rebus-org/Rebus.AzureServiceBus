@@ -26,8 +26,8 @@ public class UseNativeHeaders : FixtureBase
 
         var starter = Configure.With(activator)
             .Transport(t => t
-                .UseAzureServiceBus(AsbTestConfig.ConnectionString, "publish-native")
-                .UseNativeHeaders())
+                .UseNativeHeaders()
+                .UseAzureServiceBus(AsbTestConfig.ConnectionString, "publish-native"))
             .Start();
 
         await starter.Subscribe<string>();

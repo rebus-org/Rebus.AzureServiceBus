@@ -54,6 +54,7 @@ public static class AzureServiceBusConfigurationExtensions
                     rebusLoggerFactory: rebusLoggerFactory,
                     asyncTaskFactory: asyncTaskFactory,
                     nameFormatter: nameFormatter,
+                    messageConverter: c.Get<AzureServiceBus.Messages.IMessageConverter>(),
                     cancellationToken: cancellationToken,
                     tokenCredential: tokenCredential
                 );
@@ -94,6 +95,7 @@ public static class AzureServiceBusConfigurationExtensions
                     rebusLoggerFactory: rebusLoggerFactory,
                     asyncTaskFactory: asyncTaskFactory,
                     nameFormatter: nameFormatter,
+                    messageConverter: c.Get<AzureServiceBus.Messages.IMessageConverter>(),
                     cancellationToken: cancellationToken,
                     tokenCredential: tokenCredential
                 );
@@ -114,7 +116,6 @@ public static class AzureServiceBusConfigurationExtensions
                 transport.DuplicateDetectionHistoryTimeWindow = settingsBuilder.DuplicateDetectionHistoryTimeWindow;
                 transport.ReceiveOperationTimeout = settingsBuilder.ReceiveOperationTimeout;
                 transport.MaximumMessagePayloadBytes = settingsBuilder.MaximumMessagePayloadBytes;
-                transport.RemoveHeaders = settingsBuilder.RemoveHeaders;
 
                 return transport;
             });
@@ -164,5 +165,6 @@ public static class AzureServiceBusConfigurationExtensions
         });
 
         configurer.OtherService<ITopicNameConvention>().Register(c => c.Get<DefaultAzureServiceBusTopicNameConvention>());
+        configurer.OtherService<AzureServiceBus.Messages.IMessageConverter>().Register(_ => new AzureServiceBus.Messages.DefaultMessageConverter());
     }
 }

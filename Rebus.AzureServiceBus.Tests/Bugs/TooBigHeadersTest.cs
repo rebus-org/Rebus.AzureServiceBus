@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Activation;
+using Rebus.AzureServiceBus.Messages;
 using Rebus.AzureServiceBus.NameFormat;
 using Rebus.Config;
 using Rebus.Logging;
@@ -23,7 +24,7 @@ public class TooBigHeadersTest : FixtureBase
     {
         var loggerFactory = new ConsoleLoggerFactory(false);
 
-        errorQueueTransport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, "error", loggerFactory, new TplAsyncTaskFactory(loggerFactory), new DefaultNameFormatter());
+        errorQueueTransport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, "error", loggerFactory, new TplAsyncTaskFactory(loggerFactory), new DefaultNameFormatter(), new DefaultMessageConverter());
 
         Using(errorQueueTransport);
 

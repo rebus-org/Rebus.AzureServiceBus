@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Azure.Core;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
+using Rebus.AzureServiceBus.Messages;
 using Rebus.AzureServiceBus.NameFormat;
 using Rebus.Bus;
 using Rebus.Exceptions;
@@ -67,6 +68,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     readonly ConnectionStringParser _connectionStringParser;
     readonly TokenCredential _tokenCredential;
     readonly INameFormatter _nameFormatter;
+    readonly IMessageConverter _messageConverter;
     readonly string _subscriptionName;
     readonly ILog _log;
     readonly ServiceBusClient _client;
@@ -79,13 +81,16 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     /// <summary>
     /// Constructs the transport, connecting to the service bus pointed to by the connection string.
     /// </summary>
-    public AzureServiceBusTransport(string connectionString, string queueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory, INameFormatter nameFormatter, CancellationToken cancellationToken = default, TokenCredential tokenCredential = null)
+    public AzureServiceBusTransport(string connectionString, string queueName, IRebusLoggerFactory rebusLoggerFactory,
+        IAsyncTaskFactory asyncTaskFactory, INameFormatter nameFormatter, IMessageConverter messageConverter,
+        CancellationToken cancellationToken = default, TokenCredential tokenCredential = null)
     {
         if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
         if (asyncTaskFactory == null) throw new ArgumentNullException(nameof(asyncTaskFactory));
         if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
 
         _nameFormatter = nameFormatter;
+        _messageConverter = messageConverter;
 
         if (queueName != null)
         {
@@ -518,7 +523,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                     {
                         var topicName = _nameFormatter.FormatTopicName(destinationQueue.Substring(MagicSubscriptionPrefix.Length));
                         var topicClient = await GetTopicClient(topicName);
-                        var serviceBusMessageBatches = await GetBatches(messages.ToServiceBusMessages(RemoveHeaders), topicClient);
+                        var serviceBusMessageBatches = await GetBatches(messages.Select(m => _messageConverter.ToServiceBus(m.TransportMessage)), topicClient);
 
                         using (serviceBusMessageBatches.AsDisposable(b => b.DisposeCollection()))
                         {
@@ -540,7 +545,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                     else
                     {
                         var messageSender = GetMessageSender(destinationQueue);
-                        var serviceBusMessageBatches = await GetBatches(messages.ToServiceBusMessages(RemoveHeaders), messageSender);
+                        var serviceBusMessageBatches = await GetBatches(messages.Select(m => _messageConverter.ToServiceBus(m.TransportMessage)), messageSender);
 
                         using (serviceBusMessageBatches.AsDisposable(b => b.DisposeCollection()))
                         {
@@ -709,7 +714,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
         context.OnDisposed(ctx => _messageLockRenewers.TryRemove(messageId, out _));
 
-        return message.ToTransportMessage();
+        return _messageConverter.ToTransport(message);
     }
 
     async Task<ReceivedMessage> ReceiveInternal()
@@ -857,8 +862,6 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     /// (e.g. 'Premium' at the time of writing allows for 1 MB) Please add some leeway, because Rebus' payload size estimation is not entirely precise
     /// </summary>
     public int MaximumMessagePayloadBytes { get; set; }
-
-    public bool RemoveHeaders { get; set; }
 
     /// <summary>
     /// Purges the input queue by receiving all messages as quickly as possible
