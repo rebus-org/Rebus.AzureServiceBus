@@ -65,4 +65,15 @@ public static class AdditionalAzureServiceBusConfigurationExtensions
             }
         }
     }
+    
+    /// <summary>
+    /// Stop publishing `rbs2-*` headers for values that are already available on the ServiceBusMessage.
+    /// </summary>
+    public static StandardConfigurer<ITransport> UseNativeHeaders(this StandardConfigurer<ITransport> configurer)
+    {
+        configurer
+            .OtherService<AzureServiceBus.Messages.IMessageConverter>()
+            .Decorate(c => new AzureServiceBus.Messages.RemoveHeaders(c.Get<AzureServiceBus.Messages.IMessageConverter>()));
+        return configurer;
+    }
 }

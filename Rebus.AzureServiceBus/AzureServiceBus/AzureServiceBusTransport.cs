@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Azure.Core;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
+using Rebus.AzureServiceBus.Messages;
 using Rebus.AzureServiceBus.NameFormat;
 using Rebus.Bus;
 using Rebus.Exceptions;
@@ -47,8 +48,6 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     /// </summary>
     public const string MagicDeferredMessagesAddress = "___deferred___";
 
-    const string SessionIdHeader = "SessionId";
-
     static readonly ServiceBusRetryOptions DefaultRetryStrategy = new()
     {
         Mode = ServiceBusRetryMode.Exponential,
@@ -69,6 +68,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     readonly ConnectionStringParser _connectionStringParser;
     readonly TokenCredential _tokenCredential;
     readonly INameFormatter _nameFormatter;
+    readonly IMessageConverter _messageConverter;
     readonly string _subscriptionName;
     readonly ILog _log;
     readonly ServiceBusClient _client;
@@ -81,13 +81,16 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     /// <summary>
     /// Constructs the transport, connecting to the service bus pointed to by the connection string.
     /// </summary>
-    public AzureServiceBusTransport(string connectionString, string queueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory, INameFormatter nameFormatter, CancellationToken cancellationToken = default, TokenCredential tokenCredential = null)
+    public AzureServiceBusTransport(string connectionString, string queueName, IRebusLoggerFactory rebusLoggerFactory,
+        IAsyncTaskFactory asyncTaskFactory, INameFormatter nameFormatter, IMessageConverter messageConverter,
+        CancellationToken cancellationToken = default, TokenCredential tokenCredential = null)
     {
         if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
         if (asyncTaskFactory == null) throw new ArgumentNullException(nameof(asyncTaskFactory));
         if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
 
         _nameFormatter = nameFormatter;
+        _messageConverter = messageConverter;
 
         if (queueName != null)
         {
@@ -501,62 +504,6 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         return destinationAddress;
     }
 
-    static ServiceBusMessage GetMessage(OutgoingMessage outgoingMessage)
-    {
-        var transportMessage = outgoingMessage.TransportMessage;
-        var message = new ServiceBusMessage(transportMessage.Body);
-        var headers = transportMessage.Headers.Clone();
-
-        if (headers.TryGetValue(Headers.TimeToBeReceived, out var timeToBeReceivedStr))
-        {
-            var timeToBeReceived = TimeSpan.Parse(timeToBeReceivedStr);
-            message.TimeToLive = timeToBeReceived;
-            headers.Remove(Headers.TimeToBeReceived);
-        }
-
-        if (headers.TryGetValue(Headers.DeferredUntil, out var deferUntilTime))
-        {
-            var deferUntilDateTimeOffset = deferUntilTime.ToDateTimeOffset();
-            message.ScheduledEnqueueTime = deferUntilDateTimeOffset;
-            headers.Remove(Headers.DeferredUntil);
-        }
-
-        if (headers.TryGetValue(Headers.ContentType, out var contentType))
-        {
-            message.ContentType = contentType;
-        }
-
-        if (headers.TryGetValue(Headers.CorrelationId, out var correlationId))
-        {
-            message.CorrelationId = correlationId;
-        }
-
-        if (headers.TryGetValue(Headers.MessageId, out var messageId))
-        {
-            message.MessageId = messageId;
-        }
-        
-        if (headers.TryGetValue(SessionIdHeader, out var sessionId))
-        {
-            message.SessionId = sessionId;
-        }
-
-        message.Subject = transportMessage.GetMessageLabel();
-
-        if (headers.TryGetValue(Headers.ErrorDetails, out var errorDetails))
-        {
-            // this particular header has a tendency to grow out of hand
-            headers[Headers.ErrorDetails] = errorDetails.TrimTo(32000);
-        }
-
-        foreach (var kvp in headers)
-        {
-            message.ApplicationProperties[kvp.Key] = kvp.Value;
-        }
-
-        return message;
-    }
-
     ConcurrentQueue<OutgoingMessage> GetOutgoingMessages(ITransactionContext context)
     {
         ConcurrentQueue<OutgoingMessage> CreateNewOutgoingMessagesQueue()
@@ -576,7 +523,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                     {
                         var topicName = _nameFormatter.FormatTopicName(destinationQueue.Substring(MagicSubscriptionPrefix.Length));
                         var topicClient = await GetTopicClient(topicName);
-                        var serviceBusMessageBatches = await GetBatches(messages.Select(GetMessage), topicClient);
+                        var serviceBusMessageBatches = await GetBatches(messages.Select(m => _messageConverter.ToServiceBus(m.TransportMessage)), topicClient);
 
                         using (serviceBusMessageBatches.AsDisposable(b => b.DisposeCollection()))
                         {
@@ -598,7 +545,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                     else
                     {
                         var messageSender = GetMessageSender(destinationQueue);
-                        var serviceBusMessageBatches = await GetBatches(messages.Select(GetMessage), messageSender);
+                        var serviceBusMessageBatches = await GetBatches(messages.Select(m => _messageConverter.ToServiceBus(m.TransportMessage)), messageSender);
 
                         using (serviceBusMessageBatches.AsDisposable(b => b.DisposeCollection()))
                         {
@@ -767,11 +714,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
         context.OnDisposed(ctx => _messageLockRenewers.TryRemove(messageId, out _));
 
-        var applicationProperties = message.ApplicationProperties;
-        var headers = applicationProperties.ToDictionary(kvp => kvp.Key, kvp => kvp.Value?.ToString());
-        var body = message.Body;
-
-        return new TransportMessage(headers, body.ToMemory().ToArray());
+        return _messageConverter.ToTransport(message);
     }
 
     async Task<ReceivedMessage> ReceiveInternal()

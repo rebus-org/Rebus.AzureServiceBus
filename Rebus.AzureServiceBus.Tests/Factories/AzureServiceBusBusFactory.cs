@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Rebus.Activation;
+using Rebus.AzureServiceBus.Messages;
 using Rebus.AzureServiceBus.NameFormat;
 using Rebus.Bus;
 using Rebus.Config;
@@ -46,7 +47,7 @@ public class AzureServiceBusBusFactory : IBusFactory
         var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
         var connectionString = AsbTestConfig.ConnectionString;
 
-        using (var transport = new AzureServiceBusTransport(connectionString, queueName, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter()))
+        using (var transport = new AzureServiceBusTransport(connectionString, queueName, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter(), new DefaultMessageConverter()))
         {
             transport.PurgeInputQueue();
         }

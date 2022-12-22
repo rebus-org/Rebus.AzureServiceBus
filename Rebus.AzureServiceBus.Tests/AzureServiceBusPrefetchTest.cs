@@ -140,7 +140,7 @@ public class AzureServiceBusPrefetchTest : FixtureBase
         var connectionString = AsbTestConfig.ConnectionString;
 
         //var transport = new AzureServiceBusTransport(connectionString, _queueName, consoleLoggerFactory, asyncTaskFactory);
-        var transport = new AzureServiceBusTransport(connectionString, _queueName, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter());
+        var transport = new AzureServiceBusTransport(connectionString, _queueName, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter(), new Messages.DefaultMessageConverter());
         Using(transport);
         transport.Initialize();
         transport.PurgeInputQueue();

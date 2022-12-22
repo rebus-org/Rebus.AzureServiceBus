@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Activation;
+using Rebus.AzureServiceBus.Messages;
 using Rebus.AzureServiceBus.NameFormat;
 using Rebus.Bus;
 using Rebus.Config;
@@ -92,6 +93,7 @@ public class DeferredMessagesAreDeadletteredJustFine : FixtureBase
             _loggerFactory,
             new TplAsyncTaskFactory(_loggerFactory),
             new DefaultNameFormatter(),
+            new DefaultMessageConverter(),
             CancellationToken.None
         );
 
