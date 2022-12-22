@@ -11,7 +11,6 @@ public class AzureServiceBusTransportSettings
     internal bool PrefetchingEnabled { get; set; }
     internal int NumberOfMessagesToPrefetch { get; set; }
     internal bool PartitioningEnabled { get; set; }
-    internal bool SessionsEnabled { get; set; }
     internal bool DoNotCreateQueuesEnabled { get; set; }
     internal bool AutomaticPeekLockRenewalEnabled { get; set; }
     internal bool DoNotCheckQueueConfigurationEnabled { get; set; }
@@ -31,16 +30,6 @@ public class AzureServiceBusTransportSettings
     public AzureServiceBusTransportSettings EnablePartitioning()
     {
         PartitioningEnabled = true;
-        return this;
-    }
-    
-    /// <summary>
-    /// Enables sessions whereby messages will be processed in order based on their SessionId header.
-    /// Sessions cannot be enabled after a queue is created, so it must be enabled before Rebus creates the input queue.
-    /// </summary>
-    public AzureServiceBusTransportSettings EnableSessions()
-    {
-        SessionsEnabled = true;
         return this;
     }
 

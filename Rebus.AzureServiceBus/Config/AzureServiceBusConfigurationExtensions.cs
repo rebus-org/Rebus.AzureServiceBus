@@ -107,7 +107,6 @@ public static class AzureServiceBusConfigurationExtensions
 
                 transport.AutomaticallyRenewPeekLock = settingsBuilder.AutomaticPeekLockRenewalEnabled;
                 transport.PartitioningEnabled = settingsBuilder.PartitioningEnabled;
-                transport.RequiresSession = settingsBuilder.SessionsEnabled;
                 transport.DoNotCreateQueuesEnabled = settingsBuilder.DoNotCreateQueuesEnabled;
                 transport.DefaultMessageTimeToLive = settingsBuilder.DefaultMessageTimeToLive;
                 transport.DoNotCheckQueueConfigurationEnabled = settingsBuilder.DoNotCheckQueueConfigurationEnabled;
