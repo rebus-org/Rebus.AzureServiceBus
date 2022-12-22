@@ -496,6 +496,57 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         return destinationAddress;
     }
 
+    static ServiceBusMessage GetMessage(OutgoingMessage outgoingMessage)
+    {
+        var transportMessage = outgoingMessage.TransportMessage;
+        var message = new ServiceBusMessage(transportMessage.Body);
+        var headers = transportMessage.Headers.Clone();
+
+        if (headers.TryGetValue(Headers.TimeToBeReceived, out var timeToBeReceivedStr))
+        {
+            var timeToBeReceived = TimeSpan.Parse(timeToBeReceivedStr);
+            message.TimeToLive = timeToBeReceived;
+            headers.Remove(Headers.TimeToBeReceived);
+        }
+
+        if (headers.TryGetValue(Headers.DeferredUntil, out var deferUntilTime))
+        {
+            var deferUntilDateTimeOffset = deferUntilTime.ToDateTimeOffset();
+            message.ScheduledEnqueueTime = deferUntilDateTimeOffset;
+            headers.Remove(Headers.DeferredUntil);
+        }
+
+        if (headers.TryGetValue(Headers.ContentType, out var contentType))
+        {
+            message.ContentType = contentType;
+        }
+
+        if (headers.TryGetValue(Headers.CorrelationId, out var correlationId))
+        {
+            message.CorrelationId = correlationId;
+        }
+
+        if (headers.TryGetValue(Headers.MessageId, out var messageId))
+        {
+            message.MessageId = messageId;
+        }
+
+        message.Subject = transportMessage.GetMessageLabel();
+
+        if (headers.TryGetValue(Headers.ErrorDetails, out var errorDetails))
+        {
+            // this particular header has a tendency to grow out of hand
+            headers[Headers.ErrorDetails] = errorDetails.TrimTo(32000);
+        }
+
+        foreach (var kvp in headers)
+        {
+            message.ApplicationProperties[kvp.Key] = kvp.Value;
+        }
+
+        return message;
+    }
+
     ConcurrentQueue<OutgoingMessage> GetOutgoingMessages(ITransactionContext context)
     {
         ConcurrentQueue<OutgoingMessage> CreateNewOutgoingMessagesQueue()
