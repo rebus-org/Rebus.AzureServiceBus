@@ -131,6 +131,11 @@
 * Update azure.identity dependency to 1.7.0
 * Update Rebus dependency to 6.6.5
 
+## 9.2.0
+* Remove broken session support
+* Remove potential race condition that came with session support
+
+
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick
 [eeskildsen]: https://github.com/eeskildsen
