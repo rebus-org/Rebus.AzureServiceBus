@@ -371,15 +371,15 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                     queueDescription.DuplicateDetectionHistoryTimeWindow != duplicateDetectionHistoryTimeWindow)
                 {
                     _log.Warn("The queue {queueName} has RequiresDuplicateDetection={requiresDuplicateDetection}, but the transport has DuplicateDetectionHistoryTimeWindow={duplicateDetectionHistoryTimeWindow}. As this setting cannot be changed after the queue is created, please either make sure the Rebus transport settings are consistent with the queue settings, or delete the queue and let Rebus create it again with the new settings.",
-                        address, queueDescription.RequiresDuplicateDetection, PartitioningEnabled);
+                        address, queueDescription.RequiresDuplicateDetection, duplicateDetectionHistoryTimeWindow);
                 }
             }
             else
             {
                 if (queueDescription.RequiresDuplicateDetection)
                 {
-                    _log.Warn("The queue {queueName} has RequiresDuplicateDetection={requiresDuplicateDetection}, but the transport has DuplicateDetectionHistoryTimeWindow={duplicateDetectionHistoryTimeWindow}. As this setting cannot be changed after the queue is created, please either make sure the Rebus transport settings are consistent with the queue settings, or delete the queue and let Rebus create it again with the new settings.",
-                        address, queueDescription.RequiresDuplicateDetection, PartitioningEnabled);
+                    _log.Warn("The queue {queueName} has RequiresDuplicateDetection={requiresDuplicateDetection}, but the transport has DuplicateDetectionHistoryTimeWindow=null. As this setting cannot be changed after the queue is created, please either make sure the Rebus transport settings are consistent with the queue settings, or delete the queue and let Rebus create it again with the new settings.",
+                        address, queueDescription.RequiresDuplicateDetection);
                 }
             }
 
@@ -716,7 +716,8 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
                     try
                     {
-                        await messageReceiver.AbandonMessageAsync(message, cancellationToken: _cancellationToken).ConfigureAwait(false);
+                        var transportMessage = (TransportMessage)ctx.Items["transportMessage"];
+                        await messageReceiver.AbandonMessageAsync(message, transportMessage.Headers.ToDictionary(k=>k.Key,v=>(object)v.Value), cancellationToken: _cancellationToken).ConfigureAwait(false);
                     }
                     catch (Exception exception)
                     {
@@ -728,8 +729,9 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         });
 
         context.OnDisposed(ctx => _messageLockRenewers.TryRemove(messageId, out _));
-
-        return _messageConverter.ToTransport(message);
+        var transportMessage = _messageConverter.ToTransport(message);
+        context.Items.TryAdd("transportMessage", transportMessage);
+        return transportMessage;
     }
 
     async Task<ReceivedMessage> ReceiveInternal()
