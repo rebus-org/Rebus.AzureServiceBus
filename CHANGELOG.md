@@ -1,4 +1,4 @@
-# Changelog
+Changelog
 
 ## 2.0.0-a1
 * Test release
@@ -135,6 +135,8 @@
 * Remove broken session support
 * Remove potential race condition that came with session support
 
+## 9.3.0
+* Include the headers of the transport message when NACKing or natively dead-lettering the message, thus providing the ability to mutate them for each delivery attempt - thanks [jorgenbosman]
 
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick
@@ -142,6 +144,9 @@
 [ehabelgindy]: https://github.com/ehabelgindy
 [georgechond94]: https://github.com/georgechond94
 [hjalle]: https://github.com/hjalle
+[jorgenbosman]: https://github.com/jorgenbosman
 [jr01]: https://github.com/jr01
 [lezzi]: https://github.com/lezzi
 [Meyce]: https://github.com/Meyce
+
+
