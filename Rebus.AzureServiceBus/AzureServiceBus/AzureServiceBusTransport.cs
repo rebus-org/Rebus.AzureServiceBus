@@ -635,9 +635,11 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
                 try
                 {
-                    // ReSharper disable once MethodSupportsCancellation
                     await messageReceiver
-                        .CompleteMessageAsync(asbMessage)
+                        .CompleteMessageAsync(
+                            message: asbMessage,
+                            cancellationToken: CancellationToken.None //< pass none here to avoid canceling the call immediately when we're shutting down
+                        )
                         .ConfigureAwait(false);
                 }
                 catch (Exception exception)
@@ -666,7 +668,13 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                     try
                     {
                         var transportMessage = (TransportMessage)ctx.Items["transportMessage"];
-                        await messageReceiver.AbandonMessageAsync(message, transportMessage.Headers.ToDictionary(k=>k.Key,v=>(object)v.Value), cancellationToken: _cancellationToken).ConfigureAwait(false);
+                        var propertiesToModify = transportMessage.Headers.ToDictionary(k => k.Key, v => (object)v.Value);
+                        await messageReceiver.AbandonMessageAsync(
+                                message: message,
+                                propertiesToModify: propertiesToModify,
+                                cancellationToken: CancellationToken.None //< pass none here to avoid canceling the call immediately when we're shutting down
+                            )
+                            .ConfigureAwait(false);
                     }
                     catch (Exception exception)
                     {

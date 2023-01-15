@@ -138,6 +138,9 @@ Changelog
 ## 9.3.0
 * Include the headers of the transport message when NACKing or natively dead-lettering the message, thus providing the ability to mutate them for each delivery attempt - thanks [jorgenbosman]
 
+## 9.3.1
+* Don't pass shutdown cancellation token when ACK/NACKing to avoid cancelling the call immediately when shutting down
+
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick
 [eeskildsen]: https://github.com/eeskildsen
