@@ -15,6 +15,7 @@ namespace Rebus.AzureServiceBus.Tests.Factories;
 
 public class AzureServiceBusTransportFactory : ITransportFactory
 {
+    private const int DefaultMaxParallelism = 5;
     readonly Dictionary<string, AzureServiceBusTransport> _queuesToDelete = new Dictionary<string, AzureServiceBusTransport>();
 
     public ITransport CreateOneWayClient()
@@ -31,6 +32,8 @@ public class AzureServiceBusTransportFactory : ITransportFactory
         {
             var transport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, null, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter(), new DefaultMessageConverter());
 
+            transport.MaxParallelism = DefaultMaxParallelism;
+
             transport.Initialize();
 
             return transport;
@@ -39,6 +42,8 @@ public class AzureServiceBusTransportFactory : ITransportFactory
         return _queuesToDelete.GetOrAdd(inputQueueAddress, () =>
         {
             var transport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter(), new DefaultMessageConverter());
+
+            transport.MaxParallelism = DefaultMaxParallelism;
 
             transport.PurgeInputQueue();
 

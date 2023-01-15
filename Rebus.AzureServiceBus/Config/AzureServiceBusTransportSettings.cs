@@ -11,8 +11,8 @@ public class AzureServiceBusTransportSettings
     internal bool PrefetchingEnabled { get; set; }
     internal int NumberOfMessagesToPrefetch { get; set; }
     internal bool PartitioningEnabled { get; set; }
+    internal bool SessionsEnabled { get; set; }
     internal bool DoNotCreateQueuesEnabled { get; set; }
-    internal bool AutomaticPeekLockRenewalEnabled { get; set; }
     internal bool DoNotCheckQueueConfigurationEnabled { get; set; }
     internal bool LegacyNamingEnabled { get; set; }
     internal TimeSpan? DefaultMessageTimeToLive { get; set; }
@@ -33,6 +33,16 @@ public class AzureServiceBusTransportSettings
         return this;
     }
 
+    /// <summary>
+    /// Enables sessions whereby messages will be processed in order based on their SessionId header.
+    /// Sessions cannot be enabled after a queue is created, so it must be enabled before Rebus creates the input queue.
+    /// </summary>
+    public AzureServiceBusTransportSettings EnableSessions()
+    {
+        SessionsEnabled = true;
+        return this;
+    }
+    
     /// <summary>
     /// Configures the maxiumum payload request limit. Relevant, when Rebus auto-batches sent messages, keeping the size of each individual batch below 256 kB.
     /// If the SKU allows more than the default 256 kB, it can be increased by calling this method.
@@ -118,18 +128,6 @@ public class AzureServiceBusTransportSettings
 
         PrefetchingEnabled = true;
         NumberOfMessagesToPrefetch = numberOfMessagesToPrefetch;
-        return this;
-    }
-
-    /// <summary>
-    /// Enables automatic peek lock renewal. Only enable this if you intend on handling messages for a long long time, and
-    /// DON'T intend on handling messages quickly - it will have an impact on message receive, so only enable it if you
-    /// need it. You should usually strive after keeping message processing times low, much lower than the 5 minute lease
-    /// you get with Azure Service Bus.
-    /// </summary>
-    public AzureServiceBusTransportSettings AutomaticallyRenewPeekLock()
-    {
-        AutomaticPeekLockRenewalEnabled = true;
         return this;
     }
 

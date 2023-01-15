@@ -7,6 +7,7 @@ using Rebus.Retry;
 using Rebus.Transport;
 using Rebus.Logging;
 using System.Linq;
+using Rebus.AzureServiceBus;
 
 namespace Rebus.Config;
 
@@ -39,9 +40,7 @@ public static class AdditionalAzureServiceBusConfigurationExtensions
         public async Task HandlePoisonMessage(TransportMessage transportMessage, ITransactionContext transactionContext, Exception exception)
         {
             if (transactionContext.Items.TryGetValue("asb-message", out var messageObject)
-                && messageObject is ServiceBusReceivedMessage message
-                && transactionContext.Items.TryGetValue("asb-message-receiver", out var messageReceiverObject)
-                && messageReceiverObject is ServiceBusReceiver messageReceiver)
+                && messageObject is IReceivedMessage message)
             {
                 const int headerValueMaxLength = 4096;
 
@@ -54,7 +53,7 @@ public static class AdditionalAzureServiceBusConfigurationExtensions
                 }
 
                 _log.Error(exception, "Dead-lettering message with ID {messageId}, reason={deadLetterReason}", messageId, deadLetterReason);
-                await messageReceiver.DeadLetterMessageAsync(message, transportMessage.Headers.ToDictionary(k=>k.Key, v=>(object)v.Value), deadLetterReason, deadLetterErrorDescription);
+                await message.DeadLetterAsync(transportMessage.Headers.ToDictionary(k=>k.Key, v=>(object)v.Value), deadLetterReason, deadLetterErrorDescription);
 
                 // remove the message from the context, so the transport doesn't try to complete the message
                 transactionContext.Items.TryRemove("asb-message", out _);

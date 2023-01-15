@@ -88,6 +88,7 @@ public static class AzureServiceBusConfigurationExtensions
                 var cancellationToken = c.Get<CancellationToken>();
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                 var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
+                var options = c.Get<Options>();
 
                 var transport = new AzureServiceBusTransport(
                     connectionString: connectionString,
@@ -105,8 +106,8 @@ public static class AzureServiceBusConfigurationExtensions
                     transport.PrefetchMessages(settingsBuilder.NumberOfMessagesToPrefetch);
                 }
 
-                transport.AutomaticallyRenewPeekLock = settingsBuilder.AutomaticPeekLockRenewalEnabled;
                 transport.PartitioningEnabled = settingsBuilder.PartitioningEnabled;
+                transport.RequiresSession = settingsBuilder.SessionsEnabled;
                 transport.DoNotCreateQueuesEnabled = settingsBuilder.DoNotCreateQueuesEnabled;
                 transport.DefaultMessageTimeToLive = settingsBuilder.DefaultMessageTimeToLive;
                 transport.DoNotCheckQueueConfigurationEnabled = settingsBuilder.DoNotCheckQueueConfigurationEnabled;
@@ -115,6 +116,7 @@ public static class AzureServiceBusConfigurationExtensions
                 transport.DuplicateDetectionHistoryTimeWindow = settingsBuilder.DuplicateDetectionHistoryTimeWindow;
                 transport.ReceiveOperationTimeout = settingsBuilder.ReceiveOperationTimeout;
                 transport.MaximumMessagePayloadBytes = settingsBuilder.MaximumMessagePayloadBytes;
+                transport.MaxParallelism = options.MaxParallelism;
 
                 return transport;
             });

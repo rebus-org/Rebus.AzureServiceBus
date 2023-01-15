@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Azure.Core;
 using Azure.Messaging.ServiceBus;
@@ -63,7 +64,6 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     readonly ConcurrentDictionary<string, Lazy<ServiceBusSender>> _messageSenders = new();
     readonly ConcurrentDictionary<string, Lazy<Task<ServiceBusSender>>> _topicClients = new();
     readonly CancellationToken _cancellationToken;
-    readonly IAsyncTask _messageLockRenewalTask;
     readonly ServiceBusAdministrationClient _managementClient;
     readonly ConnectionStringParser _connectionStringParser;
     readonly INameFormatter _nameFormatter;
@@ -71,11 +71,15 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     readonly string _subscriptionName;
     readonly ILog _log;
     readonly ServiceBusClient _client;
+    
+    private Channel<IReceivedMessage> _messagesChannel;
+
 
     bool _prefetchingEnabled;
     int _prefetchCount;
 
-    ServiceBusReceiver _messageReceiver;
+    ServiceBusProcessor _messageProcessor;
+    ServiceBusSessionProcessor _messageSessionProcessor;
 
     /// <summary>
     /// Constructs the transport, connecting to the service bus pointed to by the connection string.
@@ -127,8 +131,6 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
             _client = new ServiceBusClient(connectionStringWithoutEntityPath, clientOptions);
             _managementClient = new ServiceBusAdministrationClient(connectionStringWithoutEntityPath);
         }
-
-        _messageLockRenewalTask = asyncTaskFactory.Create("Peek Lock Renewal", RenewPeekLocks, prettyInsignificant: true, intervalSeconds: 10);
     }
 
     /// <summary>
@@ -604,13 +606,11 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         if (receivedMessage == null) return null;
 
         var message = receivedMessage.Message;
-        var messageReceiver = receivedMessage.MessageReceiver;
 
         var items = context.Items;
 
         // add the message and its receiver to the context
         items["asb-message"] = message;
-        items["asb-message-receiver"] = messageReceiver;
 
         if (string.IsNullOrWhiteSpace(message.LockToken))
         {
@@ -618,11 +618,6 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         }
 
         var messageId = message.MessageId;
-
-        if (AutomaticallyRenewPeekLock && !_prefetchingEnabled)
-        {
-            _messageLockRenewers.TryAdd(message.MessageId, new MessageLockRenewer(message, messageReceiver));
-        }
 
         context.OnCompleted(async ctx =>
         {
@@ -636,8 +631,8 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                 try
                 {
                     // ReSharper disable once MethodSupportsCancellation
-                    await messageReceiver
-                        .CompleteMessageAsync(asbMessage)
+                    await receivedMessage
+                        .CompleteAsync()
                         .ConfigureAwait(false);
                 }
                 catch (Exception exception)
@@ -666,7 +661,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                     try
                     {
                         var transportMessage = (TransportMessage)ctx.Items["transportMessage"];
-                        await messageReceiver.AbandonMessageAsync(message, transportMessage.Headers.ToDictionary(k=>k.Key,v=>(object)v.Value), cancellationToken: _cancellationToken).ConfigureAwait(false);
+                        await receivedMessage.AbandonAsync(transportMessage.Headers.ToDictionary(k=>k.Key,v=>(object)v.Value)).ConfigureAwait(false);
                     }
                     catch (Exception exception)
                     {
@@ -683,22 +678,9 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         return transportMessage;
     }
 
-    async Task<ReceivedMessage> ReceiveInternal()
+    ValueTask<IReceivedMessage> ReceiveInternal()
     {
-        try
-        {
-            var messageReceiver = _messageReceiver;
-
-            var message = await messageReceiver.ReceiveMessageAsync(ReceiveOperationTimeout, _cancellationToken).ConfigureAwait(false);
-
-            return message == null
-                ? null
-                : new ReceivedMessage(message, messageReceiver);
-        }
-        catch (ServiceBusException exception)
-        {
-            throw new RebusApplicationException(exception, $"Could not receive next message from Azure Service Bus queue '{Address}'");
-        }
+        return _messagesChannel.Reader.ReadAsync(_cancellationToken);
     }
 
     /// <summary>
@@ -712,8 +694,6 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     /// <inheritdoc />
     public void Initialize()
     {
-        _disposables.Push(_messageLockRenewalTask);
-
         if (Address == null)
         {
             _log.Info("Initializing one-way Azure Service Bus transport");
@@ -725,43 +705,105 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         InnerCreateQueue(Address);
 
         CheckInputQueueConfiguration(Address);
+        
+        _messagesChannel = Channel.CreateBounded<IReceivedMessage>(
+            new BoundedChannelOptions(MaxParallelism)
+            {
+                FullMode = BoundedChannelFullMode.Wait,
+                SingleReader = false,
+                SingleWriter = false
+            });
+        _disposables.Push(_messagesChannel.AsDisposable(channel =>
+        {
+            channel.Writer.Complete();
+        }));
 
-        var receiverOptions = new ServiceBusReceiverOptions
+        AsyncHelpers.RunSync(async () =>
+        {
+            if (!RequiresSession)
+            { 
+                await InitializeInternal()
+                .ConfigureAwait(false);
+            }
+            else
+            {
+                await InitializeSessionInternal()
+                    .ConfigureAwait(false);
+            }
+        });
+    }
+    
+        private async Task InitializeInternal()
+    {
+        var receiverOptions = new ServiceBusProcessorOptions
         {
             PrefetchCount = _prefetchCount,
-            ReceiveMode = ServiceBusReceiveMode.PeekLock
+            ReceiveMode = ServiceBusReceiveMode.PeekLock,
+            AutoCompleteMessages = false,
+            MaxAutoLockRenewalDuration = LockDuration ?? TimeSpan.FromMinutes(5),
+            MaxConcurrentCalls = MaxParallelism
         };
-
-        _messageReceiver = _client.CreateReceiver(Address, receiverOptions);
-
-        _disposables.Push(_messageReceiver.AsDisposable(m => AsyncHelpers.RunSync(async () =>
+                
+        Task ProcessEvent(ProcessMessageEventArgs args)
         {
-            try
-            {
-                await m.CloseAsync(_cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (_cancellationToken.IsCancellationRequested)
-            {
-                // we're being cancelled
-            }
-        })));
-
-        if (AutomaticallyRenewPeekLock)
-        {
-            _messageLockRenewalTask.Start();
+            return _messagesChannel.Writer.WriteAsync(new ReceivedMessage(args), _cancellationToken).AsTask();
         }
+        
+        Task ProcessError(ProcessErrorEventArgs args)
+        {
+            _log.Error(args.Exception, "An error is thrown when processing a service bus message");
+            return Task.CompletedTask;
+        }
+                
+        _messageProcessor = _client.CreateProcessor(Address, receiverOptions);
+        _messageProcessor.ProcessMessageAsync += ProcessEvent;
+        _messageProcessor.ProcessErrorAsync += ProcessError;
+        _disposables.Push(_messageProcessor.AsDisposable(m => AsyncHelpers.RunSync(async () =>
+        {
+            await m.DisposeAsync().ConfigureAwait(false);
+        })));
+    }
+    
+    private async Task InitializeSessionInternal()
+    {
+        var receiverSessionOptions = new ServiceBusSessionProcessorOptions
+        {
+            PrefetchCount = _prefetchCount,
+            ReceiveMode = ServiceBusReceiveMode.PeekLock,
+            AutoCompleteMessages = false,
+            MaxConcurrentSessions = MaxParallelism,
+            MaxConcurrentCallsPerSession = 1,
+            MaxAutoLockRenewalDuration = LockDuration ?? TimeSpan.FromMinutes(5),
+            SessionIdleTimeout = ReceiveOperationTimeout
+        };
+                
+        async Task ProcessSessionEvent(ProcessSessionMessageEventArgs args)
+        {
+            var message = new ReceivedSessionMessage(args);
+            await _messagesChannel.Writer.WriteAsync(message, _cancellationToken);
+            await message.WaitForHandlingAsync();
+        }
+        
+        Task ProcessSessionError(ProcessErrorEventArgs args)
+        {
+            _log.Error(args.Exception, "An error is thrown when processing a service bus session message");
+            return Task.CompletedTask;
+        }
+                
+        _messageSessionProcessor = _client.CreateSessionProcessor(Address, receiverSessionOptions);
+        _messageSessionProcessor.ProcessMessageAsync += ProcessSessionEvent;
+        _messageSessionProcessor.ProcessErrorAsync += ProcessSessionError;
+        _disposables.Push(_messageSessionProcessor.AsDisposable(m => AsyncHelpers.RunSync(async () =>
+        {
+            await m.DisposeAsync().ConfigureAwait(false);
+        })));
     }
 
     /// <summary>
     /// Always returns true because Azure Service Bus topics and subscriptions are global
     /// </summary>
     public bool IsCentralized => true;
-
-    /// <summary>
-    /// Enables automatic peek lock renewal - only recommended if you truly need to handle messages for a very long time
-    /// </summary>
-    public bool AutomaticallyRenewPeekLock { get; set; }
-
+    
     /// <summary>
     /// Gets/sets whether partitioning should be enabled on new queues. Only takes effect for queues created
     /// after the property has been enabled
@@ -777,6 +819,17 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     /// Gets/sets whether to skip checking queues configuration
     /// </summary>
     public bool DoNotCheckQueueConfigurationEnabled { get; set; }
+    
+    /// <summary>
+    /// Gets/sets whether the queue requires a session
+    /// </summary>
+    public bool RequiresSession { get; set; }
+
+    /// <summary>
+    /// Gets/sets the total degree of parallelism
+    /// This will be used to set the MaxConcurrentCalls & MaxConcurrentSessions when reading from the Service Bus
+    /// </summary>
+    public int MaxParallelism { get; set; } = 5;
 
     /// <summary>
     /// Gets/sets the default message TTL. Must be set before calling <see cref="Initialize"/>, because that is the time when the queue is (re)configured
@@ -906,29 +959,4 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
         return topicClient;
     })).Value;
-
-    async Task RenewPeekLocks()
-    {
-        var mustBeRenewed = _messageLockRenewers.Values
-            .Where(r => r.IsDue)
-            .ToList();
-
-        if (!mustBeRenewed.Any()) return;
-
-        _log.Debug("Found {count} peek locks to be renewed", mustBeRenewed.Count);
-
-        await Task.WhenAll(mustBeRenewed.Select(async r =>
-        {
-            try
-            {
-                await r.Renew().ConfigureAwait(false);
-
-                _log.Debug("Successfully renewed peek lock for message with ID {messageId}", r.MessageId);
-            }
-            catch (Exception exception)
-            {
-                _log.Warn(exception, "Error when renewing peek lock for message with ID {messageId}", r.MessageId);
-            }
-        }));
-    }
 }
