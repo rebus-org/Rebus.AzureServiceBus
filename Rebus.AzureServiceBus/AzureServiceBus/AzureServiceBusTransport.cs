@@ -284,7 +284,8 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
             {
                 // must be set when the queue is first created
                 queueOptions.EnablePartitioning = PartitioningEnabled;
-
+                queueOptions.RequiresSession = RequiresSession;
+                
                 if (LockDuration.HasValue)
                 {
                     queueOptions.LockDuration = LockDuration.Value;
@@ -363,6 +364,12 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
             {
                 _log.Warn("The queue {queueName} has EnablePartitioning={enablePartitioning}, but the transport has PartitioningEnabled={partitioningEnabled}. As this setting cannot be changed after the queue is created, please either make sure the Rebus transport settings are consistent with the queue settings, or delete the queue and let Rebus create it again with the new settings.",
                     address, queueDescription.EnablePartitioning, PartitioningEnabled);
+            }
+            
+            if (queueDescription.RequiresSession != RequiresSession)
+            {
+                _log.Warn("The queue {queueName} has RequiresSession={sessionsRequire}, but the transport has RequiresSession={requiresSession}. As this setting cannot be changed after the queue is created, please either make sure the Rebus transport settings are consistent with the queue settings, or delete the queue and let Rebus create it again with the new settings.",
+                    address, queueDescription.RequiresSession, RequiresSession);
             }
 
             if (DuplicateDetectionHistoryTimeWindow.HasValue)
@@ -601,7 +608,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     /// </summary>
     public async Task<TransportMessage> Receive(ITransactionContext context, CancellationToken cancellationToken)
     {
-        var receivedMessage = await ReceiveInternal().ConfigureAwait(false);
+        var receivedMessage = await ReceiveInternal();
 
         if (receivedMessage == null) return null;
 
@@ -682,7 +689,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     {
         return _messagesChannel.Reader.ReadAsync(_cancellationToken);
     }
-
+    
     /// <summary>
     /// Gets the input queue name for this transport
     /// </summary>
@@ -705,7 +712,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         InnerCreateQueue(Address);
 
         CheckInputQueueConfiguration(Address);
-        
+
         _messagesChannel = Channel.CreateBounded<IReceivedMessage>(
             new BoundedChannelOptions(MaxParallelism)
             {
@@ -713,17 +720,14 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                 SingleReader = false,
                 SingleWriter = false
             });
-        _disposables.Push(_messagesChannel.AsDisposable(channel =>
-        {
-            channel.Writer.Complete();
-        }));
+        _disposables.Push(_messagesChannel.AsDisposable(channel => { channel.Writer.Complete(); }));
 
         AsyncHelpers.RunSync(async () =>
         {
             if (!RequiresSession)
-            { 
+            {
                 await InitializeInternal()
-                .ConfigureAwait(false);
+                    .ConfigureAwait(false);
             }
             else
             {
@@ -732,8 +736,8 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
             }
         });
     }
-    
-        private async Task InitializeInternal()
+
+    private async Task InitializeInternal()
     {
         var receiverOptions = new ServiceBusProcessorOptions
         {
@@ -743,18 +747,18 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
             MaxAutoLockRenewalDuration = LockDuration ?? TimeSpan.FromMinutes(5),
             MaxConcurrentCalls = MaxParallelism
         };
-                
+
         Task ProcessEvent(ProcessMessageEventArgs args)
         {
             return _messagesChannel.Writer.WriteAsync(new ReceivedMessage(args), _cancellationToken).AsTask();
         }
-        
+
         Task ProcessError(ProcessErrorEventArgs args)
         {
             _log.Error(args.Exception, "An error is thrown when processing a service bus message");
             return Task.CompletedTask;
         }
-                
+
         _messageProcessor = _client.CreateProcessor(Address, receiverOptions);
         _messageProcessor.ProcessMessageAsync += ProcessEvent;
         _messageProcessor.ProcessErrorAsync += ProcessError;
@@ -762,8 +766,17 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         {
             await m.DisposeAsync().ConfigureAwait(false);
         })));
+        
+        try
+        {
+            await _messageProcessor.StartProcessingAsync(_cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (_cancellationToken.IsCancellationRequested)
+        {
+            // we're being cancelled
+        }
     }
-    
+
     private async Task InitializeSessionInternal()
     {
         var receiverSessionOptions = new ServiceBusSessionProcessorOptions
@@ -776,20 +789,20 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
             MaxAutoLockRenewalDuration = LockDuration ?? TimeSpan.FromMinutes(5),
             SessionIdleTimeout = ReceiveOperationTimeout
         };
-                
+
         async Task ProcessSessionEvent(ProcessSessionMessageEventArgs args)
         {
             var message = new ReceivedSessionMessage(args);
             await _messagesChannel.Writer.WriteAsync(message, _cancellationToken);
             await message.WaitForHandlingAsync();
         }
-        
+
         Task ProcessSessionError(ProcessErrorEventArgs args)
         {
             _log.Error(args.Exception, "An error is thrown when processing a service bus session message");
             return Task.CompletedTask;
         }
-                
+
         _messageSessionProcessor = _client.CreateSessionProcessor(Address, receiverSessionOptions);
         _messageSessionProcessor.ProcessMessageAsync += ProcessSessionEvent;
         _messageSessionProcessor.ProcessErrorAsync += ProcessSessionError;
@@ -797,6 +810,15 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         {
             await m.DisposeAsync().ConfigureAwait(false);
         })));
+        
+        try
+        {
+            await _messageSessionProcessor.StartProcessingAsync(_cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (_cancellationToken.IsCancellationRequested)
+        {
+            // we're being cancelled
+        }
     }
 
     /// <summary>
