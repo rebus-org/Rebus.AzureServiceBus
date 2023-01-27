@@ -141,6 +141,9 @@ Changelog
 ## 9.3.1
 * Don't pass shutdown cancellation token when ACK/NACKing to avoid cancelling the call immediately when shutting down
 
+## 9.3.2
+* Avoid logging failed peek lock renewal attempts when there's a race between renewal and ACK/NACK by detecting if the message has been removed from the list of messages to automatically renew
+
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick
 [eeskildsen]: https://github.com/eeskildsen

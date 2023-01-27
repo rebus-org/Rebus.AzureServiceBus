@@ -917,8 +917,9 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
     async Task RenewPeekLocks()
     {
-        var mustBeRenewed = _messageLockRenewers.Values
-            .Where(r => r.IsDue)
+        var mustBeRenewed = _messageLockRenewers
+            .Where(r => r.Value.IsDue)
+            .Select(kvp => kvp.Value)
             .ToList();
 
         if (!mustBeRenewed.Any()) return;
@@ -935,7 +936,14 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
             }
             catch (Exception exception)
             {
+                // if an exception occurs, check if the peek lock renewer is still in the dictionary of active
+                // peek lock renewers - if it isn't, then the message must have been completed/abandoned in the meantime,
+                // and then it's not an error that the peek lock could not be renewed
+                if (!_messageLockRenewers.ContainsKey(r.MessageId)) return;
+
                 _log.Warn(exception, "Error when renewing peek lock for message with ID {messageId}", r.MessageId);
+
+                // peek lock renewal will be automatically retried, because it's still due for renewal
             }
         }));
     }
