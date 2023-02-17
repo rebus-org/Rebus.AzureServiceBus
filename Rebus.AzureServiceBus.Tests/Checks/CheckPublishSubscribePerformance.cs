@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Activation;
+using Rebus.AzureServiceBus.Tests.Bugs;
 using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Extensions;
+using Rebus.Logging;
 using Rebus.Messages;
 using Rebus.Pipeline;
 using Rebus.Tests.Contracts;
@@ -19,44 +22,52 @@ namespace Rebus.AzureServiceBus.Tests.Checks;
 [Description("Simple check just to get some kind of idea of some numbers")]
 public class CheckPublishSubscribePerformance : FixtureBase
 {
-    [Test]
-    public async Task CheckEndToEndLatency()
+    protected override void SetUp()
+    {
+        base.SetUp();
+
+        Using(new QueueDeleter("publisher"));
+        Using(new QueueDeleter("subscriber"));
+    }
+
+    [TestCase(1)]
+    [TestCase(10)]
+    [TestCase(100)]
+    [Repeat(10)]
+    public async Task CheckEndToEndLatency(int count)
     {
         var receiveTimes = new ConcurrentQueue<ReceiveInfo>();
 
-        async Task RegisterReceiveTime(IBus bus, IMessageContext messageContext, string msg)
+        async Task RegisterReceiveTime(IBus bus, IMessageContext messageContext, TimedEvent evt)
         {
             var actualReceiveTime = DateTimeOffset.Now;
-            var messageSendTime = messageContext.Headers.GetValue(Headers.SentTime).ToDateTimeOffset();
-            var receiveInfo = new ReceiveInfo(actualReceiveTime, messageSendTime);
+            var receiveInfo = new ReceiveInfo(actualReceiveTime, evt.Time);
             receiveTimes.Enqueue(receiveInfo);
         }
 
-        var publisher = GetBus("sender");
-        var subscriber = GetBus("receiver", handlers: activator => activator.Handle<string>(RegisterReceiveTime));
-        await subscriber.Subscribe<string>();
+        var publisher = GetBus("publisher");
+        var subscriber = GetBus("subscriber", handlers: activator => activator.Handle<TimedEvent>(RegisterReceiveTime));
 
-        var actualSendTime = DateTimeOffset.Now;
-        await publisher.Publish("HEJ MED DIG MIN VEN! 🙂");
+        await subscriber.Subscribe<TimedEvent>();
 
-        await receiveTimes.WaitUntil(q => q.Count == 1);
+        count.Times(() => publisher.Advanced.SyncBus.Publish(new TimedEvent(DateTimeOffset.Now)));
 
-        if (!receiveTimes.TryDequeue(out var receiveInfo))
-        {
-            throw new AssertionException("Did not get receive info within timeout");
-        }
+        await receiveTimes.WaitUntil(q => q.Count == count, timeoutSeconds: 20 + count*2);
 
-        Console.WriteLine($@"
+        var latencies = receiveTimes.Select(a => a.Latency().TotalSeconds).ToList();
 
-Actual send time: {actualSendTime}
-Receive info
-       Sent time: {receiveInfo.MessageSendTime}
-    Receive time: {receiveInfo.ReceiveTime}
+        var average = latencies.Average();
+        var median = latencies.Median();
 
-");
+        Console.WriteLine($"AVG: {average:0.0} s, MED: {median:0.0} s");
     }
 
-    record ReceiveInfo(DateTimeOffset ReceiveTime, DateTimeOffset MessageSendTime);
+    record TimedEvent(DateTimeOffset Time);
+
+    record ReceiveInfo(DateTimeOffset ReceiveTime, DateTimeOffset SendTime)
+    {
+        public TimeSpan Latency() => ReceiveTime - SendTime;
+    }
 
     IBus GetBus(string queueName, Action<BuiltinHandlerActivator> handlers = null)
     {
@@ -65,6 +76,7 @@ Receive info
         handlers?.Invoke(activator);
 
         Configure.With(activator)
+            .Logging(l => l.Console(minLevel: LogLevel.Warn))
             .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName))
             .Start();
 
