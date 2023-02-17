@@ -257,7 +257,7 @@ public class CheckPublishSubscribePerformance : FixtureBase
 
         Configure.With(activator)
             .Logging(l => l.Console(minLevel: LogLevel.Warn))
-            .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName))
+            .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName).EnablePrefetching(numberOfMessagesToPrefetch: 1000))
             .Start();
 
         return activator.Bus;

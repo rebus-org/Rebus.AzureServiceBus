@@ -809,7 +809,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     /// <summary>
     /// Gets/sets the receive timeout.
     /// </summary>
-    public TimeSpan ReceiveOperationTimeout { get; set; } = TimeSpan.FromSeconds(5);
+    public TimeSpan ReceiveOperationTimeout { get; set; } = TimeSpan.FromHours(15);
 
     /// <summary>
     /// Configures the maximum total message payload in bytes when auto-batching outgoing messages. Should probably only be modified if the SKU allows for greater payload sizes
