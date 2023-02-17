@@ -58,8 +58,10 @@ public class CheckPublishSubscribePerformance : FixtureBase
 
         var average = latencies.Average();
         var median = latencies.Median();
+        var min = latencies.Min();
+        var max = latencies.Max();
 
-        Console.WriteLine($"AVG: {average:0.0} s, MED: {median:0.0} s");
+        Console.WriteLine($"AVG: {average:0.0} s, MED: {median:0.0} s, MIN: {min:0.0} s, MAX: {max:0.0} s");
     }
 
     record TimedEvent(DateTimeOffset Time);
