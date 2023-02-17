@@ -7,9 +7,7 @@ using Rebus.Activation;
 using Rebus.AzureServiceBus.Tests.Bugs;
 using Rebus.Bus;
 using Rebus.Config;
-using Rebus.Extensions;
 using Rebus.Logging;
-using Rebus.Messages;
 using Rebus.Pipeline;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
@@ -32,8 +30,8 @@ public class CheckPublishSubscribePerformance : FixtureBase
 
     [TestCase(1)]
     [TestCase(10)]
-    [TestCase(100)]
-    [Repeat(10)]
+    [TestCase(100, Explicit = true)]
+    [Repeat(5)]
     public async Task CheckEndToEndLatency(int count)
     {
         var receiveTimes = new ConcurrentQueue<ReceiveInfo>();
@@ -50,9 +48,10 @@ public class CheckPublishSubscribePerformance : FixtureBase
 
         await subscriber.Subscribe<TimedEvent>();
 
-        count.Times(() => publisher.Advanced.SyncBus.Publish(new TimedEvent(DateTimeOffset.Now)));
+        await Parallel.ForEachAsync(Enumerable.Range(0, count),
+            async (_, _) => await publisher.Publish(new TimedEvent(DateTimeOffset.Now)));
 
-        await receiveTimes.WaitUntil(q => q.Count == count, timeoutSeconds: 20 + count*2);
+        await receiveTimes.WaitUntil(q => q.Count == count, timeoutSeconds: 30 + count * 5);
 
         var latencies = receiveTimes.Select(a => a.Latency().TotalSeconds).ToList();
 

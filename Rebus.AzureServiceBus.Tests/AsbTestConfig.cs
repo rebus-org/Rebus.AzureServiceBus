@@ -67,7 +67,11 @@ Please provide a connection string through one of the methods mentioned above.
     static string ConnectionStringFromFile(string filePath)
     {
         Console.WriteLine("Using Azure Service Bus connection string from file {0}", filePath);
-        return File.ReadAllText(filePath);
+
+        var connectionString = File.ReadAllLines(filePath).FirstOrDefault(line => !line.StartsWith("#") && !string.IsNullOrWhiteSpace(line))
+                               ?? throw new FormatException("Could not find any non-empty, un-out-commented lines in the connection string file");
+
+        return connectionString;
     }
 
     static string ConnectionStringFromEnvironmentVariable(string environmentVariableName)
