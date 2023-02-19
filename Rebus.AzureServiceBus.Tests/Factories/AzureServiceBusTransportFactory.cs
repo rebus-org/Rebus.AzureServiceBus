@@ -1,11 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using Azure.Messaging.ServiceBus;
-using Azure.Messaging.ServiceBus.Administration;
+using System.Collections.Concurrent;
 using Rebus.AzureServiceBus.Messages;
 using Rebus.AzureServiceBus.NameFormat;
-using Rebus.Extensions;
-using Rebus.Internals;
+using Rebus.AzureServiceBus.Tests.Bugs;
 using Rebus.Logging;
 using Rebus.Tests.Contracts.Transports;
 using Rebus.Threading.TaskParallelLibrary;
@@ -15,12 +12,9 @@ namespace Rebus.AzureServiceBus.Tests.Factories;
 
 public class AzureServiceBusTransportFactory : ITransportFactory
 {
-    readonly Dictionary<string, AzureServiceBusTransport> _queuesToDelete = new Dictionary<string, AzureServiceBusTransport>();
+    readonly ConcurrentStack<IDisposable> _disposables = new();
 
-    public ITransport CreateOneWayClient()
-    {
-        return Create(null);
-    }
+    public ITransport CreateOneWayClient() => Create(null);
 
     public ITransport Create(string inputQueueAddress)
     {
@@ -29,73 +23,34 @@ public class AzureServiceBusTransportFactory : ITransportFactory
 
         if (inputQueueAddress == null)
         {
-            var transport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, null, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter(), new DefaultMessageConverter());
+            var onewayClientTransport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, null, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter(), new DefaultMessageConverter());
 
-            transport.Initialize();
+            onewayClientTransport.Initialize();
 
-            return transport;
+            _disposables.Push(onewayClientTransport);
+
+            return onewayClientTransport;
         }
 
-        return _queuesToDelete.GetOrAdd(inputQueueAddress, () =>
-        {
-            var transport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter(), new DefaultMessageConverter());
+        _disposables.Push(new QueueDeleter(inputQueueAddress));
 
-            transport.PurgeInputQueue();
+        var transport = new AzureServiceBusTransport(AsbTestConfig.ConnectionString, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter(), new DefaultMessageConverter());
 
-            transport.Initialize();
+        transport.ReceiveOperationTimeout = TimeSpan.FromSeconds(5);
 
-            return transport;
-        });
+        transport.PurgeInputQueue();
+        transport.Initialize();
+
+        _disposables.Push(transport);
+
+        return transport;
     }
 
     public void CleanUp()
     {
-        foreach (var key in _queuesToDelete.Keys)
+        while (_disposables.TryPop(out var disposable))
         {
-            DeleteQueue(key);
+            disposable.Dispose();
         }
-
-        foreach (var value in _queuesToDelete.Values)
-        {
-            value.Dispose();
-        }
-    }
-
-    public static void DeleteQueue(string queueName)
-    {
-        AsyncHelpers.RunSync(async () =>
-        {
-            var managementClient = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
-
-            try
-            {
-                Console.Write("Deleting ASB queue {0}...", queueName);
-                await managementClient.DeleteQueueAsync(queueName);
-                Console.WriteLine("OK!");
-            }
-            catch (ServiceBusException)
-            {
-                Console.WriteLine("OK (was not there)");
-            }
-        });
-    }
-
-    public static void DeleteTopic(string topic)
-    {
-        AsyncHelpers.RunSync(async () =>
-        {
-            var managementClient = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
-
-            try
-            {
-                Console.Write("Deleting topic '{0}' ...", topic);
-                await managementClient.DeleteTopicAsync(topic);
-                Console.WriteLine("OK!");
-            }
-            catch (ServiceBusException)
-            {
-                Console.WriteLine("OK! (wasn't even there)");
-            }
-        });
     }
 }

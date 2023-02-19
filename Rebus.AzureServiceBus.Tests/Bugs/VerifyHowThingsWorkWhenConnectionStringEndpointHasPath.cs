@@ -8,12 +8,15 @@ using Rebus.Tests.Contracts;
 namespace Rebus.AzureServiceBus.Tests.Bugs;
 
 [TestFixture]
-public class VerifyHowThingsWorkWhenConnectionStringEndpointHasPath
+public class VerifyHowThingsWorkWhenConnectionStringEndpointHasPath : FixtureBase
 {
     [Test]
     public async Task ItWorks()
     {
         var name = TestConfig.GetName("namespace");
+
+        Using(new QueueDeleter("namespace/test-queue"));
+
         var conn = new ConnectionStringParser(AsbTestConfig.ConnectionString);
         var newConn = new ConnectionStringParser($"{conn.Endpoint.TrimEnd('/')}/{name}", conn.SharedAccessKeyName, conn.SharedAccessKey, conn.EntityPath);
 
@@ -30,6 +33,8 @@ public class VerifyHowThingsWorkWhenConnectionStringEndpointHasPath
     public async Task QueueWithSlash()
     {
         var name = TestConfig.GetName("namespace");
+
+        Using(new QueueDeleter("namespace/test-queue"));
 
         using var activator = new BuiltinHandlerActivator();
             

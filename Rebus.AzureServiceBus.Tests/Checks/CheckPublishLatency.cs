@@ -26,7 +26,8 @@ namespace Rebus.AzureServiceBus.Tests.Checks;
 
 [TestFixture]
 [Description("Simple check just to get some kind of idea of some numbers")]
-public class CheckPublishSubscribePerformance : FixtureBase
+[Explicit]
+public class CheckPublishLatency : FixtureBase
 {
     [TestCase(1)]
     [TestCase(10)]
@@ -54,7 +55,7 @@ public class CheckPublishSubscribePerformance : FixtureBase
         await Parallel.ForEachAsync(Enumerable.Range(0, count),
             async (_, _) => await publisher.Publish(new TimedEvent(DateTimeOffset.Now)));
 
-        await receiveTimes.WaitUntil(q => q.Count == count, timeoutSeconds: 30 + count * 5);
+        await receiveTimes.WaitUntil(q => q.Count == count, timeoutSeconds: 10 + count * 2);
 
         var latencies = receiveTimes.Select(a => a.Latency().TotalSeconds).ToList();
 
@@ -257,7 +258,8 @@ public class CheckPublishSubscribePerformance : FixtureBase
 
         Configure.With(activator)
             .Logging(l => l.Console(minLevel: LogLevel.Warn))
-            .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName).EnablePrefetching(numberOfMessagesToPrefetch: 1000))
+            .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName).SetReceiveOperationTimeout(TimeSpan.FromMinutes(1)))
+            .Options(o => o.SetMaxParallelism(100))
             .Start();
 
         return activator.Bus;

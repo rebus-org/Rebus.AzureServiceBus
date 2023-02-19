@@ -19,7 +19,7 @@ public class AzureServiceBusTransportSettings
     internal TimeSpan? LockDuration { get; set; }
     internal TimeSpan? AutoDeleteOnIdle { get; set; }
     internal TimeSpan? DuplicateDetectionHistoryTimeWindow { get; set; }
-    internal TimeSpan ReceiveOperationTimeout { get; set; } = TimeSpan.FromSeconds(5);
+    internal TimeSpan? ReceiveOperationTimeout { get; set; }
 
     internal int MaximumMessagePayloadBytes { get; set; } = 256 * 1024;
 

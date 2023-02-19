@@ -15,7 +15,7 @@ namespace Rebus.AzureServiceBus.Tests.Factories;
 
 public class AzureServiceBusBusFactory : IBusFactory
 {
-    readonly List<IDisposable> _stuffToDispose = new List<IDisposable>();
+    readonly List<IDisposable> _stuffToDispose = new();
 
     public IBus GetBus<TMessage>(string inputQueueAddress, Func<TMessage, Task> handler)
     {
@@ -47,10 +47,9 @@ public class AzureServiceBusBusFactory : IBusFactory
         var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
         var connectionString = AsbTestConfig.ConnectionString;
 
-        using (var transport = new AzureServiceBusTransport(connectionString, queueName, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter(), new DefaultMessageConverter()))
-        {
-            transport.PurgeInputQueue();
-        }
+        using var transport = new AzureServiceBusTransport(connectionString, queueName, consoleLoggerFactory, asyncTaskFactory, new DefaultNameFormatter(), new DefaultMessageConverter());
+        
+        transport.PurgeInputQueue();
     }
 
     public void Cleanup()

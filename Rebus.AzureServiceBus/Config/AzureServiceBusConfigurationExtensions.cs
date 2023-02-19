@@ -59,8 +59,6 @@ public static class AzureServiceBusConfigurationExtensions
                     tokenCredential: tokenCredential
                 );
 
-                transport.MaximumMessagePayloadBytes = settingsBuilder.MaximumMessagePayloadBytes;
-
                 return transport;
             });
 
@@ -113,8 +111,11 @@ public static class AzureServiceBusConfigurationExtensions
                 transport.LockDuration = settingsBuilder.LockDuration;
                 transport.AutoDeleteOnIdle = settingsBuilder.AutoDeleteOnIdle;
                 transport.DuplicateDetectionHistoryTimeWindow = settingsBuilder.DuplicateDetectionHistoryTimeWindow;
-                transport.ReceiveOperationTimeout = settingsBuilder.ReceiveOperationTimeout;
-                transport.MaximumMessagePayloadBytes = settingsBuilder.MaximumMessagePayloadBytes;
+
+                if (settingsBuilder.ReceiveOperationTimeout != null)
+                {
+                    transport.ReceiveOperationTimeout = settingsBuilder.ReceiveOperationTimeout.Value;
+                }
 
                 return transport;
             });

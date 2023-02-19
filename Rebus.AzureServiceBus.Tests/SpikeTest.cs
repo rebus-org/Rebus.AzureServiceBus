@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
 using NUnit.Framework;
+using Rebus.AzureServiceBus.Tests.Bugs;
 using Rebus.Internals;
 using Rebus.Tests.Contracts;
 // ReSharper disable RedundantArgumentDefaultValue
@@ -28,8 +29,9 @@ public class SpikeTest : FixtureBase
     public async Task CanDeleteQueueThatDoesNotExist()
     {
         var queueName = TestConfig.GetName("delete");
+        Using(new QueueDeleter(queueName));
+
         await _managementClient.CreateQueueIfNotExistsAsync(queueName);
-            
         await _managementClient.DeleteQueueIfExistsAsync(queueName);
             
         Assert.That((await _managementClient.QueueExistsAsync(queueName)).Value, Is.False, $"The queue {queueName} still exists");
@@ -40,6 +42,8 @@ public class SpikeTest : FixtureBase
     public async Task CanCreateQueue()
     {
         var queueName = TestConfig.GetName("create");
+        Using(new QueueDeleter(queueName));
+        
         await _managementClient.DeleteQueueIfExistsAsync(queueName);
 
         await _managementClient.CreateQueueIfNotExistsAsync(queueName);
@@ -53,6 +57,8 @@ public class SpikeTest : FixtureBase
     public async Task CanPurgeQueue()
     {
         var queueName = TestConfig.GetName("send");
+        Using(new QueueDeleter(queueName));
+        
         await _managementClient.CreateQueueIfNotExistsAsync(queueName);
 
         var clientOptions = new ServiceBusClientOptions
@@ -91,6 +97,8 @@ public class SpikeTest : FixtureBase
     public async Task CanSendAndReceiveMessage()
     {
         var queueName = TestConfig.GetName("send-receive");
+        Using(new QueueDeleter(queueName));
+
         await _managementClient.CreateQueueIfNotExistsAsync(queueName);
 
         var clientOptions = new ServiceBusClientOptions

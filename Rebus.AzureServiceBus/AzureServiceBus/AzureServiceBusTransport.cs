@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -695,13 +696,9 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     {
         try
         {
-            var messageReceiver = _messageReceiver;
+            var message = await _messageReceiver.ReceiveMessageAsync(ReceiveOperationTimeout, _cancellationToken);
 
-            var message = await messageReceiver.ReceiveMessageAsync(ReceiveOperationTimeout, _cancellationToken).ConfigureAwait(false);
-
-            return message == null
-                ? null
-                : new ReceivedMessage(message, messageReceiver);
+            return message == null ? null : new ReceivedMessage(message, _messageReceiver);
         }
         catch (ServiceBusException exception)
         {
@@ -809,13 +806,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     /// <summary>
     /// Gets/sets the receive timeout.
     /// </summary>
-    public TimeSpan ReceiveOperationTimeout { get; set; } = TimeSpan.FromHours(15);
-
-    /// <summary>
-    /// Configures the maximum total message payload in bytes when auto-batching outgoing messages. Should probably only be modified if the SKU allows for greater payload sizes
-    /// (e.g. 'Premium' at the time of writing allows for 1 MB) Please add some leeway, because Rebus' payload size estimation is not entirely precise
-    /// </summary>
-    public int MaximumMessagePayloadBytes { get; set; }
+    public TimeSpan ReceiveOperationTimeout { get; set; } = TimeSpan.FromMinutes(1);
 
     /// <summary>
     /// Purges the input queue by receiving all messages as quickly as possible

@@ -1,6 +1,7 @@
 ﻿using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Activation;
+using Rebus.AzureServiceBus.Tests.Bugs;
 using Rebus.Config;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Utilities;
@@ -14,23 +15,24 @@ public class CanUseSlashInQueueNames : FixtureBase
     [Test]
     public async Task ItJustWorks()
     {
-        using (var activator = new BuiltinHandlerActivator())
-        {
-            var counter = new SharedCounter(2);
-            var queueName = $"department/subdepartment/{TestConfig.GetName("slash")}";
+        var counter = new SharedCounter(2);
+        var queueName = $"department/subdepartment/{TestConfig.GetName("slash")}";
+        
+        Using(new QueueDeleter(queueName));
 
-            activator.Handle<string>(async _ => counter.Decrement());
+        using var activator = new BuiltinHandlerActivator();
 
-            var bus = Configure.With(activator)
-                .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName))
-                .Start();
+        activator.Handle<string>(async _ => counter.Decrement());
 
-            await bus.Subscribe<string>();
+        var bus = Configure.With(activator)
+            .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName))
+            .Start();
 
-            await bus.Publish("this message was published");
-            await bus.SendLocal("this message was sent");
+        await bus.Subscribe<string>();
 
-            counter.WaitForResetEvent();
-        }
+        await bus.Publish("this message was published");
+        await bus.SendLocal("this message was sent");
+
+        counter.WaitForResetEvent();
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using NUnit.Framework;
 using Rebus.Activation;
+using Rebus.AzureServiceBus.Tests.Bugs;
 using Rebus.Config;
 using Rebus.Tests.Contracts;
 
@@ -14,29 +15,30 @@ public class AzureServiceBusContentTypeTest : FixtureBase
     [Test]
     public void LooksGood()
     {
-        using (var activator = new BuiltinHandlerActivator())
+        Using(new QueueDeleter("contenttypetest"));
+
+        using var activator = new BuiltinHandlerActivator();
+        
+        Console.WriteLine(ConnectionString);
+
+        var bus = Configure.With(activator)
+            .Transport(t => t.UseAzureServiceBus(ConnectionString, "contenttypetest"))
+            .Options(o => o.SetNumberOfWorkers(0))
+            .Start();
+
+        bus.Advanced.Workers.SetNumberOfWorkers(0);
+
+        var message = new RigtigBesked
         {
-            Console.WriteLine(ConnectionString);
-
-            var bus = Configure.With(activator)
-                .Transport(t => t.UseAzureServiceBus(ConnectionString, "contenttypetest"))
-                .Options(o => o.SetNumberOfWorkers(0))
-                .Start();
-
-            bus.Advanced.Workers.SetNumberOfWorkers(0);
-
-            var message = new RigtigBesked
+            Text = "hej med dig min ven! DER ER JSON HERI!!!",
+            Embedded = new RigtigEmbedded
             {
-                Text = "hej med dig min ven! DER ER JSON HERI!!!",
-                Embedded = new RigtigEmbedded
-                {
-                    Whatever = new[] {1, 2, 3},
-                    Message = "I'm in here!!"
-                }
-            };
+                Whatever = new[] {1, 2, 3},
+                Message = "I'm in here!!"
+            }
+        };
 
-            bus.SendLocal(message).Wait();
-        }
+        bus.SendLocal(message).Wait();
     }
 }
 

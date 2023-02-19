@@ -1,6 +1,7 @@
 ﻿using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Activation;
+using Rebus.AzureServiceBus.Tests.Bugs;
 using Rebus.AzureServiceBus.Tests.Factories;
 using Rebus.Config;
 using Rebus.Tests.Contracts;
@@ -19,26 +20,22 @@ public class WorksWhenEnablingPartitioning : FixtureBase
     [Test]
     public async Task YesItDoes()
     {
-        using (var activator = new BuiltinHandlerActivator())
-        {
-            var counter = new SharedCounter(1);
+        Using(new QueueDeleter(_queueName));
 
-            Using(counter);
+        using var activator = new BuiltinHandlerActivator();
+        
+        var counter = new SharedCounter(1);
 
-            activator.Handle<string>(async str => counter.Decrement());
+        Using(counter);
 
-            var bus = Configure.With(activator)
-                .Transport(t => t.UseAzureServiceBus(_connectionString, _queueName).EnablePartitioning())
-                .Start();
+        activator.Handle<string>(async str => counter.Decrement());
 
-            await bus.SendLocal("hej med dig min ven!!!");
+        var bus = Configure.With(activator)
+            .Transport(t => t.UseAzureServiceBus(_connectionString, _queueName).EnablePartitioning())
+            .Start();
 
-            counter.WaitForResetEvent();
-        }
-    }
+        await bus.SendLocal("hej med dig min ven!!!");
 
-    protected override void TearDown()
-    {
-        AzureServiceBusTransportFactory.DeleteQueue(_queueName);
+        counter.WaitForResetEvent();
     }
 }

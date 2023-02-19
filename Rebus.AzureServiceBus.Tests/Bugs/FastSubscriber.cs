@@ -18,9 +18,9 @@ public class FastSubscriber : FixtureBase
     [TestCase(10)]
     public async Task TakeTime(int topicCount)
     {
-        var activator = new BuiltinHandlerActivator();
+        Using(new QueueDeleter("my-input-queue"));
 
-        Using(activator);
+        using var activator = new BuiltinHandlerActivator();
 
         var bus = Configure.With(activator)
             .Logging(l => l.Console(LogLevel.Warn))
@@ -46,7 +46,7 @@ public class FastSubscriber : FixtureBase
     }
 
     [Test]
-    [Ignore("run manually")]
+    [Explicit("run manually")]
     public async Task DeleteAllTopics()
     {
         var managementClient = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
@@ -55,6 +55,20 @@ public class FastSubscriber : FixtureBase
         {
             Console.Write($"Deleting '{topic.Name}'... ");
             await managementClient.DeleteTopicAsync(topic.Name);
+            Console.WriteLine("OK");
+        }
+    }
+
+    [Test]
+    [Explicit("run manually")]
+    public async Task DeleteAllQueues()
+    {
+        var managementClient = new ServiceBusAdministrationClient(AsbTestConfig.ConnectionString);
+
+        await foreach (var queue in managementClient.GetQueuesAsync())
+        {
+            Console.Write($"Deleting '{queue.Name}'... ");
+            await managementClient.DeleteQueueAsync(queue.Name);
             Console.WriteLine("OK");
         }
     }
