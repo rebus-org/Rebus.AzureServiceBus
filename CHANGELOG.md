@@ -144,6 +144,9 @@ Changelog
 ## 9.3.2
 * Avoid logging failed peek lock renewal attempts when there's a race between renewal and ACK/NACK by detecting if the message has been removed from the list of messages to automatically renew
 
+## 9.3.3
+* Additional cancellation tweaks: Proceed with sending outgoing messages even during shutdown, because the user's code must have finished executing without errors, and therefore we should try to complete the message transaction to make for the least surprising outcome
+
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick
 [eeskildsen]: https://github.com/eeskildsen

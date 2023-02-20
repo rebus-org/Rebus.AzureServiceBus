@@ -9,7 +9,7 @@ namespace Rebus.Internals;
 
 static class ManagementExtensions
 {
-    public static async Task DeleteQueueIfExistsAsync(this ServiceBusAdministrationClient client, string queuePath, CancellationToken cancellationToken = default(CancellationToken))
+    public static async Task DeleteQueueIfExistsAsync(this ServiceBusAdministrationClient client, string queuePath, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -21,7 +21,7 @@ static class ManagementExtensions
         }
     }
 
-    public static async Task CreateQueueIfNotExistsAsync(this ServiceBusAdministrationClient client, string queuePath, CancellationToken cancellationToken = default(CancellationToken))
+    public static async Task CreateQueueIfNotExistsAsync(this ServiceBusAdministrationClient client, string queuePath, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -33,7 +33,7 @@ static class ManagementExtensions
         }
     }
 
-    public static async Task PurgeQueue(string connectionString, string queueName, CancellationToken cancellationToken = default(CancellationToken))
+    public static async Task PurgeQueue(string connectionString, string queueName, CancellationToken cancellationToken = default)
     {
         var messageReceiver = new ServiceBusClient(connectionString).CreateReceiver(queueName, new ServiceBusReceiverOptions
         {
@@ -44,7 +44,9 @@ static class ManagementExtensions
         {
             while (true)
             {
-                var messages = await messageReceiver.ReceiveMessagesAsync(100, TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
+                var messages = await messageReceiver
+                    .ReceiveMessagesAsync(100, TimeSpan.FromSeconds(2), cancellationToken)
+                    .ConfigureAwait(false);
 
                 if (messages == null) break;
                 if (!messages.Any()) break;
@@ -56,7 +58,7 @@ static class ManagementExtensions
         }
         finally
         {
-            await messageReceiver.CloseAsync().ConfigureAwait(false);
+            await messageReceiver.CloseAsync(cancellationToken).ConfigureAwait(false);
         }
     }
 }

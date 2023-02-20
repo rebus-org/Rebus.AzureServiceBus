@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -511,7 +510,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                                 try
                                 {
                                     await topicClient
-                                        .SendMessagesAsync(batch, _cancellationToken)
+                                        .SendMessagesAsync(batch, CancellationToken.None) //< don't cancel when sending outgoing messages
                                         .ConfigureAwait(false);
                                 }
                                 catch (Exception exception)
@@ -533,7 +532,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                                 try
                                 {
                                     await messageSender
-                                        .SendMessagesAsync(batch, _cancellationToken)
+                                        .SendMessagesAsync(batch, CancellationToken.None) //< don't cancel when sending outgoing messages
                                         .ConfigureAwait(false);
                                 }
                                 catch (Exception exception)
@@ -545,9 +544,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                     }
                 }
 
-                await Task.WhenAll(messagesByDestinationQueue
-                        .Select(SendOutgoingMessagesToDestination))
-                    .ConfigureAwait(false);
+                await Task.WhenAll(messagesByDestinationQueue.Select(SendOutgoingMessagesToDestination)).ConfigureAwait(false);
             }
 
             context.OnCommitted(SendOutgoingMessages);
@@ -564,7 +561,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         {
             try
             {
-                return await sender.CreateMessageBatchAsync(_cancellationToken);
+                return await sender.CreateMessageBatchAsync(CancellationToken.None); //< don't cancel when sending outgoing messages
             }
             catch (ServiceBusException exception) when (exception.Reason == ServiceBusFailureReason.MessagingEntityNotFound)
             {
@@ -743,11 +740,11 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         {
             try
             {
-                await m.CloseAsync(_cancellationToken).ConfigureAwait(false);
+                await m.CloseAsync(CancellationToken.None).ConfigureAwait(false);
             }
-            catch (OperationCanceledException) when (_cancellationToken.IsCancellationRequested)
+            catch (Exception)
             {
-                // we're being cancelled
+                // don't care
             }
         })));
 
@@ -856,8 +853,12 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     {
         try
         {
-            AsyncHelpers.RunSync(async () =>
-                await ManagementExtensions.PurgeQueue(_connectionStringParser.GetConnectionString(), queueName, _cancellationToken).ConfigureAwait(false));
+            AsyncHelpers.RunSync(() => ManagementExtensions.PurgeQueue(_connectionStringParser.GetConnectionString(), queueName, _cancellationToken));
+        }
+        catch (OperationCanceledException) when (_cancellationToken.IsCancellationRequested)
+        {
+            // we're on our way out - let cancellation bubble out
+            throw;
         }
         catch (Exception exception)
         {
@@ -873,11 +874,11 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         {
             try
             {
-                await t.CloseAsync(_cancellationToken).ConfigureAwait(false);
+                await t.CloseAsync(CancellationToken.None).ConfigureAwait(false);
             }
-            catch (OperationCanceledException) when (_cancellationToken.IsCancellationRequested)
+            catch (Exception)
             {
-                // we're being cancelled
+                // don't care
             }
         })));
 
@@ -895,11 +896,11 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         {
             try
             {
-                await t.CloseAsync(_cancellationToken).ConfigureAwait(false);
+                await t.CloseAsync(CancellationToken.None).ConfigureAwait(false);
             }
-            catch (OperationCanceledException) when (_cancellationToken.IsCancellationRequested)
+            catch (Exception)
             {
-                // it's ok
+                // don't care
             }
         })));
 
