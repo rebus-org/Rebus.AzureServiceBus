@@ -12,6 +12,7 @@ public class AzureServiceBusTransportSettings
     internal int NumberOfMessagesToPrefetch { get; set; }
     internal bool PartitioningEnabled { get; set; }
     internal bool DoNotCreateQueuesEnabled { get; set; }
+    internal bool DoNotCreateSubscriptionsEnabled { get; set; }
     internal bool AutomaticPeekLockRenewalEnabled { get; set; }
     internal bool DoNotCheckQueueConfigurationEnabled { get; set; }
     internal bool LegacyNamingEnabled { get; set; }
@@ -20,8 +21,8 @@ public class AzureServiceBusTransportSettings
     internal TimeSpan? AutoDeleteOnIdle { get; set; }
     internal TimeSpan? DuplicateDetectionHistoryTimeWindow { get; set; }
     internal TimeSpan? ReceiveOperationTimeout { get; set; }
-
     internal int MaximumMessagePayloadBytes { get; set; } = 256 * 1024;
+
 
     /// <summary>
     /// Enables partitioning whereby Azure Service Bus will be able to distribute messages between message stores and this way increase throughput.
@@ -175,6 +176,16 @@ public class AzureServiceBusTransportSettings
     public AzureServiceBusTransportSettings SetReceiveOperationTimeout(TimeSpan receiveOperationTimeout)
     {
         ReceiveOperationTimeout = receiveOperationTimeout;
+        return this;
+    }
+
+    /// <summary>
+    /// Skips topic-subscription creation. Can be used when the connection string does not have manage rights to the topic object, e.g.
+    /// when a read-only shared-access signature is used to access the topics. 
+    /// </summary>
+    public AzureServiceBusTransportSettings DoNotCreateSubscriptions()
+    {
+        DoNotCreateSubscriptionsEnabled = true;
         return this;
     }
 }

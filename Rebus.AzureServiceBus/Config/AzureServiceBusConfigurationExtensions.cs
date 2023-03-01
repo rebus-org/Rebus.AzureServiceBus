@@ -108,6 +108,7 @@ public static class AzureServiceBusConfigurationExtensions
                 transport.DoNotCreateQueuesEnabled = settingsBuilder.DoNotCreateQueuesEnabled;
                 transport.DefaultMessageTimeToLive = settingsBuilder.DefaultMessageTimeToLive;
                 transport.DoNotCheckQueueConfigurationEnabled = settingsBuilder.DoNotCheckQueueConfigurationEnabled;
+                transport.DoNotCreateSubscriptionsEnabled = settingsBuilder.DoNotCreateSubscriptionsEnabled;
                 transport.LockDuration = settingsBuilder.LockDuration;
                 transport.AutoDeleteOnIdle = settingsBuilder.AutoDeleteOnIdle;
                 transport.DuplicateDetectionHistoryTimeWindow = settingsBuilder.DuplicateDetectionHistoryTimeWindow;
