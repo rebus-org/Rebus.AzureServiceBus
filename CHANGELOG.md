@@ -147,6 +147,9 @@ Changelog
 ## 9.3.3
 * Additional cancellation tweaks: Proceed with sending outgoing messages even during shutdown, because the user's code must have finished executing without errors, and therefore we should try to complete the message transaction to make for the least surprising outcome
 
+## 9.3.4
+* Fix bug that would cause the transport to lose the TransportType part of its connection string, thus making it impossible to configure it to use AmqpWebSockets
+
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick
 [eeskildsen]: https://github.com/eeskildsen

@@ -49,7 +49,7 @@ class ConnectionStringParser
     public string SharedAccessKeyName => _parts.GetValue("SharedAccessKeyName");
     public string SharedAccessKey => _parts.GetValue("SharedAccessKey");
     public string EntityPath => _parts.GetValueOrNull("EntityPath");
-    public ServiceBusTransportType Transport => (ServiceBusTransportType)Enum.Parse(typeof(ServiceBusTransportType), _parts.GetValueOrNull("Transport") ?? nameof(ServiceBusTransportType.AmqpTcp));
+    public ServiceBusTransportType Transport => (ServiceBusTransportType)Enum.Parse(typeof(ServiceBusTransportType), _parts.GetValueOrNull("TransportType") ?? nameof(ServiceBusTransportType.AmqpTcp));
 
     public bool Contains(string name, string value, StringComparison comparison) => _parts.Any(p => string.Equals(p.Key, name, comparison) && string.Equals(p.Value, value, comparison));
 
