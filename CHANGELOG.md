@@ -150,6 +150,9 @@ Changelog
 ## 9.3.4
 * Fix bug that would cause the transport to lose the TransportType part of its connection string, thus making it impossible to configure it to use AmqpWebSockets
 
+## 9.3.5
+* Move removal of message ID from list of message lock renewers to the beginning of OnCompleted, so it will be executed first thing and will not be affected by failures during ACK
+
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick
 [eeskildsen]: https://github.com/eeskildsen

@@ -624,10 +624,11 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
         context.OnCompleted(async ctx =>
         {
+            _messageLockRenewers.TryRemove(messageId, out _);
+
             // only ACK the message if it's still in the context - this way, carefully crafted
             // user code can take over responsibility for the message by removing it from the transaction context
-            if (ctx.Items.TryGetValue("asb-message", out var messageObject)
-                && messageObject is ServiceBusReceivedMessage asbMessage)
+            if (ctx.Items.TryGetValue("asb-message", out var messageObject) && messageObject is ServiceBusReceivedMessage asbMessage)
             {
                 var lockToken = asbMessage.LockToken;
 
@@ -646,8 +647,6 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                         $"Could not complete message with ID {messageId} and lock token {lockToken}");
                 }
             }
-
-            _messageLockRenewers.TryRemove(messageId, out _);
         });
 
         context.OnAborted(ctx =>
@@ -658,8 +657,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
             {
                 // only NACK the message if it's still in the context - this way, carefully crafted
                 // user code can take over responsibility for the message by removing it from the transaction context
-                if (ctx.Items.TryGetValue("asb-message", out var messageObject)
-                    && messageObject is ServiceBusReceivedMessage asbMessage)
+                if (ctx.Items.TryGetValue("asb-message", out var messageObject) && messageObject is ServiceBusReceivedMessage asbMessage)
                 {
                     var lockToken = asbMessage.LockToken;
 
@@ -684,8 +682,10 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         });
 
         context.OnDisposed(ctx => _messageLockRenewers.TryRemove(messageId, out _));
+
         var transportMessage = _messageConverter.ToTransport(message);
         context.Items.TryAdd("transportMessage", transportMessage);
+        
         return transportMessage;
     }
 
