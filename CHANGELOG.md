@@ -152,6 +152,7 @@ Changelog
 
 ## 9.3.5
 * Move removal of message ID from list of message lock renewers to the beginning of OnCompleted, so it will be executed first thing and will not be affected by failures during ACK
+* Update Azure.Identity dep to 1.8.2
 
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick

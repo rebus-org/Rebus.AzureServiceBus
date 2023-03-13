@@ -5,10 +5,10 @@
 		<LangVersion>10</LangVersion>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Hypothesist.Rebus" Version="2.1.44" />
-		<PackageReference Include="microsoft.net.test.sdk" Version="17.4.1" />
+		<PackageReference Include="Hypothesist.Rebus" Version="2.1.55" />
+		<PackageReference Include="microsoft.net.test.sdk" Version="17.5.0" />
 		<PackageReference Include="nunit" Version="3.13.3" />
-		<PackageReference Include="NUnit3TestAdapter" Version="4.3.1">
+		<PackageReference Include="NUnit3TestAdapter" Version="4.4.2">
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 			<PrivateAssets>all</PrivateAssets>
 		</PackageReference>
