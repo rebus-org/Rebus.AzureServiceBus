@@ -9,6 +9,7 @@ using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.AzureServiceBus.NameFormat;
 using Rebus.Config;
+using Rebus.Extensions;
 using Rebus.Logging;
 using Rebus.Messages;
 using Rebus.Tests.Contracts;
@@ -78,16 +79,15 @@ public class AzureServiceBusPrefetchTest : FixtureBase
             .Select(i => $"THIS IS MESSAGE # {i}")
             .Select(async msg =>
             {
-                using (var scope = new RebusTransactionScope())
-                {
-                    var headers = DefaultHeaders();
-                    var body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(msg));
-                    var transportMessage = new TransportMessage(headers, body);
+                using var scope = new RebusTransactionScope();
+                
+                var headers = DefaultHeaders<string>();
+                var body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(msg));
+                var transportMessage = new TransportMessage(headers, body);
 
-                    await transport.Send(_queueName, transportMessage, scope.TransactionContext);
+                await transport.Send(_queueName, transportMessage, scope.TransactionContext);
 
-                    await scope.CompleteAsync();
-                }
+                await scope.CompleteAsync();
             })
             .ToArray();
 
@@ -124,12 +124,13 @@ public class AzureServiceBusPrefetchTest : FixtureBase
         //AzureServiceBusTransportFactory.DeleteQueue(_queueName);
     }
 
-    Dictionary<string, string> DefaultHeaders()
+    Dictionary<string, string> DefaultHeaders<TMessage>()
     {
         return new Dictionary<string, string>
         {
             {Headers.MessageId, Guid.NewGuid().ToString()},
             {Headers.ContentType, "application/json;charset=utf-8"},
+            {Headers.Type, typeof(TMessage).GetSimpleAssemblyQualifiedName()},
         };
     }
 

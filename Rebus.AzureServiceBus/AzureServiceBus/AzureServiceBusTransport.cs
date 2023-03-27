@@ -48,6 +48,8 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     /// </summary>
     public const string MagicDeferredMessagesAddress = "___deferred___";
 
+    const string TransportmessageItemKey = "transportMessage";
+
     static readonly ServiceBusRetryOptions DefaultRetryStrategy = new()
     {
         Mode = ServiceBusRetryMode.Exponential,
@@ -135,7 +137,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     /// Gets "subscriber addresses" by getting one single magic "queue name", which is then
     /// interpreted as a publish operation to a topic when the time comes to send to that "queue"
     /// </summary>
-    public async Task<string[]> GetSubscriberAddresses(string topic)
+    public async Task<IReadOnlyList<string>> GetSubscriberAddresses(string topic)
     {
         return _cachedSubscriberAddresses.GetOrAdd(topic, _ => new[] { $"{MagicSubscriptionPrefix}{topic}" });
     }
@@ -547,7 +549,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                 await Task.WhenAll(messagesByDestinationQueue.Select(SendOutgoingMessagesToDestination)).ConfigureAwait(false);
             }
 
-            context.OnCommitted(SendOutgoingMessages);
+            context.OnCommit(SendOutgoingMessages);
 
             return messagesToSend;
         }
@@ -622,7 +624,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
             _messageLockRenewers.TryAdd(message.MessageId, new MessageLockRenewer(message, messageReceiver));
         }
 
-        context.OnCompleted(async ctx =>
+        context.OnAck(async ctx =>
         {
             _messageLockRenewers.TryRemove(messageId, out _);
 
@@ -649,42 +651,40 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
             }
         });
 
-        context.OnAborted(ctx =>
+        context.OnNack(async ctx =>
         {
             _messageLockRenewers.TryRemove(messageId, out _);
 
-            AsyncHelpers.RunSync(async () =>
-            {
-                // only NACK the message if it's still in the context - this way, carefully crafted
-                // user code can take over responsibility for the message by removing it from the transaction context
-                if (ctx.Items.TryGetValue("asb-message", out var messageObject) && messageObject is ServiceBusReceivedMessage asbMessage)
-                {
-                    var lockToken = asbMessage.LockToken;
+            // only NACK the message if it's still in the context - this way, carefully crafted
+            // user code can take over responsibility for the message by removing it from the transaction context
+            if (!ctx.Items.TryGetValue("asb-message", out var messageObject) || messageObject is not ServiceBusReceivedMessage asbMessage) return;
 
-                    try
-                    {
-                        var transportMessage = (TransportMessage)ctx.Items["transportMessage"];
-                        var propertiesToModify = transportMessage.Headers.ToDictionary(k => k.Key, v => (object)v.Value);
-                        await messageReceiver.AbandonMessageAsync(
-                                message: message,
-                                propertiesToModify: propertiesToModify,
-                                cancellationToken: CancellationToken.None //< pass none here to avoid canceling the call immediately when we're shutting down
-                            )
-                            .ConfigureAwait(false);
-                    }
-                    catch (Exception exception)
-                    {
-                        throw new RebusApplicationException(exception,
-                            $"Could not abandon message with ID {messageId} and lock token {lockToken}");
-                    }
-                }
-            });
+            var lockToken = asbMessage.LockToken;
+
+            try
+            {
+                var transportMessage = (TransportMessage)ctx.Items[TransportmessageItemKey];
+                var propertiesToModify = transportMessage.Headers.ToDictionary(k => k.Key, v => (object)v.Value);
+
+                await messageReceiver.AbandonMessageAsync(
+                        message: message,
+                        propertiesToModify: propertiesToModify,
+                        cancellationToken: CancellationToken
+                            .None //< pass none here to avoid canceling the call immediately when we're shutting down
+                    )
+                    .ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                throw new RebusApplicationException(exception,
+                    $"Could not abandon message with ID {messageId} and lock token {lockToken}");
+            }
         });
 
         context.OnDisposed(ctx => _messageLockRenewers.TryRemove(messageId, out _));
 
         var transportMessage = _messageConverter.ToTransport(message);
-        context.Items.TryAdd("transportMessage", transportMessage);
+        context.Items[TransportmessageItemKey] = transportMessage;
         
         return transportMessage;
     }

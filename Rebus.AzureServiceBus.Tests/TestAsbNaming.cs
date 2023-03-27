@@ -33,17 +33,17 @@ public class TestAsbNaming : FixtureBase
 
         var activator = Using(new BuiltinHandlerActivator());
         var gotString1 = new ManualResetEvent(false);
-        activator.Handle<object>(async str => gotString1.Set());
+        activator.Handle<AsbNamingEvent>(async evt => gotString1.Set());
 
         Configure.With(activator)
             .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, "group/some.inputqueue"))
             .Start();
 
-        await activator.Bus.Advanced.Topics.Subscribe("group/" + "some.interesting topic");
+        await activator.Bus.Advanced.Topics.Subscribe("group/some.interesting topic");
 
         await Task.Delay(500);
 
-        await activator.Bus.Advanced.Topics.Publish("group/" + "some.interesting topic", new object { });
+        await activator.Bus.Advanced.Topics.Publish("group/some.interesting topic", new AsbNamingEvent());
 
         gotString1.WaitOrDie(TimeSpan.FromSeconds(4));
 
@@ -61,27 +61,27 @@ public class TestAsbNaming : FixtureBase
     public async Task DefaultTopicNameConvention()
     {
         Using(new QueueDeleter("group/some.inputqueue"));
-        Using(new TopicDeleter("system.private.corelib/system.object"));
+        Using(new TopicDeleter("rebus.azureservicebus.tests/rebus.azureservicebus.tests.asbnamingevent"));
 
         var activator = Using(new BuiltinHandlerActivator());
         var gotString1 = new ManualResetEvent(false);
-        activator.Handle<object>(async str => gotString1.Set());
+        activator.Handle<AsbNamingEvent>(async evt => gotString1.Set());
 
         Configure.With(activator)
             .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, "group/some.inputqueue"))
             .Start();
 
-        await activator.Bus.Subscribe<object>();
+        await activator.Bus.Subscribe<AsbNamingEvent>();
 
         await Task.Delay(1000);
 
-        await activator.Bus.Publish(new object { });
+        await activator.Bus.Publish(new AsbNamingEvent());
 
         gotString1.WaitOrDie(TimeSpan.FromSeconds(4));
 
         Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some.inputqueue"));
-        Assert.IsTrue(await _managementClient.TopicExistsAsync("system.private.corelib/system.object"));
-        var subscription = await _managementClient.GetSubscriptionAsync("system.private.corelib/system.object", "group_some.inputqueue");
+        Assert.IsTrue(await _managementClient.TopicExistsAsync("rebus.azureservicebus.tests/rebus.azureservicebus.tests.asbnamingevent"));
+        var subscription = await _managementClient.GetSubscriptionAsync("rebus.azureservicebus.tests/rebus.azureservicebus.tests.asbnamingevent", "group_some.inputqueue");
 
         //Assert.AreEqual(_endpoint + "/group/some.inputqueue", subscription.Value.ForwardTo);
 
@@ -89,7 +89,6 @@ public class TestAsbNaming : FixtureBase
         var actual = subscription.Value.ForwardTo;
 
         AssertUris(expected, actual);
-
     }
 
     [Test]
@@ -100,7 +99,7 @@ public class TestAsbNaming : FixtureBase
 
         var activator = Using(new BuiltinHandlerActivator());
         var gotString1 = new ManualResetEvent(false);
-        activator.Handle<object>(async str => gotString1.Set());
+        activator.Handle<AsbNamingEvent>(async evt => gotString1.Set());
 
         Configure.With(activator)
             .Transport(t => t
@@ -112,7 +111,7 @@ public class TestAsbNaming : FixtureBase
 
         await Task.Delay(500);
 
-        await activator.Bus.Advanced.Topics.Publish("group/some.interesting topic", new object { });
+        await activator.Bus.Advanced.Topics.Publish("group/some.interesting topic", new AsbNamingEvent());
 
         gotString1.WaitOrDie(TimeSpan.FromSeconds(4));
 
@@ -131,11 +130,11 @@ public class TestAsbNaming : FixtureBase
     public async Task LegacyV604TopicNameConvention()
     {
         Using(new QueueDeleter("group/some_inputqueue"));
-        Using(new TopicDeleter("system_object__mscorlib"));
+        Using(new TopicDeleter("rebus_azureservicebus_tests_asbnamingevent__rebus_azureservicebus_tests"));
 
         var activator = Using(new BuiltinHandlerActivator());
         var gotString1 = new ManualResetEvent(false);
-        activator.Handle<object>(async str => gotString1.Set());
+        activator.Handle<AsbNamingEvent>(async evt => gotString1.Set());
 
         Configure.With(activator)
             .Transport(t => t
@@ -143,17 +142,17 @@ public class TestAsbNaming : FixtureBase
                 .UseLegacyNaming())
             .Start();
 
-        await activator.Bus.Subscribe<object>();
+        await activator.Bus.Subscribe<AsbNamingEvent>();
 
         await Task.Delay(500);
 
-        await activator.Bus.Publish(new object { });
+        await activator.Bus.Publish(new AsbNamingEvent());
 
         gotString1.WaitOrDie(TimeSpan.FromSeconds(5));
 
         Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some_inputqueue"));
-        Assert.IsTrue(await _managementClient.TopicExistsAsync("system_object__mscorlib"));
-        var subscription = await _managementClient.GetSubscriptionAsync("system_object__mscorlib", "some_inputqueue");
+        Assert.IsTrue(await _managementClient.TopicExistsAsync("rebus_azureservicebus_tests_asbnamingevent__rebus_azureservicebus_tests"));
+        var subscription = await _managementClient.GetSubscriptionAsync("rebus_azureservicebus_tests_asbnamingevent__rebus_azureservicebus_tests", "some_inputqueue");
 
         //Assert.AreEqual(_endpoint + "/group/some_inputqueue", subscription.Value.ForwardTo);
         var expected = $"{_endpoint}/group/some_inputqueue";
@@ -170,7 +169,7 @@ public class TestAsbNaming : FixtureBase
 
         var activator = Using(new BuiltinHandlerActivator());
         var gotString1 = new ManualResetEvent(false);
-        activator.Handle<object>(async str => gotString1.Set());
+        activator.Handle<AsbNamingEvent>(async evt => gotString1.Set());
 
         Configure.With(activator)
             .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, "group/some.inputqueue"))
@@ -184,7 +183,7 @@ public class TestAsbNaming : FixtureBase
 
         await Task.Delay(500);
 
-        await activator.Bus.Advanced.Topics.Publish("group/some.interesting topic", new object { });
+        await activator.Bus.Advanced.Topics.Publish("group/some.interesting topic", new AsbNamingEvent());
 
         gotString1.WaitOrDie(TimeSpan.FromSeconds(8));
 
@@ -207,7 +206,7 @@ public class TestAsbNaming : FixtureBase
 
         var activator = Using(new BuiltinHandlerActivator());
         var gotString1 = new ManualResetEvent(false);
-        activator.Handle<object>(async str => gotString1.Set());
+        activator.Handle<AsbNamingEvent>(async evt => gotString1.Set());
 
         Configure.With(activator)
             .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, "group/some.inputqueue").UseLegacyNaming())
@@ -218,7 +217,7 @@ public class TestAsbNaming : FixtureBase
 
         await Task.Delay(500);
 
-        await activator.Bus.Advanced.Topics.Publish("group/some.interesting topic", new object { });
+        await activator.Bus.Advanced.Topics.Publish("group/some.interesting topic", new AsbNamingEvent());
 
         gotString1.WaitOrDie(TimeSpan.FromSeconds(4));
 
@@ -242,3 +241,5 @@ public class TestAsbNaming : FixtureBase
         Assert.That(actualForwardUri.PathAndQuery, Is.EqualTo(expectedForwardUri.PathAndQuery));
     }
 }
+
+record AsbNamingEvent;

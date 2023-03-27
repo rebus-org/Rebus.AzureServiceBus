@@ -1,8 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
 	<PropertyGroup>
 		<OutputType>Library</OutputType>
-		<TargetFramework>net60</TargetFramework>
-		<LangVersion>10</LangVersion>
+		<TargetFramework>net7.0</TargetFramework>
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="Hypothesist.Rebus" Version="2.1.55" />
@@ -13,8 +12,7 @@
 			<PrivateAssets>all</PrivateAssets>
 		</PackageReference>
 		<ProjectReference Include="..\Rebus.AzureServiceBus\Rebus.AzureServiceBus.csproj" />
-		<PackageReference Include="rebus" Version="6.6.5" />
-		<PackageReference Include="rebus.tests.contracts" Version="6.5.0" />
+		<PackageReference Include="rebus.tests.contracts" Version="8.0.0-alpha01" />
 	</ItemGroup>
 	<ItemGroup>
 		<None Update="asb_connection_string.txt">
