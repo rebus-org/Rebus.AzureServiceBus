@@ -1,18 +1,19 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.26403.7
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.33502.453
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "stuff", "stuff", "{1ABDD7C1-1F8D-402D-8692-3E4B66962DE0}"
 	ProjectSection(SolutionItems) = preProject
+		appveyor.yml = appveyor.yml
 		CHANGELOG.md = CHANGELOG.md
 		CONTRIBUTING.md = CONTRIBUTING.md
 		LICENSE.md = LICENSE.md
 		README.md = README.md
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rebus.AzureServiceBus", "Rebus.AzureServiceBus\Rebus.AzureServiceBus.csproj", "{DD32B8FB-6D0D-4FF1-9659-EDAA6DB5A93F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rebus.AzureServiceBus", "Rebus.AzureServiceBus\Rebus.AzureServiceBus.csproj", "{DD32B8FB-6D0D-4FF1-9659-EDAA6DB5A93F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rebus.AzureServiceBus.Tests", "Rebus.AzureServiceBus.Tests\Rebus.AzureServiceBus.Tests.csproj", "{A8707703-0514-4D8C-9164-B9D20CA41EB5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rebus.AzureServiceBus.Tests", "Rebus.AzureServiceBus.Tests\Rebus.AzureServiceBus.Tests.csproj", "{A8707703-0514-4D8C-9164-B9D20CA41EB5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
