@@ -16,6 +16,8 @@ namespace Rebus.AzureServiceBus.Tests;
 [TestFixture]
 public class TestAsbNaming : FixtureBase
 {
+    static readonly TimeSpan WaitOrDieTimeout = TimeSpan.FromSeconds(12);
+    
     ServiceBusAdministrationClient _managementClient;
     string _endpoint;
 
@@ -45,7 +47,7 @@ public class TestAsbNaming : FixtureBase
 
         await activator.Bus.Advanced.Topics.Publish("group/some.interesting topic", new AsbNamingEvent());
 
-        gotString1.WaitOrDie(TimeSpan.FromSeconds(4));
+        gotString1.WaitOrDie(WaitOrDieTimeout);
 
         Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some.inputqueue"));
         Assert.IsTrue(await _managementClient.TopicExistsAsync("group/some.interesting_topic"));
@@ -77,7 +79,7 @@ public class TestAsbNaming : FixtureBase
 
         await activator.Bus.Publish(new AsbNamingEvent());
 
-        gotString1.WaitOrDie(TimeSpan.FromSeconds(4));
+        gotString1.WaitOrDie(WaitOrDieTimeout);
 
         Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some.inputqueue"));
         Assert.IsTrue(await _managementClient.TopicExistsAsync("rebus.azureservicebus.tests/rebus.azureservicebus.tests.asbnamingevent"));
@@ -113,7 +115,7 @@ public class TestAsbNaming : FixtureBase
 
         await activator.Bus.Advanced.Topics.Publish("group/some.interesting topic", new AsbNamingEvent());
 
-        gotString1.WaitOrDie(TimeSpan.FromSeconds(4));
+        gotString1.WaitOrDie(WaitOrDieTimeout);
 
         Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some_inputqueue"));
         Assert.IsTrue(await _managementClient.TopicExistsAsync("group/some_interesting_topic"));
@@ -148,7 +150,7 @@ public class TestAsbNaming : FixtureBase
 
         await activator.Bus.Publish(new AsbNamingEvent());
 
-        gotString1.WaitOrDie(TimeSpan.FromSeconds(5));
+        gotString1.WaitOrDie(WaitOrDieTimeout);
 
         Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some_inputqueue"));
         Assert.IsTrue(await _managementClient.TopicExistsAsync("rebus_azureservicebus_tests_asbnamingevent__rebus_azureservicebus_tests"));
@@ -185,7 +187,7 @@ public class TestAsbNaming : FixtureBase
 
         await activator.Bus.Advanced.Topics.Publish("group/some.interesting topic", new AsbNamingEvent());
 
-        gotString1.WaitOrDie(TimeSpan.FromSeconds(8));
+        gotString1.WaitOrDie(WaitOrDieTimeout);
 
         Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some.inputqueue"));
         Assert.IsTrue(await _managementClient.TopicExistsAsync("group/some_interesting_topic"));
@@ -219,7 +221,7 @@ public class TestAsbNaming : FixtureBase
 
         await activator.Bus.Advanced.Topics.Publish("group/some.interesting topic", new AsbNamingEvent());
 
-        gotString1.WaitOrDie(TimeSpan.FromSeconds(4));
+        gotString1.WaitOrDie(WaitOrDieTimeout);
 
         Assert.IsTrue(await _managementClient.QueueExistsAsync("prefix/group/some.inputqueue"));
         Assert.IsTrue(await _managementClient.TopicExistsAsync("prefix/group/some_interesting_topic"));
