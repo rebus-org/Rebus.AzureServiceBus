@@ -41,7 +41,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     /// <summary>
     /// Subscriber "addresses" are prefixed with this bad boy so we can recognize them and publish to a topic client instead
     /// </summary>
-    const string MagicSubscriptionPrefix = "***Topic***: ";
+    const string MagicSubscriptionPrefix = "TOPIC:";
 
     /// <summary>
     /// External timeout manager address set to this magic address will be routed to the destination address specified by the <see cref="Headers.DeferredRecipient"/> header
