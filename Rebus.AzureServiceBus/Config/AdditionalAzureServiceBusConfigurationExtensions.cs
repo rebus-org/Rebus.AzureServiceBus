@@ -28,7 +28,7 @@ public static class AdditionalAzureServiceBusConfigurationExtensions
     class BuiltInDeadletteringErrorHandler : IErrorHandler
     {
         readonly IErrorHandler _errorHandler;
-        private readonly ILog _log;
+        readonly ILog _log;
 
         public BuiltInDeadletteringErrorHandler(IErrorHandler errorHandler, IRebusLoggerFactory rebusLoggerFactory)
         {
@@ -36,7 +36,7 @@ public static class AdditionalAzureServiceBusConfigurationExtensions
             _log = rebusLoggerFactory?.GetLogger<BuiltInDeadletteringErrorHandler>() ?? throw new ArgumentNullException(nameof(rebusLoggerFactory));
         }
 
-        public async Task HandlePoisonMessage(TransportMessage transportMessage, ITransactionContext transactionContext, Exception exception)
+        public async Task HandlePoisonMessage(TransportMessage transportMessage, ITransactionContext transactionContext, ExceptionInfo exception)
         {
             if (transactionContext.Items.TryGetValue("asb-message", out var messageObject)
                 && messageObject is ServiceBusReceivedMessage message
@@ -53,8 +53,9 @@ public static class AdditionalAzureServiceBusConfigurationExtensions
                     messageId = "<unknown>";
                 }
 
-                _log.Error(exception, "Dead-lettering message with ID {messageId}, reason={deadLetterReason}", messageId, deadLetterReason);
-                await messageReceiver.DeadLetterMessageAsync(message, transportMessage.Headers.ToDictionary(k=>k.Key, v=>(object)v.Value), deadLetterReason, deadLetterErrorDescription);
+                _log.Error("Dead-lettering message with ID {messageId}, reason={deadLetterReason}, exception info: {exceptionInfo}",
+                    messageId, deadLetterReason, exception);
+                await messageReceiver.DeadLetterMessageAsync(message, transportMessage.Headers.ToDictionary(k => k.Key, v => (object)v.Value), deadLetterReason, deadLetterErrorDescription);
 
                 // remove the message from the context, so the transport doesn't try to complete the message
                 transactionContext.Items.TryRemove("asb-message", out _);
@@ -65,7 +66,7 @@ public static class AdditionalAzureServiceBusConfigurationExtensions
             }
         }
     }
-    
+
     /// <summary>
     /// Stop publishing `rbs2-*` headers for values that are already available on the ServiceBusMessage.
     /// </summary>

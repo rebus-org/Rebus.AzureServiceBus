@@ -59,7 +59,7 @@ public class TooBigHeadersTest : FixtureBase
         Configure.With(activator)
             .Logging(l => l.Console(minLevel: LogLevel.Error))
             .Transport(t => t.UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName))
-            .Options(o => o.SimpleRetryStrategy(maxDeliveryAttempts: MaxDeliveryAttempts))
+            .Options(o => o.RetryStrategy(maxDeliveryAttempts: MaxDeliveryAttempts))
             .Start();
 
         await activator.Bus.SendLocal("Hello World");

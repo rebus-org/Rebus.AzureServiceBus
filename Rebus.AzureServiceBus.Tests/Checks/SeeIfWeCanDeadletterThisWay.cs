@@ -32,7 +32,7 @@ public class UseAzureServiceBusNativeDeadlettering : FixtureBase
                 t.UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName);
                 t.UseNativeDeadlettering();
             })
-            .Options(o => o.SimpleRetryStrategy(maxDeliveryAttempts: 1))
+            .Options(o => o.RetryStrategy(maxDeliveryAttempts: 1))
             .Start();
 
         await bus.SendLocal(new TestMessage());
