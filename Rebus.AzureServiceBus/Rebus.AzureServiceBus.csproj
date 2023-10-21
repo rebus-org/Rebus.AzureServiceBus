@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
 	<PropertyGroup>
 		<OutputType>Library</OutputType>
 		<RootNamespace>Rebus</RootNamespace>
@@ -15,7 +15,7 @@
 		<PackageIcon>little_rebusbus2_copy-500x500.png</PackageIcon>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="azure.identity" Version="1.8.2" />
+		<PackageReference Include="azure.identity" Version="1.10.2" />
 		<PackageReference Include="Azure.Messaging.ServiceBus" Version="7.13.1" />
 		<PackageReference Include="Rebus" Version="8.0.0-alpha01" />
 	</ItemGroup>
