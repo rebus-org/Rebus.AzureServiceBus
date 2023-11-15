@@ -1,18 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
 	<PropertyGroup>
 		<OutputType>Library</OutputType>
-		<TargetFramework>net7.0</TargetFramework>
+		<TargetFramework>net8.0</TargetFramework>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Hypothesist.Rebus" Version="2.1.55" />
-		<PackageReference Include="microsoft.net.test.sdk" Version="17.7.2" />
-		<PackageReference Include="nunit" Version="3.13.3" />
+		<ProjectReference Include="..\Rebus.AzureServiceBus\Rebus.AzureServiceBus.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="microsoft.net.test.sdk" Version="17.8.0" />
+		<PackageReference Include="nunit" Version="3.14.0" />
 		<PackageReference Include="NUnit3TestAdapter" Version="4.5.0">
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 			<PrivateAssets>all</PrivateAssets>
 		</PackageReference>
-		<ProjectReference Include="..\Rebus.AzureServiceBus\Rebus.AzureServiceBus.csproj" />
-		<PackageReference Include="rebus.tests.contracts" Version="8.0.0-alpha09" />
+		<PackageReference Include="rebus.tests.contracts" Version="8.0.1" />
 	</ItemGroup>
 	<ItemGroup>
 		<None Update="asb_connection_string.txt">

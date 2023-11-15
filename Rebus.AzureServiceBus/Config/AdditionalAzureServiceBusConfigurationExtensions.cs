@@ -7,6 +7,7 @@ using Rebus.Retry;
 using Rebus.Transport;
 using Rebus.Logging;
 using System.Linq;
+using Rebus.AzureServiceBus.Messages;
 
 namespace Rebus.Config;
 
@@ -23,6 +24,18 @@ public static class AdditionalAzureServiceBusConfigurationExtensions
         configurer
             .OtherService<IErrorHandler>()
             .Decorate(c => new BuiltInDeadletteringErrorHandler(c.Get<IErrorHandler>(), c.Get<IRebusLoggerFactory>()));
+    }
+
+    /// <summary>
+    /// Stop publishing `rbs2-*` headers for values that are already available on the ServiceBusMessage.
+    /// </summary>
+    public static StandardConfigurer<ITransport> UseNativeHeaders(this StandardConfigurer<ITransport> configurer)
+    {
+        configurer
+            .OtherService<IMessageConverter>()
+            .Decorate(c => new RemoveHeaders(c.Get<IMessageConverter>()));
+
+        return configurer;
     }
 
     class BuiltInDeadletteringErrorHandler : IErrorHandler
@@ -65,16 +78,5 @@ public static class AdditionalAzureServiceBusConfigurationExtensions
                 await _errorHandler.HandlePoisonMessage(transportMessage, transactionContext, exception);
             }
         }
-    }
-
-    /// <summary>
-    /// Stop publishing `rbs2-*` headers for values that are already available on the ServiceBusMessage.
-    /// </summary>
-    public static StandardConfigurer<ITransport> UseNativeHeaders(this StandardConfigurer<ITransport> configurer)
-    {
-        configurer
-            .OtherService<AzureServiceBus.Messages.IMessageConverter>()
-            .Decorate(c => new AzureServiceBus.Messages.RemoveHeaders(c.Get<AzureServiceBus.Messages.IMessageConverter>()));
-        return configurer;
     }
 }

@@ -1,26 +1,32 @@
+using System;
 using Azure.Messaging.ServiceBus;
 using Rebus.Messages;
 
 namespace Rebus.AzureServiceBus.Messages;
 
-internal class RemoveHeaders : IMessageConverter
+class RemoveHeaders : IMessageConverter
 {
-    private readonly IMessageConverter _messageConverter;
+    readonly IMessageConverter _messageConverter;
 
-    public RemoveHeaders(IMessageConverter messageConverter) => 
-        _messageConverter = messageConverter;
+    public RemoveHeaders(IMessageConverter messageConverter) => _messageConverter = messageConverter ?? throw new ArgumentNullException(nameof(messageConverter));
 
-    TransportMessage IMessageConverter.ToTransport(ServiceBusReceivedMessage message) =>
-        _messageConverter.ToTransport(message);
+    TransportMessage IMessageConverter.ToTransport(ServiceBusReceivedMessage message)
+    {
+        if (message == null) throw new ArgumentNullException(nameof(message));
+        return _messageConverter.ToTransport(message);
+    }
 
     ServiceBusMessage IMessageConverter.ToServiceBus(TransportMessage transportMessage)
     {
-        var m = _messageConverter.ToServiceBus(transportMessage);
-        m.ApplicationProperties.Remove(Headers.MessageId);
-        m.ApplicationProperties.Remove(Headers.CorrelationId);
-        m.ApplicationProperties.Remove(Headers.ContentType);
-        m.ApplicationProperties.Remove(ExtraHeaders.SessionId);
+        if (transportMessage == null) throw new ArgumentNullException(nameof(transportMessage));
+        var message = _messageConverter.ToServiceBus(transportMessage);
+        var properties = message.ApplicationProperties;
+        
+        properties.Remove(Headers.MessageId);
+        properties.Remove(Headers.CorrelationId);
+        properties.Remove(Headers.ContentType);
+        properties.Remove(ExtraHeaders.SessionId);
 
-        return m;
+        return message;
     }
 }
