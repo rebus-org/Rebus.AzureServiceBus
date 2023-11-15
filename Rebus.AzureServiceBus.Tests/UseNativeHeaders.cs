@@ -41,7 +41,7 @@ public class UseNativeHeaders : FixtureBase
         await bus.Subscribe<string>();
         await bus.Publish("hello");
 
-        gotTheMessage.WaitOrDie(timeout: TimeSpan.FromSeconds(2));
+        gotTheMessage.WaitOrDie(timeout: TimeSpan.FromSeconds(5));
 
         Assert.That(receivedMessage, Is.Not.Null);
 
@@ -54,6 +54,12 @@ public class UseNativeHeaders : FixtureBase
         };
 
         Assert.That(receivedMessage.ApplicationProperties.Keys.Intersect(headersAlreadyPresentOnNativeAsbMessage).Count(), Is.Zero,
-            $"Did not expect the ApplicationProperties dictionary on the ASB transport message to contain any of the following headers: {string.Join(", ", headersAlreadyPresentOnNativeAsbMessage)}");
+            $@"Did not expect the ApplicationProperties dictionary on the ASB transport message to contain any of the following headers: 
+
+{string.Join(Environment.NewLine, headersAlreadyPresentOnNativeAsbMessage.Select(header => $"    {header}"))}
+
+but the following were present:
+
+{string.Join(Environment.NewLine, receivedMessage.ApplicationProperties.Select(p => $"    {p.Key}"))}");
     }
 }
