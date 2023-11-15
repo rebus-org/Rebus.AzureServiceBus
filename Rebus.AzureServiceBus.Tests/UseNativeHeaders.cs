@@ -6,6 +6,7 @@ using Azure.Messaging.ServiceBus;
 using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.AzureServiceBus.Messages;
+using Rebus.AzureServiceBus.Tests.Bugs;
 using Rebus.Config;
 using Rebus.Messages;
 using Rebus.Tests.Contracts;
@@ -21,6 +22,10 @@ public class UseNativeHeaders : FixtureBase
     [Test]
     public async Task ShouldNotPublishRebusHeadersWhenConfiguredNotTo()
     {
+        var queueName = $"publish-native-{Guid.NewGuid():N}";
+
+        Using(new QueueDeleter(queueName));
+
         using var activator = new BuiltinHandlerActivator();
         using var gotTheMessage = new ManualResetEvent(initialState: false);
 
@@ -35,11 +40,10 @@ public class UseNativeHeaders : FixtureBase
         var bus = Configure.With(activator)
             .Transport(t => t
                 .UseNativeHeaders()
-                .UseAzureServiceBus(AsbTestConfig.ConnectionString, "publish-native"))
+                .UseAzureServiceBus(AsbTestConfig.ConnectionString, queueName))
             .Start();
 
-        await bus.Subscribe<string>();
-        await bus.Publish("hello");
+        await bus.SendLocal("hello");
 
         gotTheMessage.WaitOrDie(timeout: TimeSpan.FromSeconds(5));
 
