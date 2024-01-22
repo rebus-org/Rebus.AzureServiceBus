@@ -49,8 +49,8 @@ public class TestAsbNaming : FixtureBase
 
         gotString1.WaitOrDie(WaitOrDieTimeout);
 
-        Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some.inputqueue"));
-        Assert.IsTrue(await _managementClient.TopicExistsAsync("group/some.interesting_topic"));
+        Assert.That((await _managementClient.QueueExistsAsync("group/some.inputqueue")).Value, Is.True);
+        Assert.That((await _managementClient.TopicExistsAsync("group/some.interesting_topic")).Value, Is.True);
         var subscription = await _managementClient.GetSubscriptionAsync("group/some.interesting_topic", "group_some.inputqueue");
 
         var expected = $"{_endpoint}/group/some.inputqueue";
@@ -81,8 +81,8 @@ public class TestAsbNaming : FixtureBase
 
         gotString1.WaitOrDie(WaitOrDieTimeout);
 
-        Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some.inputqueue"));
-        Assert.IsTrue(await _managementClient.TopicExistsAsync("rebus.azureservicebus.tests/rebus.azureservicebus.tests.asbnamingevent"));
+        Assert.That((await _managementClient.QueueExistsAsync("group/some.inputqueue")).Value, Is.True);
+        Assert.That((await _managementClient.TopicExistsAsync("rebus.azureservicebus.tests/rebus.azureservicebus.tests.asbnamingevent")).Value, Is.True);
         var subscription = await _managementClient.GetSubscriptionAsync("rebus.azureservicebus.tests/rebus.azureservicebus.tests.asbnamingevent", "group_some.inputqueue");
 
         //Assert.AreEqual(_endpoint + "/group/some.inputqueue", subscription.Value.ForwardTo);
@@ -117,8 +117,8 @@ public class TestAsbNaming : FixtureBase
 
         gotString1.WaitOrDie(WaitOrDieTimeout);
 
-        Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some_inputqueue"));
-        Assert.IsTrue(await _managementClient.TopicExistsAsync("group/some_interesting_topic"));
+        Assert.That((await _managementClient.QueueExistsAsync("group/some_inputqueue")).Value, Is.True);
+        Assert.That((await _managementClient.TopicExistsAsync("group/some_interesting_topic")).Value, Is.True);
         var subscription = await _managementClient.GetSubscriptionAsync("group/some_interesting_topic", "some_inputqueue");
 
         //Assert.AreEqual(_endpoint + "/group/some_inputqueue", subscription.Value.ForwardTo);
@@ -152,8 +152,8 @@ public class TestAsbNaming : FixtureBase
 
         gotString1.WaitOrDie(WaitOrDieTimeout);
 
-        Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some_inputqueue"));
-        Assert.IsTrue(await _managementClient.TopicExistsAsync("rebus_azureservicebus_tests_asbnamingevent__rebus_azureservicebus_tests"));
+        Assert.That((await _managementClient.QueueExistsAsync("group/some_inputqueue")).Value, Is.True);
+        Assert.That((await _managementClient.TopicExistsAsync("rebus_azureservicebus_tests_asbnamingevent__rebus_azureservicebus_tests")).Value, Is.True);
         var subscription = await _managementClient.GetSubscriptionAsync("rebus_azureservicebus_tests_asbnamingevent__rebus_azureservicebus_tests", "some_inputqueue");
 
         //Assert.AreEqual(_endpoint + "/group/some_inputqueue", subscription.Value.ForwardTo);
@@ -189,8 +189,8 @@ public class TestAsbNaming : FixtureBase
 
         gotString1.WaitOrDie(WaitOrDieTimeout);
 
-        Assert.IsTrue(await _managementClient.QueueExistsAsync("group/some.inputqueue"));
-        Assert.IsTrue(await _managementClient.TopicExistsAsync("group/some_interesting_topic"));
+        Assert.That((await _managementClient.QueueExistsAsync("group/some.inputqueue")).Value, Is.True);
+        Assert.That((await _managementClient.TopicExistsAsync("group/some_interesting_topic")).Value, Is.True);
         var subscription = await _managementClient.GetSubscriptionAsync("group/some_interesting_topic", "some_inputqueue");
 
         //Assert.AreEqual(_endpoint + "/group/some.inputqueue", subscription.Value.ForwardTo);
@@ -223,8 +223,8 @@ public class TestAsbNaming : FixtureBase
 
         gotString1.WaitOrDie(WaitOrDieTimeout);
 
-        Assert.IsTrue(await _managementClient.QueueExistsAsync("prefix/group/some.inputqueue"));
-        Assert.IsTrue(await _managementClient.TopicExistsAsync("prefix/group/some_interesting_topic"));
+        Assert.That((await _managementClient.QueueExistsAsync("prefix/group/some.inputqueue")).Value, Is.True);
+        Assert.That((await _managementClient.TopicExistsAsync("prefix/group/some_interesting_topic")).Value, Is.True);
         var subscription = await _managementClient.GetSubscriptionAsync("prefix/group/some_interesting_topic", "some_inputqueue");
             
             

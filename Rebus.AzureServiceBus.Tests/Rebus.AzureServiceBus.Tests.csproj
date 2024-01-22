@@ -8,7 +8,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="microsoft.net.test.sdk" Version="17.8.0" />
-		<PackageReference Include="nunit" Version="3.14.0" />
+		<PackageReference Include="nunit" Version="4.0.1" />
 		<PackageReference Include="NUnit3TestAdapter" Version="4.5.0">
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 			<PrivateAssets>all</PrivateAssets>
