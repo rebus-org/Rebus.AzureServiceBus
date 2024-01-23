@@ -111,6 +111,7 @@ public static class AzureServiceBusConfigurationExtensions
                 transport.LockDuration = settingsBuilder.LockDuration;
                 transport.AutoDeleteOnIdle = settingsBuilder.AutoDeleteOnIdle;
                 transport.DuplicateDetectionHistoryTimeWindow = settingsBuilder.DuplicateDetectionHistoryTimeWindow;
+                transport.NativeMessageDeliveryCountEnabled = settingsBuilder.NativeMessageDeliveryCountEnabled;
 
                 if (settingsBuilder.ReceiveOperationTimeout != null)
                 {

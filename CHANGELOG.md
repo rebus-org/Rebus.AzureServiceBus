@@ -157,6 +157,11 @@ Changelog
 ## 10.0.0
 * Update to Rebus 8
 
+## 10.1.0
+* Update to Rebus 8.2.0 and Azure.Messaging.ServiceBus 7.17.2
+* Add ability to provide native message delivery count in optional Rebus header
+
+
 
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick

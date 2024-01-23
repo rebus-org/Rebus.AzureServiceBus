@@ -1,4 +1,6 @@
 ﻿using System;
+using Rebus.Messages;
+
 // ReSharper disable UnusedMember.Global
 
 namespace Rebus.Config;
@@ -15,6 +17,7 @@ public class AzureServiceBusTransportSettings
     internal bool AutomaticPeekLockRenewalEnabled { get; set; }
     internal bool DoNotCheckQueueConfigurationEnabled { get; set; }
     internal bool LegacyNamingEnabled { get; set; }
+    internal bool NativeMessageDeliveryCountEnabled { get; set; }
     internal TimeSpan? DefaultMessageTimeToLive { get; set; }
     internal TimeSpan? LockDuration { get; set; }
     internal TimeSpan? AutoDeleteOnIdle { get; set; }
@@ -140,6 +143,16 @@ public class AzureServiceBusTransportSettings
     public AzureServiceBusTransportSettings UseLegacyNaming()
     {
         LegacyNamingEnabled = true;
+        return this;
+    }
+
+    /// <summary>
+    /// Enables the use of native delivery count from the incoming message, which will be passed to Rebus by setting
+    /// the <see cref="Headers.DeliveryCount"/> header.
+    /// </summary>
+    public AzureServiceBusTransportSettings UseNativeMessageDeliveryCount()
+    {
+        NativeMessageDeliveryCountEnabled = true;
         return this;
     }
 

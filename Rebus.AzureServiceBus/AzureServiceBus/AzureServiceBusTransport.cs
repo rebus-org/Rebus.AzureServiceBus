@@ -685,6 +685,11 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
         var transportMessage = _messageConverter.ToTransport(message);
         context.Items[TransportmessageItemKey] = transportMessage;
+
+        if (NativeMessageDeliveryCountEnabled)
+        {
+            transportMessage.Headers[Headers.DeliveryCount] = message.DeliveryCount.ToString();
+        }
         
         return transportMessage;
     }
@@ -804,6 +809,11 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     /// Gets/sets the receive timeout.
     /// </summary>
     public TimeSpan ReceiveOperationTimeout { get; set; } = TimeSpan.FromMinutes(1);
+
+    /// <summary>
+    /// Gets/sets whether native message delivery count is used
+    /// </summary>
+    public bool NativeMessageDeliveryCountEnabled { get; set; }
 
     /// <summary>
     /// Purges the input queue by receiving all messages as quickly as possible
