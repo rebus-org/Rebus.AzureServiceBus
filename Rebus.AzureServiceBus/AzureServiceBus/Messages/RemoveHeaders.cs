@@ -19,6 +19,7 @@ class RemoveHeaders : IMessageConverter
     ServiceBusMessage IMessageConverter.ToServiceBus(TransportMessage transportMessage)
     {
         if (transportMessage == null) throw new ArgumentNullException(nameof(transportMessage));
+        
         var message = _messageConverter.ToServiceBus(transportMessage);
         var properties = message.ApplicationProperties;
         

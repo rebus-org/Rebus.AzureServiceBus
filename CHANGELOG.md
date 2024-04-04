@@ -161,7 +161,8 @@ Changelog
 * Update to Rebus 8.2.0 and Azure.Messaging.ServiceBus 7.17.2
 * Add ability to provide native message delivery count in optional Rebus header
 
-
+## 10.1.1
+* Fix bug that would accidentally leave a `SessionId` header on messages sent to the error queue, even though there was no session ID on the ASB message
 
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick

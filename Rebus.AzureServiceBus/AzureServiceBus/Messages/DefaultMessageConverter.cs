@@ -8,17 +8,23 @@ using Rebus.Messages;
 
 namespace Rebus.AzureServiceBus.Messages;
 
-internal class DefaultMessageConverter : IMessageConverter
+class DefaultMessageConverter : IMessageConverter
 {
     public TransportMessage ToTransport(ServiceBusReceivedMessage message)
     {
         var applicationProperties = message.ApplicationProperties;
         var headers = applicationProperties.ToDictionary(kvp => kvp.Key, kvp => kvp.Value?.ToString());
+
         headers[Headers.TimeToBeReceived] = message.TimeToLive.ToString();
         headers[Headers.ContentType] = message.ContentType;
         headers[Headers.CorrelationId] = message.CorrelationId;
         headers[Headers.MessageId] = message.MessageId;
-        headers[ExtraHeaders.SessionId] = message.SessionId;
+
+        // only add the session ID
+        if (!string.IsNullOrWhiteSpace(message.SessionId))
+        {
+            headers[ExtraHeaders.SessionId] = message.SessionId;
+        }
 
         return new TransportMessage(headers, message.Body.ToMemory().ToArray());
     }
