@@ -16,7 +16,7 @@
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="azure.identity" Version="1.10.4" />
+		<PackageReference Include="azure.identity" Version="1.11.0" />
 		<PackageReference Include="Azure.Messaging.ServiceBus" Version="7.17.2" />
 		<PackageReference Include="Rebus" Version="8.4.2" />
 	</ItemGroup>
