@@ -20,7 +20,8 @@ public class NotCreatingQueueTest : FixtureBase
             
         var queueName = Guid.NewGuid().ToString("N");
 
-        Assert.That(await managementClient.QueueExistsAsync(queueName), Is.False);
+        var response = await managementClient.QueueExistsAsync(queueName);
+        Assert.That(response.Value, Is.False);
 
         var activator = Using(new BuiltinHandlerActivator());
 

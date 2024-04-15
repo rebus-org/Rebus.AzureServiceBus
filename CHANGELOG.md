@@ -164,6 +164,12 @@ Changelog
 ## 10.1.1
 * Fix bug that would accidentally leave a `SessionId` header on messages sent to the error queue, even though there was no session ID on the ASB message
 
+## 10.2.0
+* Update Azure.Identity dependency to 1.11.0
+* Update Azure.Messaging.ServiceBus dependency to 7.17.5
+* Update Rebus dependency to 8.4.2
+
+
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick
 [eeskildsen]: https://github.com/eeskildsen
