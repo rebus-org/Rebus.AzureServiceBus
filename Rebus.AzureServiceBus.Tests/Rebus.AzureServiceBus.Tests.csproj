@@ -7,9 +7,9 @@
 		<ProjectReference Include="..\Rebus.AzureServiceBus\Rebus.AzureServiceBus.csproj" />
 	</ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="microsoft.net.test.sdk" Version="17.9.0" />
-		<PackageReference Include="nunit" Version="4.1.0" />
-		<PackageReference Include="NUnit3TestAdapter" Version="4.5.0">
+		<PackageReference Include="microsoft.net.test.sdk" Version="17.13.0" />
+		<PackageReference Include="nunit" Version="4.3.2" />
+		<PackageReference Include="NUnit3TestAdapter" Version="5.0.0">
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 			<PrivateAssets>all</PrivateAssets>
 		</PackageReference>

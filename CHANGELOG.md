@@ -169,6 +169,9 @@ Changelog
 * Update Azure.Messaging.ServiceBus dependency to 7.17.5
 * Update Rebus dependency to 8.4.2
 
+## 10.3.0
+* Update Azure.Identity dependency to 1.13.2
+* Update Azure.Messaging.ServiceBus dependency to 7.18.4
 
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick
