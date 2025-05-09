@@ -16,6 +16,7 @@ public class AzureServiceBusTransportSettings
     internal bool DoNotCreateQueuesEnabled { get; set; }
     internal bool AutomaticPeekLockRenewalEnabled { get; set; }
     internal bool DoNotCheckQueueConfigurationEnabled { get; set; }
+    internal bool DoNotConfigureTopicEnabled { get; set; }
     internal bool LegacyNamingEnabled { get; set; }
     internal bool NativeMessageDeliveryCountEnabled { get; set; }
     internal TimeSpan? DefaultMessageTimeToLive { get; set; }
@@ -177,6 +178,16 @@ public class AzureServiceBusTransportSettings
     public AzureServiceBusTransportSettings DoNotCheckQueueConfiguration()
     {
         DoNotCheckQueueConfigurationEnabled = true;
+        return this;
+    }
+    
+    /// <summary>
+    /// Skips topic verification. Can be used when the connection string does not have administration access
+    /// Should be careful, your topics should already have configured the forwards configurations
+    /// </summary>
+    public AzureServiceBusTransportSettings DoNotConfigureTopic()
+    {
+        DoNotConfigureTopicEnabled = true;
         return this;
     }
 

@@ -58,7 +58,7 @@ public static class AzureServiceBusConfigurationExtensions
                     cancellationToken: cancellationToken,
                     tokenCredential: tokenCredential
                 );
-
+                transport.DoNotConfigureTopicEnabled = settingsBuilder.DoNotConfigureTopicEnabled;
                 return transport;
             });
 
@@ -108,6 +108,7 @@ public static class AzureServiceBusConfigurationExtensions
                 transport.DoNotCreateQueuesEnabled = settingsBuilder.DoNotCreateQueuesEnabled;
                 transport.DefaultMessageTimeToLive = settingsBuilder.DefaultMessageTimeToLive;
                 transport.DoNotCheckQueueConfigurationEnabled = settingsBuilder.DoNotCheckQueueConfigurationEnabled;
+                transport.DoNotConfigureTopicEnabled = settingsBuilder.DoNotConfigureTopicEnabled;
                 transport.LockDuration = settingsBuilder.LockDuration;
                 transport.AutoDeleteOnIdle = settingsBuilder.AutoDeleteOnIdle;
                 transport.DuplicateDetectionHistoryTimeWindow = settingsBuilder.DuplicateDetectionHistoryTimeWindow;

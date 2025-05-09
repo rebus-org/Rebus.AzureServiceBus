@@ -6,6 +6,11 @@
 public class AzureServiceBusTransportClientSettings
 {
     internal bool LegacyNamingEnabled { get; set; }
+    
+    /// <summary>
+    /// Gets/sets whether to skip checking topics configuration
+    /// </summary>
+    public bool DoNotConfigureTopicEnabled { get; set; }
 
     /// <summary>
     /// Enables "legacy naming", which means that queue names are lowercased, and topic names are "normalized" to be in accordance
@@ -14,6 +19,16 @@ public class AzureServiceBusTransportClientSettings
     public AzureServiceBusTransportClientSettings UseLegacyNaming()
     {
         LegacyNamingEnabled = true;
+        return this;
+    }
+    
+    /// <summary>
+    /// Skips topic verification. Can be used when the connection string does not have administration access
+    /// Should be careful, your topics should already have configured the forwards configurations
+    /// </summary>
+    public AzureServiceBusTransportClientSettings DoNotConfigureTopic()
+    {
+        DoNotConfigureTopicEnabled = true;
         return this;
     }
 }
