@@ -24,7 +24,24 @@ public class AzureServiceBusTransportClientSettings
     
     /// <summary>
     /// Skips topic verification. Can be used when the connection string does not have administration access
-    /// Should be careful, your topics should already have configured the forwards configurations
+    /// When enabled
+    /// - will not create the topic, subscription, or configure forwarding to the input queue.
+    /// - When needed subscribe method, will not delete the subscription for the specified topic.
+    ///
+    /// This flag is particularly useful in scenarios where:
+    /// - The application has only "Listen" permissions and lacks administrative rights to manage 
+    ///   topics and subscriptions in Azure Service Bus.
+    /// - The infrastructure is centrally managed, and topics/subscriptions are provisioned 
+    ///   manually or by deployment scripts.
+    /// - Security restrictions require more controlled and audited modifications to Service Bus entities.
+    ///
+    /// However, enabling this flag introduces the following considerations:
+    /// - <b>Manual Provisioning Required:</b> Topics, subscriptions, and forwarding must be manually configured 
+    ///   in the Azure Service Bus namespace.
+    /// - <b>Potential Message Loss:</b> If the subscription does not exist or is misconfigured, 
+    ///   messages will not be received and may be lost if not handled with a retry mechanism or DLQ (Dead Letter Queue).
+    /// - <b>Higher Maintenance Overhead:</b> Scaling or deploying new instances requires explicit verification 
+    ///   that all Service Bus entities are in place and correctly configured.
     /// </summary>
     public AzureServiceBusTransportClientSettings DoNotConfigureTopic()
     {
