@@ -10,7 +10,7 @@ public class AzureServiceBusTransportClientSettings
     /// <summary>
     /// Gets/sets whether to skip checking topics configuration
     /// </summary>
-    public bool DoNotConfigureTopicEnabled { get; set; }
+    internal bool DoNotConfigureTopicEnabled { get; set; }
 
     /// <summary>
     /// Enables "legacy naming", which means that queue names are lowercased, and topic names are "normalized" to be in accordance
