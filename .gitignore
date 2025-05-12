@@ -16,6 +16,7 @@ _ReSharper.*
 *.suo
 *.cache
 ~$*
+.idea/*
 .vs
 .vs/*
 _NCrunch_*
