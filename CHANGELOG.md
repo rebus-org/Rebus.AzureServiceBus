@@ -173,6 +173,9 @@ Changelog
 * Update Azure.Identity dependency to 1.13.2
 * Update Azure.Messaging.ServiceBus dependency to 7.18.4
 
+## 10.4.0
+* Add ability to "leave the topics alone" to enable running with less privileges - thanks [RenanZanelato]
+
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick
 [eeskildsen]: https://github.com/eeskildsen
@@ -183,5 +186,5 @@ Changelog
 [jr01]: https://github.com/jr01
 [lezzi]: https://github.com/lezzi
 [Meyce]: https://github.com/Meyce
-
+[RenanZanelato]: https://github.com/RenanZanelato
 
