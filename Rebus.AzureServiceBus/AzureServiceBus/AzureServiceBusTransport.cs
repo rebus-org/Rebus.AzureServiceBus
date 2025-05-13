@@ -149,6 +149,11 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     /// </summary>
     public async Task RegisterSubscriber(string topic, string subscriberAddress)
     {
+        if (DoNotConfigureTopicEnabled)
+        {
+            return;
+        }
+        
         VerifyIsOwnInputQueueAddress(subscriberAddress);
 
         topic = _nameFormatter.FormatTopicName(topic);
@@ -183,6 +188,11 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     /// </summary>
     public async Task UnregisterSubscriber(string topic, string subscriberAddress)
     {
+        if (DoNotConfigureTopicEnabled)
+        {
+            return;
+        }
+        
         VerifyIsOwnInputQueueAddress(subscriberAddress);
 
         topic = _nameFormatter.FormatTopicName(topic);
@@ -794,6 +804,11 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     /// Gets/sets whether to skip checking queues configuration
     /// </summary>
     public bool DoNotCheckQueueConfigurationEnabled { get; set; }
+    
+    /// <summary>
+    /// Gets/sets whether to skip checking topics configuration
+    /// </summary>
+    public bool DoNotConfigureTopicEnabled { get; set; }
 
     /// <summary>
     /// Gets/sets the default message TTL. Must be set before calling <see cref="Initialize"/>, because that is the time when the queue is (re)configured
