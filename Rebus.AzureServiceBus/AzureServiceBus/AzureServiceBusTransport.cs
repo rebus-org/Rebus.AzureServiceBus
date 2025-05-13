@@ -1,12 +1,7 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Azure.Core;
+﻿using Azure.Core;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
+using Rebus.AzureServiceBus.Events;
 using Rebus.AzureServiceBus.Messages;
 using Rebus.AzureServiceBus.NameFormat;
 using Rebus.Bus;
@@ -18,6 +13,12 @@ using Rebus.Messages;
 using Rebus.Subscriptions;
 using Rebus.Threading;
 using Rebus.Transport;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 // ReSharper disable RedundantArgumentDefaultValue
 // ReSharper disable ArgumentsStyleNamedExpression
@@ -73,7 +74,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     readonly string _subscriptionName;
     readonly ILog _log;
     readonly ServiceBusClient _client;
-
+    event RenewMessageFailedHandler RenewMessageFailed;
     bool _prefetchingEnabled;
     int _prefetchCount;
 
@@ -602,9 +603,16 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         var receivedMessage = await ReceiveInternal().ConfigureAwait(false);
 
         if (receivedMessage == null) return null;
-
+        
         var message = receivedMessage.Message;
         var messageReceiver = receivedMessage.MessageReceiver;
+
+        RenewMessageFailedHandler failedEventHandler = (messageId, exception) =>
+        {
+            context.SetResult(commit: false, ack: false);
+            _log.Warn("MessageId: {MessageId} - Failed to renew peek lock: {Exception}", messageId, exception.Message);            
+        };
+        RenewMessageFailed += failedEventHandler;
 
         var items = context.Items;
 
@@ -626,6 +634,8 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
         context.OnAck(async ctx =>
         {
+            RenewMessageFailed -= failedEventHandler;
+
             _messageLockRenewers.TryRemove(messageId, out _);
 
             // only ACK the message if it's still in the context - this way, carefully crafted
@@ -690,7 +700,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         {
             transportMessage.Headers[Headers.DeliveryCount] = message.DeliveryCount.ToString();
         }
-        
+
         return transportMessage;
     }
 
@@ -944,7 +954,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                 if (!_messageLockRenewers.ContainsKey(r.MessageId)) return;
 
                 _log.Warn(exception, "Error when renewing peek lock for message with ID {messageId}", r.MessageId);
-
+                RenewMessageFailed(r.MessageId, exception);
                 // peek lock renewal will be automatically retried, because it's still due for renewal
             }
         }));
