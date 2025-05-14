@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -150,6 +150,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     {
         if (DoNotConfigureTopicEnabled)
         {
+            _log.Info("Transport configured to not configure topic - skipping configuration for topic {topicName}", topic);
             return;
         }
         
@@ -189,6 +190,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     {
         if (DoNotConfigureTopicEnabled)
         {
+            _log.Info("Transport configured to not configure topic - skipping configuration for topic {topicName}", topic);
             return;
         }
         
@@ -913,7 +915,10 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
     async Task<ServiceBusSender> GetTopicClient(string topic) => await _topicClients.GetOrAdd(topic, _ => new(async () =>
     {
-        await EnsureTopicExists(topic);
+        if(!DoNotConfigureTopicEnabled)
+        {
+            await EnsureTopicExists(topic);
+        }
 
         var topicClient = _client.CreateSender(topic);
 
