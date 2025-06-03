@@ -8,7 +8,6 @@ using Rebus.Config;
 using Rebus.Handlers;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Utilities;
-using Rebus.Transport.InMem;
 
 namespace Rebus.AzureServiceBus.Tests.Examples;
 
