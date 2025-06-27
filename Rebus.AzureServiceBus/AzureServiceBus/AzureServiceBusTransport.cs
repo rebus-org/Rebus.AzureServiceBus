@@ -1,7 +1,6 @@
 ﻿using Azure.Core;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
-using Rebus.AzureServiceBus.Events;
 using Rebus.AzureServiceBus.Messages;
 using Rebus.AzureServiceBus.NameFormat;
 using Rebus.Bus;
@@ -62,6 +61,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     readonly ExceptionIgnorant _subscriptionExceptionIgnorant = new ExceptionIgnorant(maxAttemps: 10).Ignore<ServiceBusException>(ex => ex.IsTransient);
     readonly ConcurrentStack<IDisposable> _disposables = new();
     readonly ConcurrentDictionary<string, MessageLockRenewer> _messageLockRenewers = new();
+    readonly ConcurrentDictionary<string, CancellationTokenSource> _messageRenewerTokenSources = new();
     readonly ConcurrentDictionary<string, string[]> _cachedSubscriberAddresses = new();
     readonly ConcurrentDictionary<string, Lazy<ServiceBusSender>> _messageSenders = new();
     readonly ConcurrentDictionary<string, Lazy<Task<ServiceBusSender>>> _topicClients = new();
@@ -74,7 +74,6 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     readonly string _subscriptionName;
     readonly ILog _log;
     readonly ServiceBusClient _client;
-    event RenewMessageFailedHandler RenewMessageFailed;
     bool _prefetchingEnabled;
     int _prefetchCount;
 
@@ -153,7 +152,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         {
             return;
         }
-        
+
         VerifyIsOwnInputQueueAddress(subscriberAddress);
 
         topic = _nameFormatter.FormatTopicName(topic);
@@ -192,7 +191,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         {
             return;
         }
-        
+
         VerifyIsOwnInputQueueAddress(subscriberAddress);
 
         topic = _nameFormatter.FormatTopicName(topic);
@@ -613,22 +612,19 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         var receivedMessage = await ReceiveInternal().ConfigureAwait(false);
 
         if (receivedMessage == null) return null;
-        
+
         var message = receivedMessage.Message;
         var messageReceiver = receivedMessage.MessageReceiver;
 
-        RenewMessageFailedHandler failedEventHandler = (messageId, exception) =>
-        {
-            context.SetResult(commit: false, ack: false);
-            _log.Warn("MessageId: {MessageId} - Failed to renew peek lock: {Exception}", messageId, exception.Message);            
-        };
-        RenewMessageFailed += failedEventHandler;
+        var renewFailedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _cancellationToken);
+        _messageRenewerTokenSources.AddOrUpdate(message.MessageId, renewFailedTokenSource, (_, _) => renewFailedTokenSource);
 
         var items = context.Items;
-
         // add the message and its receiver to the context
         items["asb-message"] = message;
         items["asb-message-receiver"] = messageReceiver;
+        //add token that cancels when renew fails or when the pipeline token cancels
+        items["asb-message-cancel-token"] = renewFailedTokenSource.Token;
 
         if (string.IsNullOrWhiteSpace(message.LockToken))
         {
@@ -644,8 +640,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
         context.OnAck(async ctx =>
         {
-            RenewMessageFailed -= failedEventHandler;
-
+            _messageRenewerTokenSources.TryRemove(messageId, out var _);
             _messageLockRenewers.TryRemove(messageId, out _);
 
             // only ACK the message if it's still in the context - this way, carefully crafted
@@ -673,6 +668,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
         context.OnNack(async ctx =>
         {
+            _messageRenewerTokenSources.TryRemove(messageId, out var _);
             _messageLockRenewers.TryRemove(messageId, out _);
 
             // only NACK the message if it's still in the context - this way, carefully crafted
@@ -701,7 +697,11 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
             }
         });
 
-        context.OnDisposed(ctx => _messageLockRenewers.TryRemove(messageId, out _));
+        context.OnDisposed(ctx =>
+        {
+            _messageRenewerTokenSources.TryRemove(messageId, out var _);
+            _messageLockRenewers.TryRemove(messageId, out _);
+        });
 
         var transportMessage = _messageConverter.ToTransport(message);
         context.Items[TransportmessageItemKey] = transportMessage;
@@ -804,7 +804,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     /// Gets/sets whether to skip checking queues configuration
     /// </summary>
     public bool DoNotCheckQueueConfigurationEnabled { get; set; }
-    
+
     /// <summary>
     /// Gets/sets whether to skip checking topics configuration
     /// </summary>
@@ -969,7 +969,13 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                 if (!_messageLockRenewers.ContainsKey(r.MessageId)) return;
 
                 _log.Warn(exception, "Error when renewing peek lock for message with ID {messageId}", r.MessageId);
-                RenewMessageFailed(r.MessageId, exception);
+
+                if (_messageRenewerTokenSources.TryGetValue(r.MessageId, out var renewFailedTokenSource))
+                {
+                    renewFailedTokenSource.Cancel();
+                }
+
+
                 // peek lock renewal will be automatically retried, because it's still due for renewal
             }
         }));
