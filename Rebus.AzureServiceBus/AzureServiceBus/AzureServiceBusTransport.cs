@@ -19,7 +19,6 @@ using Rebus.Subscriptions;
 using Rebus.Threading;
 using Rebus.Transport;
 
-
 // ReSharper disable RedundantArgumentDefaultValue
 // ReSharper disable ArgumentsStyleNamedExpression
 // ReSharper disable ArgumentsStyleOther
@@ -154,7 +153,6 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
             _log.Info("Transport configured to not configure topic - skipping configuration for topic {topicName}", topic);
             return;
         }
-
         VerifyIsOwnInputQueueAddress(subscriberAddress);
 
         topic = _nameFormatter.FormatTopicName(topic);
