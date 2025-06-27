@@ -641,7 +641,8 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
         context.OnAck(async ctx =>
         {
-            _messageRenewerTokenSources.TryRemove(messageId, out var _);
+            _messageRenewerTokenSources.TryRemove(messageId, out var tokenSource);
+            tokenSource?.Dispose();
             _messageLockRenewers.TryRemove(messageId, out _);
 
             // only ACK the message if it's still in the context - this way, carefully crafted
@@ -669,7 +670,8 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
         context.OnNack(async ctx =>
         {
-            _messageRenewerTokenSources.TryRemove(messageId, out var _);
+            _messageRenewerTokenSources.TryRemove(messageId, out var tokenSource);
+            tokenSource?.Dispose();
             _messageLockRenewers.TryRemove(messageId, out _);
 
             // only NACK the message if it's still in the context - this way, carefully crafted
@@ -700,7 +702,8 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
         context.OnDisposed(ctx =>
         {
-            _messageRenewerTokenSources.TryRemove(messageId, out var _);
+            _messageRenewerTokenSources.TryRemove(messageId, out var tokenSource);
+            tokenSource?.Dispose();
             _messageLockRenewers.TryRemove(messageId, out _);
         });
 
@@ -924,7 +927,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
     async Task<ServiceBusSender> GetTopicClient(string topic) => await _topicClients.GetOrAdd(topic, _ => new(async () =>
     {
-        if(!DoNotConfigureTopicEnabled)
+        if (!DoNotConfigureTopicEnabled)
         {
             await EnsureTopicExists(topic);
         }
@@ -979,8 +982,7 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                     renewFailedTokenSource.Cancel();
                 }
 
-
-                // peek lock renewal will be automatically retried, because it's still due for renewal
+                // peek lock renewal will be automatically retried if no-one is looking at the cancellationToken , because it's still due for renewal
             }
         }));
     }
