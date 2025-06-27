@@ -176,6 +176,9 @@ Changelog
 ## 10.4.0
 * Add ability to "leave the topics alone" to enable running with less privileges - thanks [RenanZanelato]
 
+## 10.4.1
+* Fix ability to "leave the topics along" - thanks [rafilsk0]
+
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick
 [eeskildsen]: https://github.com/eeskildsen
@@ -186,5 +189,6 @@ Changelog
 [jr01]: https://github.com/jr01
 [lezzi]: https://github.com/lezzi
 [Meyce]: https://github.com/Meyce
+[rafilsk0]: https://github.com/rafilsk0
 [RenanZanelato]: https://github.com/RenanZanelato
 
