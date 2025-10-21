@@ -179,11 +179,16 @@ Changelog
 ## 10.4.1
 * Fix ability to "leave the topics along" - thanks [rafilsk0]
 
+## 10.5.0
+* Add cancellation support to individual messages for cancellation when lease renewal fails - thanks [hdrachmann]
+* Update to Rebus 8.9.0
+
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick
 [eeskildsen]: https://github.com/eeskildsen
 [ehabelgindy]: https://github.com/ehabelgindy
 [georgechond94]: https://github.com/georgechond94
+[hdrachmann]: https://github.com/hdrachmann
 [hjalle]: https://github.com/hjalle
 [jorgenbosman]: https://github.com/jorgenbosman
 [jr01]: https://github.com/jr01

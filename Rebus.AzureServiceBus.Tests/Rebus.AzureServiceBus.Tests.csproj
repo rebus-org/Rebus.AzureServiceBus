@@ -7,13 +7,13 @@
 		<ProjectReference Include="..\Rebus.AzureServiceBus\Rebus.AzureServiceBus.csproj" />
 	</ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="microsoft.net.test.sdk" Version="17.13.0" />
-		<PackageReference Include="nunit" Version="3.14.0" />
-		<PackageReference Include="NUnit3TestAdapter" Version="5.0.0">
+		<PackageReference Include="microsoft.net.test.sdk" Version="18.0.0" />
+		<PackageReference Include="nunit" Version="4.4.0" />
+		<PackageReference Include="NUnit3TestAdapter" Version="5.2.0">
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 			<PrivateAssets>all</PrivateAssets>
 		</PackageReference>
-		<PackageReference Include="rebus.tests.contracts" Version="8.2.6" />
+		<PackageReference Include="rebus.tests.contracts" Version="8.9.1" />
 	</ItemGroup>
 	<ItemGroup>
 		<None Update="asb_connection_string.txt">

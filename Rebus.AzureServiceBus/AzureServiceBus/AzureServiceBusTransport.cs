@@ -618,7 +618,11 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         var messageReceiver = receivedMessage.MessageReceiver;
 
         var renewFailedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _cancellationToken);
-        _messageRenewerTokenSources.AddOrUpdate(message.MessageId, renewFailedTokenSource, (_, _) => renewFailedTokenSource);
+        if (!_messageRenewerTokenSources.TryAdd(message.MessageId, renewFailedTokenSource))
+        {
+            // should never happen though
+            renewFailedTokenSource.Dispose();
+        }
 
         var items = context.Items;
         // add the message and its receiver to the context
@@ -641,8 +645,10 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
         context.OnAck(async ctx =>
         {
-            _messageRenewerTokenSources.TryRemove(messageId, out var tokenSource);
-            tokenSource?.Dispose();
+            if (_messageRenewerTokenSources.TryRemove(messageId, out var tokenSource))
+            {
+                tokenSource.Dispose();
+            }
             _messageLockRenewers.TryRemove(messageId, out _);
 
             // only ACK the message if it's still in the context - this way, carefully crafted
@@ -670,8 +676,10 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
         context.OnNack(async ctx =>
         {
-            _messageRenewerTokenSources.TryRemove(messageId, out var tokenSource);
-            tokenSource?.Dispose();
+            if (_messageRenewerTokenSources.TryRemove(messageId, out var tokenSource))
+            {
+                tokenSource.Dispose();
+            }
             _messageLockRenewers.TryRemove(messageId, out _);
 
             // only NACK the message if it's still in the context - this way, carefully crafted
@@ -702,8 +710,10 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
         context.OnDisposed(ctx =>
         {
-            _messageRenewerTokenSources.TryRemove(messageId, out var tokenSource);
-            tokenSource?.Dispose();
+            if (_messageRenewerTokenSources.TryRemove(messageId, out var tokenSource))
+            {
+                tokenSource.Dispose();
+            }
             _messageLockRenewers.TryRemove(messageId, out _);
         });
 
