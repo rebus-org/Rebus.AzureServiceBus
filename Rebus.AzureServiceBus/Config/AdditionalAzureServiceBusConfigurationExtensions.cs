@@ -65,6 +65,9 @@ public static class AdditionalAzureServiceBusConfigurationExtensions
                 {
                     messageId = "<unknown>";
                 }
+                
+                transportMessage.Headers.Remove("DeadLetterReason");
+                transportMessage.Headers.Remove("DeadLetterErrorDescription");
 
                 _log.Error("Dead-lettering message with ID {messageId}, reason={deadLetterReason}, exception info: {exceptionInfo}",
                     messageId, deadLetterReason, exception);
