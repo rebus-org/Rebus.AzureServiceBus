@@ -183,6 +183,9 @@ Changelog
 * Add cancellation support to individual messages for cancellation when lease renewal fails - thanks [hdrachmann]
 * Update to Rebus 8.9.0
 
+## 10.5.1
+* Remove potentially duplicate dead letter message headers - thanks [mhuber-evo]
+
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick
 [eeskildsen]: https://github.com/eeskildsen
@@ -194,6 +197,6 @@ Changelog
 [jr01]: https://github.com/jr01
 [lezzi]: https://github.com/lezzi
 [Meyce]: https://github.com/Meyce
+[mhuber-evo]: https://github.com/mhuber-evo
 [rafilsk0]: https://github.com/rafilsk0
 [RenanZanelato]: https://github.com/RenanZanelato
-
