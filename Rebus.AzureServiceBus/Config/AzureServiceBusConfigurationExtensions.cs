@@ -3,6 +3,8 @@ using System.Threading;
 using Azure.Core;
 using Rebus.AzureServiceBus;
 using Rebus.AzureServiceBus.NameFormat;
+using Rebus.Extensions;
+using Rebus.Internals;
 using Rebus.Logging;
 using Rebus.Pipeline;
 using Rebus.Pipeline.Receive;
@@ -103,12 +105,22 @@ public static class AzureServiceBusConfigurationExtensions
                     transport.PrefetchMessages(settingsBuilder.NumberOfMessagesToPrefetch);
                 }
 
+                var runningWithEmulator = GetRunningWithEmulator(connectionString);
+
+                if (runningWithEmulator)
+                {
+                    var logger = rebusLoggerFactory.GetLogger<AzureServiceBusTransport>();
+                    
+                    logger.Info("Azure Service Bus emulator detected - disabling all management operations! Queues and topics must be created with ASB emulator UserConfig");
+                }
+
+                transport.DoNotCreateQueuesEnabled = runningWithEmulator || settingsBuilder.DoNotCreateQueuesEnabled;
+                transport.DoNotCheckQueueConfigurationEnabled = runningWithEmulator || settingsBuilder.DoNotCheckQueueConfigurationEnabled;
+                transport.DoNotConfigureTopicEnabled = runningWithEmulator || settingsBuilder.DoNotConfigureTopicEnabled;
+
                 transport.AutomaticallyRenewPeekLock = settingsBuilder.AutomaticPeekLockRenewalEnabled;
                 transport.PartitioningEnabled = settingsBuilder.PartitioningEnabled;
-                transport.DoNotCreateQueuesEnabled = settingsBuilder.DoNotCreateQueuesEnabled;
                 transport.DefaultMessageTimeToLive = settingsBuilder.DefaultMessageTimeToLive;
-                transport.DoNotCheckQueueConfigurationEnabled = settingsBuilder.DoNotCheckQueueConfigurationEnabled;
-                transport.DoNotConfigureTopicEnabled = settingsBuilder.DoNotConfigureTopicEnabled;
                 transport.LockDuration = settingsBuilder.LockDuration;
                 transport.AutoDeleteOnIdle = settingsBuilder.AutoDeleteOnIdle;
                 transport.DuplicateDetectionHistoryTimeWindow = settingsBuilder.DuplicateDetectionHistoryTimeWindow;
@@ -134,6 +146,13 @@ public static class AzureServiceBusConfigurationExtensions
         });
 
         return settingsBuilder;
+    }
+
+    static bool GetRunningWithEmulator(string connectionString)
+    {
+        var keyValuePairs = connectionString.ParseKeyValuePairs(comparer: StringComparer.OrdinalIgnoreCase);
+
+        return string.Equals(keyValuePairs.GetValueOrNull("UseDevelopmentEmulator"), "true", StringComparison.OrdinalIgnoreCase);
     }
 
     static void RegisterServices(StandardConfigurer<ITransport> configurer, Func<bool> legacyNamingEnabled)

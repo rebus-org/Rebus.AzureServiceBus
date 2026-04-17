@@ -186,6 +186,9 @@ Changelog
 ## 10.5.1
 * Remove potentially duplicate dead letter message headers - thanks [mhuber-evo]
 
+## 10.6.0
+* Detect emulator connection string and disable all management operations completely
+
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick
 [eeskildsen]: https://github.com/eeskildsen
