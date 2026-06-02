@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
 using NUnit.Framework;
 using Rebus.Activation;
@@ -25,7 +26,9 @@ public class FailsWhenSendingToNonExistentQueue : FixtureBase
             .Transport(t => t.UseAzureServiceBus(ConnectionString, "bimmelim"))
             .Start();
 
-        var exception = Assert.ThrowsAsync<RebusApplicationException>(async () => await activator.Bus.Advanced.Routing.Send("yunoexist", "hej med dig min ven!"));
+        Func<Task> action = async () =>
+            await activator.Bus.Advanced.Routing.Send("yunoexist", "hej med dig min ven!");
+        var exception = Assert.ThrowsAsync<RebusApplicationException>(action);
 
         Console.WriteLine(exception);
 

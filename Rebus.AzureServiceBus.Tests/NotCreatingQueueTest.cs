@@ -25,7 +25,7 @@ public class NotCreatingQueueTest : FixtureBase
 
         var activator = Using(new BuiltinHandlerActivator());
 
-        var exception = Assert.Throws<ResolutionException>(() =>
+        Action action = () =>
         {
             Configure.With(activator)
                 .Logging(l => l.ColoredConsole())
@@ -35,7 +35,8 @@ public class NotCreatingQueueTest : FixtureBase
                         .DoNotCreateQueues();
                 })
                 .Start();
-        });
+        };
+        var exception = Assert.Throws<ResolutionException>(action);
 
         Console.WriteLine(exception);
 

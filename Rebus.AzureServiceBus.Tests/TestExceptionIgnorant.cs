@@ -33,7 +33,7 @@ public class TestExceptionIgnorant
     {
         var executions = 0;
 
-        var applicationException = Assert.ThrowsAsync<ApplicationException>(async () =>
+        Func<Task> action = async () =>
         {
             await new ExceptionIgnorant()
                 .Ignore<ApplicationException>(a => a.Message.Contains("not in the message"))
@@ -42,7 +42,8 @@ public class TestExceptionIgnorant
                     executions++;
                     throw new ApplicationException("I'm out!!");
                 });
-        });
+        };
+        var applicationException = Assert.ThrowsAsync<ApplicationException>(action);
 
         Console.WriteLine(applicationException);
 
