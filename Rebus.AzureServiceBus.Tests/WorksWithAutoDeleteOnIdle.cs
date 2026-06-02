@@ -59,10 +59,11 @@ public class WorksWithAutoDeleteOnIdle : FixtureBase
 
         await Task.Delay(TimeSpan.FromMinutes(8));
 
-        var notFoundException = Assert.ThrowsAsync<ServiceBusException>(async () =>
+        Func<Task> action = async () =>
         {
             await client.GetQueueAsync(queueName);
-        });
+        };
+        var notFoundException = Assert.ThrowsAsync<ServiceBusException>(action);
 
         Console.WriteLine(notFoundException);
     }
