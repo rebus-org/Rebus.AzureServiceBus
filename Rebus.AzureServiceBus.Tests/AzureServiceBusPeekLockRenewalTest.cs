@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.AzureServiceBus.NameFormat;
+using Rebus.AzureServiceBus.Tests.Bugs;
 using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Extensions;
@@ -22,18 +23,22 @@ namespace Rebus.AzureServiceBus.Tests;
 public class AzureServiceBusPeekLockRenewalTest : FixtureBase
 {
     static readonly string ConnectionString = AsbTestConfig.ConnectionString;
-    static readonly string QueueName = TestConfig.GetName("input");
 
-    readonly ConsoleLoggerFactory _consoleLoggerFactory = new ConsoleLoggerFactory(false);
+    readonly ConsoleLoggerFactory _consoleLoggerFactory = new(false);
 
     BuiltinHandlerActivator _activator;
     AzureServiceBusTransport _transport;
     IBus _bus;
     IBusStarter _busStarter;
+    string _queueName;
 
     protected override void SetUp()
     {
-        _transport = new AzureServiceBusTransport(ConnectionString, QueueName, _consoleLoggerFactory, new TplAsyncTaskFactory(_consoleLoggerFactory), new DefaultNameFormatter(), new Messages.DefaultMessageConverter());
+        _queueName = TestConfig.GetName("input");
+
+        Using(new QueueDeleter(_queueName));
+
+        _transport = new AzureServiceBusTransport(ConnectionString, _queueName, _consoleLoggerFactory, new TplAsyncTaskFactory(_consoleLoggerFactory), new DefaultNameFormatter(), new Messages.DefaultMessageConverter());
 
         Using(_transport);
 
@@ -42,9 +47,11 @@ public class AzureServiceBusPeekLockRenewalTest : FixtureBase
 
         _activator = new BuiltinHandlerActivator();
 
+        Using(_activator);
+
         _busStarter = Configure.With(_activator)
             .Logging(l => l.Use(new ListLoggerFactory(outputToConsole: true, detailed: true)))
-            .Transport(t => t.UseAzureServiceBus(ConnectionString, QueueName).AutomaticallyRenewPeekLock())
+            .Transport(t => t.UseAzureServiceBus(ConnectionString, _queueName).AutomaticallyRenewPeekLock())
             .Options(o =>
             {
                 o.SetNumberOfWorkers(1);
@@ -53,11 +60,9 @@ public class AzureServiceBusPeekLockRenewalTest : FixtureBase
             .Create();
 
         _bus = _busStarter.Bus;
-
-        Using(_bus);
     }
 
-    [Test, Ignore("Can be used to check silencing behavior when receive errors occur")]
+    [Test, Explicit("Can be used to check silencing behavior when receive errors occur")]
     public void ReceiveExceptions()
     {
         Using(_transport);
