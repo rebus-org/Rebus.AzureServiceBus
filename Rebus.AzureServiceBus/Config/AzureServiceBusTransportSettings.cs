@@ -26,6 +26,7 @@ public class AzureServiceBusTransportSettings
     internal TimeSpan? ReceiveOperationTimeout { get; set; }
 
     internal int MaximumMessagePayloadBytes { get; set; } = 256 * 1024;
+    internal long? MaxSizeInMegabytes { get; set; }
 
     /// <summary>
     /// Enables partitioning whereby Azure Service Bus will be able to distribute messages between message stores and this way increase throughput.
@@ -205,6 +206,23 @@ public class AzureServiceBusTransportSettings
     public AzureServiceBusTransportSettings DoNotConfigureTopic()
     {
         DoNotConfigureTopicEnabled = true;
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the maximum size of the input queue in megabytes. Valid values depend on the Azure Service Bus SKU
+    /// (e.g. 1024, 2048, 3072, 4096, 5120 for Standard; up to 81920 for Premium with large messages enabled).
+    /// This setting is applied when Rebus creates the queue. Unlike most other queue properties, MaxSizeInMegabytes
+    /// can also be updated on an existing queue.
+    /// </summary>
+    public AzureServiceBusTransportSettings SetMaxSizeInMegabytes(long maxSizeInMegabytes)
+    {
+        if (maxSizeInMegabytes <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxSizeInMegabytes), maxSizeInMegabytes, "Please provide a value greater than 0");
+        }
+
+        MaxSizeInMegabytes = maxSizeInMegabytes;
         return this;
     }
 
