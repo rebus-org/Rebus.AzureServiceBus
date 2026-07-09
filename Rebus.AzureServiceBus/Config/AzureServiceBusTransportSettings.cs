@@ -209,17 +209,19 @@ public class AzureServiceBusTransportSettings
         return this;
     }
 
+    static readonly long[] ValidMaxSizeInMegabytesValues = { 1024, 2048, 3072, 4096, 5120, 10240, 20480, 40960, 81920 };
+
     /// <summary>
-    /// Configures the maximum size of the input queue in megabytes. Valid values depend on the Azure Service Bus SKU
-    /// (e.g. 1024, 2048, 3072, 4096, 5120 for Standard; up to 81920 for Premium with large messages enabled).
-    /// This setting is applied when Rebus creates the queue. Unlike most other queue properties, MaxSizeInMegabytes
-    /// can also be updated on an existing queue.
+    /// Configures the maximum size of the input queue in megabytes. Valid values are: 1024, 2048, 3072, 4096, 5120,
+    /// 10240, 20480, 40960, 81920. Note that values above 5120 require the Premium SKU with large messages enabled.
+    /// This setting is applied when Rebus creates the queue and can also update an existing queue.
     /// </summary>
     public AzureServiceBusTransportSettings SetMaxSizeInMegabytes(long maxSizeInMegabytes)
     {
-        if (maxSizeInMegabytes <= 0)
+        if (Array.IndexOf(ValidMaxSizeInMegabytesValues, maxSizeInMegabytes) < 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(maxSizeInMegabytes), maxSizeInMegabytes, "Please provide a value greater than 0");
+            throw new ArgumentOutOfRangeException(nameof(maxSizeInMegabytes), maxSizeInMegabytes,
+                $"Invalid value. Valid values are: {string.Join(", ", ValidMaxSizeInMegabytesValues)}");
         }
 
         MaxSizeInMegabytes = maxSizeInMegabytes;
