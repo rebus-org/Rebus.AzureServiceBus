@@ -20,6 +20,8 @@ class MessageLockRenewer
 
     public string MessageId => _message.MessageId;
 
+    public string LockToken => _message.LockToken;
+
     public bool IsDue => DateTimeOffset.Now >= _nextRenewal;
 
     public async Task Renew()

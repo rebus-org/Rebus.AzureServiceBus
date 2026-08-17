@@ -192,6 +192,9 @@ Changelog
 ## 10.7.0
 * Update to latest dependencies - thanks [simona-aveva]
 
+## 10.7.1
+* Use lock token to identify messages when automatic peek lock renewal is enabled
+
 [benne]: https://github.com/benne
 [binick]: https://github.com/binick
 [eeskildsen]: https://github.com/eeskildsen

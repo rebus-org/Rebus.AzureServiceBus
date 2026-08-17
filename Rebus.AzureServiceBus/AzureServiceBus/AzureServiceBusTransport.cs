@@ -616,47 +616,45 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
         var message = receivedMessage.Message;
         var messageReceiver = receivedMessage.MessageReceiver;
+        var messageId = message.MessageId;
+        var lockToken = message.LockToken;
 
-        var renewFailedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _cancellationToken);
-        if (!_messageRenewerTokenSources.TryAdd(message.MessageId, renewFailedTokenSource))
+        if (string.IsNullOrWhiteSpace(lockToken))
         {
-            // should never happen though
+            throw new RebusApplicationException($"OMG that's weird - message with ID {messageId} does not have a lock token!");
+        }
+
+        // Tracked by lock token, not message ID: the lock token is unique per delivery attempt, whereas the
+        // same message ID can legitimately be in flight more than once at a time (e.g. when a peek lock lapses
+        // and the broker redelivers while the first delivery is still being handled).
+        var renewFailedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _cancellationToken);
+        var renewFailedToken = renewFailedTokenSource.Token;
+
+        if (!_messageRenewerTokenSources.TryAdd(lockToken, renewFailedTokenSource))
+        {
+            // should never happen - lock tokens are unique per delivery
             renewFailedTokenSource.Dispose();
         }
 
-        var items = context.Items;
-        // add the message and its receiver to the context
-        items["asb-message"] = message;
-        items["asb-message-receiver"] = messageReceiver;
-        //add token that cancels when renew fails or when the pipeline token cancels
-        items["asb-message-cancel-token"] = renewFailedTokenSource.Token;
-
-        if (string.IsNullOrWhiteSpace(message.LockToken))
-        {
-            throw new RebusApplicationException($"OMG that's weird - message with ID {message.MessageId} does not have a lock token!");
-        }
-
-        var messageId = message.MessageId;
-
         if (AutomaticallyRenewPeekLock && !_prefetchingEnabled)
         {
-            _messageLockRenewers.TryAdd(message.MessageId, new MessageLockRenewer(message, messageReceiver));
+            _messageLockRenewers.TryAdd(lockToken, new MessageLockRenewer(message, messageReceiver));
         }
 
+        // Registered before anything below that can throw (e.g. message conversion), so that cleanup always
+        // runs: the transaction context is disposed by the worker even when Receive throws partway through.
         context.OnAck(async ctx =>
         {
-            if (_messageRenewerTokenSources.TryRemove(messageId, out var tokenSource))
+            if (_messageRenewerTokenSources.TryRemove(lockToken, out var tokenSource))
             {
                 tokenSource.Dispose();
             }
-            _messageLockRenewers.TryRemove(messageId, out _);
+            _messageLockRenewers.TryRemove(lockToken, out _);
 
             // only ACK the message if it's still in the context - this way, carefully crafted
             // user code can take over responsibility for the message by removing it from the transaction context
             if (ctx.Items.TryGetValue("asb-message", out var messageObject) && messageObject is ServiceBusReceivedMessage asbMessage)
             {
-                var lockToken = asbMessage.LockToken;
-
                 try
                 {
                     await messageReceiver
@@ -676,17 +674,15 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
         context.OnNack(async ctx =>
         {
-            if (_messageRenewerTokenSources.TryRemove(messageId, out var tokenSource))
+            if (_messageRenewerTokenSources.TryRemove(lockToken, out var tokenSource))
             {
                 tokenSource.Dispose();
             }
-            _messageLockRenewers.TryRemove(messageId, out _);
+            _messageLockRenewers.TryRemove(lockToken, out _);
 
             // only NACK the message if it's still in the context - this way, carefully crafted
             // user code can take over responsibility for the message by removing it from the transaction context
             if (!ctx.Items.TryGetValue("asb-message", out var messageObject) || messageObject is not ServiceBusReceivedMessage asbMessage) return;
-
-            var lockToken = asbMessage.LockToken;
 
             try
             {
@@ -710,12 +706,19 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
         context.OnDisposed(ctx =>
         {
-            if (_messageRenewerTokenSources.TryRemove(messageId, out var tokenSource))
+            if (_messageRenewerTokenSources.TryRemove(lockToken, out var tokenSource))
             {
                 tokenSource.Dispose();
             }
-            _messageLockRenewers.TryRemove(messageId, out _);
+            _messageLockRenewers.TryRemove(lockToken, out _);
         });
+
+        var items = context.Items;
+        // add the message and its receiver to the context
+        items["asb-message"] = message;
+        items["asb-message-receiver"] = messageReceiver;
+        //add token that cancels when renew fails or when the pipeline token cancels
+        items["asb-message-cancel-token"] = renewFailedToken;
 
         var transportMessage = _messageConverter.ToTransport(message);
         context.Items[TransportmessageItemKey] = transportMessage;
@@ -983,16 +986,18 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                 // if an exception occurs, check if the peek lock renewer is still in the dictionary of active
                 // peek lock renewers - if it isn't, then the message must have been completed/abandoned in the meantime,
                 // and then it's not an error that the peek lock could not be renewed
-                if (!_messageLockRenewers.ContainsKey(r.MessageId)) return;
+                if (!_messageLockRenewers.TryRemove(r.LockToken, out _)) return;
 
                 _log.Warn(exception, "Error when renewing peek lock for message with ID {messageId}", r.MessageId);
 
-                if (_messageRenewerTokenSources.TryGetValue(r.MessageId, out var renewFailedTokenSource))
+                // this delivery can no longer be renewed, so there's no point in retrying - remove it instead of
+                // leaving it here to be picked up as "due" again on every future tick (MessageLockRenewer never
+                // advances its next-renewal time on failure, so it would otherwise retry forever)
+                if (_messageRenewerTokenSources.TryRemove(r.LockToken, out var renewFailedTokenSource))
                 {
                     renewFailedTokenSource.Cancel();
+                    renewFailedTokenSource.Dispose();
                 }
-
-                // peek lock renewal will be automatically retried if no-one is looking at the cancellationToken , because it's still due for renewal
             }
         }));
     }
