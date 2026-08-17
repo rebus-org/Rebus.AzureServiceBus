@@ -317,6 +317,11 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                     queueOptions.AutoDeleteOnIdle = AutoDeleteOnIdle.Value;
                 }
 
+                if (MaxSizeInMegabytes.HasValue)
+                {
+                    queueOptions.MaxSizeInMegabytes = MaxSizeInMegabytes.Value;
+                }
+
                 queueOptions.MaxDeliveryCount = 100;
             }
 
@@ -425,6 +430,16 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
                 {
                     queueDescription.AutoDeleteOnIdle = autoDeleteOnIdle;
                     updates.Add($"AutoDeleteOnIdle = {autoDeleteOnIdle}");
+                }
+            }
+
+            if (MaxSizeInMegabytes.HasValue)
+            {
+                var maxSizeInMegabytes = MaxSizeInMegabytes.Value;
+                if (queueDescription.MaxSizeInMegabytes != maxSizeInMegabytes)
+                {
+                    queueDescription.MaxSizeInMegabytes = maxSizeInMegabytes;
+                    updates.Add($"MaxSizeInMegabytes = {maxSizeInMegabytes}");
                 }
             }
 
@@ -846,6 +861,11 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
     /// Gets/sets the duplicate detection window
     /// </summary>
     public TimeSpan? DuplicateDetectionHistoryTimeWindow { get; set; }
+
+    /// <summary>
+    /// Gets/sets the maximum size of the queue in megabytes. Only applied when Rebus creates or updates the queue.
+    /// </summary>
+    public long? MaxSizeInMegabytes { get; set; }
 
     /// <summary>
     /// Gets/sets the receive timeout.

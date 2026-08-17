@@ -125,6 +125,7 @@ public static class AzureServiceBusConfigurationExtensions
                 transport.AutoDeleteOnIdle = settingsBuilder.AutoDeleteOnIdle;
                 transport.DuplicateDetectionHistoryTimeWindow = settingsBuilder.DuplicateDetectionHistoryTimeWindow;
                 transport.NativeMessageDeliveryCountEnabled = settingsBuilder.NativeMessageDeliveryCountEnabled;
+                transport.MaxSizeInMegabytes = settingsBuilder.MaxSizeInMegabytes;
 
                 if (settingsBuilder.ReceiveOperationTimeout != null)
                 {
